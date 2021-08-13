@@ -1,31 +1,31 @@
-StudyID	Bugs	Farmer	Timepoint	PesticideCost	Sunlight
-S001	1210	Joe	1	400	Sunny
-S001	605	Joe	2	200	Sunny
-S001	1303	Bill	3	100	Sunny
-S001	152	Joe	4	50	Sunny
-S001	77	Joe	5	25	Sunny
-S002	7260	Bill	1	400	Sunny
-S002	3630	Bill	2	200	Sunny
-S002	1815	Bill	3	100	Sunny
-S002	908	Bill	4	50	Sunny
-S002	454	Bill	5	25	Sunny
-S003	1100	Joe	1	400	PartialSun
-S003	550	Joe	2	200	PartialSun
-S003	275	Joe	3	100	PartialSun
-S003	1138	Bill	4	50	PartialSun
-S003	70	Joe	5	25	PartialSun
-S004	6600	Bill	1	400	PartialSun
-S004	3300	Bill	2	200	PartialSun
-S004	1650	Bill	3	100	PartialSun
-S004	825	Bill	4	50	PartialSun
-S004	413	Bill	5	25	PartialSun
-S005	1000	Joe	1	400	Shade
-S005	500	Joe	2	200	Shade
-S005	250	Joe	3	100	Shade
-S005	125	Joe	4	50	Shade
-S005	1063	Bill	5	25	Shade
-S006	6000	Bill	1	400	Shade
-S006	3000	Bill	2	200	Shade
-S006	1500	Bill	3	100	Shade
-S006	750	Bill	4	50	Shade
-S006	375	Bill	5	25	Shade
+StudyID	FarmLocation	PlotName	Sunlight	Timepoint	OutreachProgram	FertilizerLBrand	DailyWeatherOfficial	FertilizerCost	ResponseMint
+S001	Boulder	P1	Sunny	1	A	B1	Windy	100	650
+S001	Boulder	P1	Sunny	2	B	B1	Windy	150	1250
+S001	Boulder	P1	Sunny	3	B	B2	Microburst	200	1550
+S001	Boulder	P1	Sunny	4	B	B2	Windy	250	4350
+S001	Boulder	P1	Sunny	5	B	B2	Windy	300	8350
+S002	Boulder	P2	PartialSun	1	A	B1	Windy	100	550
+S002	Boulder	P2	PartialSun	2	A	B1	Windy	150	950
+S002	Boulder	P2	PartialSun	3	B	B2	Windy	200	1950
+S002	Boulder	P2	PartialSun	4	B	B2	Microburst	250	2750
+S002	Boulder	P2	PartialSun	5	B	B2	Windy	300	6750
+S003	Boulder	P3	Shade	1	A	B1	Windy	100	450
+S003	Boulder	P3	Shade	2	B	B1	Windy	150	850
+S003	Boulder	P3	Shade	3	A	B2	Windy	200	1450
+S003	Boulder	P3	Shade	4	B	B2	Windy	250	2750
+S003	Boulder	P3	Shade	5	B	B2	Microburst	300	4350
+S004	Farm2	P1	Sunny	1	B	B1	Windy	80	550
+S004	Farm2	P1	Sunny	2	B	B1	Windy	130	850
+S004	Farm2	P1	Sunny	3	A	B2	Windy	180	1450
+S004	Farm2	P1	Sunny	4	A	B2	Windy	230	2650
+S004	Farm2	P1	Sunny	5	B	B2	Windy	280	5150
+S005	Farm2	P2	PartialSun	1	A	B1	Windy	80	350
+S005	Farm2	P2	PartialSun	2	A	B1	Windy	130	550
+S005	Farm2	P2	PartialSun	3	A	B2	Microburst	180	250
+S005	Farm2	P2	PartialSun	4	A	B2	Windy	230	1850
+S005	Farm2	P2	PartialSun	5	A	B2	Windy	280	3450
+S006	Farm2	P3	Shade	1	A	B1	Windy	80	250
+S006	Farm2	P3	Shade	2	A	B1	Windy	130	350
+S006	Farm2	P3	Shade	3	A	B2	Windy	180	650
+S006	Farm2	P3	Shade	4	A	B2	Microburst	230	250
+S006	Farm2	P3	Shade	5	B	B2	Windy	280	1950

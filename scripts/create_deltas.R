@@ -1,5 +1,7 @@
 
 library(dplyr)
+library(qiime2R)
+library(usedist)
 
 in_file = snakemake@input[["in_file"]]
 out_file = snakemake@output[["out_file"]]
@@ -14,7 +16,8 @@ df = read.csv(in_file, sep = "\t")
 df$Timepoint = factor(df$Timepoint, ordered = TRUE)
 
 # get all variables/features, except ones used for script
-vars <- colnames(df %>% select(!c(Timepoint, StudyID)))
+#vars <- colnames(df %>% select(!c(Timepoint, StudyID)))
+vars <- colnames(df %>% select(!StudyID))
 
 times = unique(df$Timepoint)
 
@@ -23,6 +26,15 @@ delta.df = data.frame(StudyID.Timepoint = character())
 # TODO ref.times are zero in 'previous' improve this.
 # TODO make function for ref.times
 # TODO add StudyID.Timepoint AKA SampleID
+
+# TODO add ability to use .QZA or TSV
+#weighted.unifrac.file = "data/unweighted_unifrac_distance_matrix.qza"
+#dm <- read_qza(weighted.unifrac.file)
+#dm = dm$data
+
+# TODO allow multiple distance matrix files to be added via function
+weighted.unifrac.file = "data/distance-matrix.txt"
+dm = read.table(weighted.unifrac.file, fill=T)
 
 for (studyid in unique(df$StudyID)){
   for (time in times) {
@@ -42,28 +54,34 @@ for (studyid in unique(df$StudyID)){
       # skip if no samples for subject at time points of interest
       # also skip if reference time is larger than time (would be duplicates)
       if (nrow(studyid.df) < 2 || rt > time){ next }
-
+      dm_value = dist_subset(dm, c(paste0(studyid, ".", rt),
+                                   paste0(studyid, ".", time)))[1]
       new.comparison.id = paste0(studyid, "_", rt, "_", time)
       df.new = data.frame(StudyID.Timepoint = new.comparison.id,
-                          Timepoint = paste0(rt, "_", time),
-                          StudyID = studyid)
+                          Timepoint = paste0(rt, "_", time), # TODO needed?
+                          StudyID = studyid,
+                          dm_paired_value = dm_value,
+                          dm_paired_value_reference = dm_value)
       delta.df = dplyr::bind_rows(df.new, delta.df)
 
       for (var in vars) {
         new.value = studyid.df[[var]][studyid.df$Timepoint == time]
         old.value = studyid.df[[var]][studyid.df$Timepoint == rt]
         if (typeof(studyid.df[[var]]) != "character"){
-
           if (reference_time == "pairwise" && absolute_values == "yes"){
             # TODO convert to abs values at end? reduce computational time
             delta.df[[var]][delta.df$StudyID.Timepoint == new.comparison.id] = abs(new.value - old.value)
+            delta.df[[paste0(var,"_reference")]][delta.df$StudyID.Timepoint == new.comparison.id] = old.value
           } else {
             delta.df[[var]][delta.df$StudyID.Timepoint == new.comparison.id] = new.value - old.value
+            delta.df[[paste0(var,"_reference")]][delta.df$StudyID.Timepoint == new.comparison.id] = old.value
           }
         }
-        else{
+        if (typeof(studyid.df[[var]]) == "character" || var == "Timepoint"){
           delta.df[[var]][delta.df$StudyID.Timepoint == new.comparison.id] = paste0(old.value, "_", new.value)
+          delta.df[[paste0(var,"_reference")]][delta.df$StudyID.Timepoint == new.comparison.id] = paste0(old.value)
         }
+        else{ next }
       }
     }
   }

@@ -9,20 +9,13 @@ def _dummy_var_creation(categorical_list, df, join_flag):
         subset_df = df[[i]]
         dum_df = pd.get_dummies(subset_df, columns=[i], prefix=["ENC_" + i +
                                                                 "_is"])
-
+        # Keep adding encoded vars to df before returning
         if join_flag:
             df = df.join(dum_df)
 
     if join_flag:
         return df
+
+    # TODO without join flag... revisit this idea
     else:
         return dum_df
-
-
-def _dummy_this_list(categorical_list, df):
-    for i in categorical_list:
-        subset_df = df[[i]]
-        dum_df = pd.get_dummies(subset_df, columns=[i], prefix=["ENC_" + i +
-                                                                "_is"])
-
-    return dum_df
