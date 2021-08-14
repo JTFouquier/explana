@@ -1,6 +1,6 @@
 ## Variable selection in longitudinal, multiomic analytics using machine learning methods
 
-This is an in-progress workflow for identification of important predictors that relate to response variables in longitudinal or cross-sectional, multiomic projects, designed specifically for microbiome research.
+This is an **in-progress** workflow for identification of important predictors that relate to response variables in longitudinal or cross-sectional, multiomic projects, designed specifically for microbiome research.
 
 Omic data, especially multiomic data, is high-dimensional (more predictors than samples) which violates assumptions made by traditional statistics, often leading to inadequately used data. In order to move towards identifying causal links between microbes and a clinical response, longitudinal microbiome research is increasingly common. These longitudinal studies, where many samples are repeatedly taken from one subject over time, in an observational or interventional manner, creates additional statistical challenges because the data is not independent and clusters should be treated as a random effect. 
 
@@ -15,3 +15,10 @@ This data-driven workflow will reduce bias by allowing thorough evaluation of pr
 I'm new to Snakemake! Please follow their tutorials. I set it up really quickly to get things going and have not explored best practices, nor is this project ready to install or clone. 
 
 For now, I have R and Python scripts that both run when providing the name of the final pdf from the `run_random_forest` Snakemake rule which in turn uses `random_forest.py` and then the `create_deltas` Snakemake rule that uses `create_deltas.R` if needed. It steps back through the snakemake rules, finding out what it needs to build the final output file. I added the arguments to the file name for clarity using the curly braces, but this is probably not best practice. I just wanted my names to clearly say what arguments I used. 
+
+##### Repository:
+
+- data: original input data
+- deltas: delta datasets (examples are already there, although this is an output)
+- random-forest: output (examples included)
+- scripts: Python and R scripts, more to come! 
