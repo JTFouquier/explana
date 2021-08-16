@@ -20,5 +20,5 @@ For now, I have R and Python scripts that both run when providing the name of th
 
 - data: original input data
 - deltas: delta datasets (examples are already there, although this is an output)
-- random-forest: output (examples included)
+- random-forest: output (examples included), 5 files per run, and 1 xlsm (macro-enabled spreadsheet) with color-coded important variables
 - scripts: Python and R scripts, more to come! 
