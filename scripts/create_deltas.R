@@ -54,14 +54,12 @@ for (studyid in unique(df$StudyID)){
       # skip if no samples for subject at time points of interest
       # also skip if reference time is larger than time (would be duplicates)
       if (nrow(studyid.df) < 2 || rt > time){ next }
-      dm_value = dist_subset(dm, c(paste0(studyid, ".", rt),
-                                   paste0(studyid, ".", time)))[1]
+      #dm_value = dist_subset(dm, c(paste0(studyid, ".", rt),
+      #                            paste0(studyid, ".", time)))[1]
       new.comparison.id = paste0(studyid, "_", rt, "_", time)
       df.new = data.frame(StudyID.Timepoint = new.comparison.id,
                           Timepoint = paste0(rt, "_", time), # TODO needed?
-                          StudyID = studyid,
-                          dm_paired_value = dm_value,
-                          dm_paired_value_reference = dm_value)
+                          StudyID = studyid)
       delta.df = dplyr::bind_rows(df.new, delta.df)
 
       for (var in vars) {

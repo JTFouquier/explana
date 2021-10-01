@@ -16,6 +16,12 @@ I'm new to Snakemake! Please follow their tutorials. I set it up really quickly 
 
 For now, I have R and Python scripts that both run when providing the name of the final pdf from the `run_random_forest` Snakemake rule which uses `random_forest.py`. But because the `random_forest.py` script needs the deltas first, it runs the `create_deltas` Snakemake rule that uses `create_deltas.R` if needed. Basically Snakemake steps back through the snakemake rules, finding out what it needs to build the final output file. I added the arguments to the file name for clarity using the curly braces, but this is probably not best practice. I just wanted my names to clearly say what arguments I used.
 
+Example ways to use:
+
+`snakemake deltas/simulated-plants-deltas-first.txt --cores 6`
+`snakemake random-forest/mixed-RF-deltas-re_timepoint-first.pdf --cores 6`
+`snakemake run_random_forest_raw --cores 6`
+
 ##### Repository:
 
 - data: original input data

@@ -83,8 +83,10 @@ def setup_df_do_encoding(df_encoded, random_effect, vars_to_encode,
                     [random_effect] + vars_to_encode + [response_var]
     if delta_flag == "raw":
         drop_cols = [random_effect] + vars_to_encode + [response_var]
+        drop_cols = [random_effect] + vars_to_encode + [response_var]
 
     df_encoded_cols_dropped = df_encoded.drop(drop_cols, axis=1)
+    # TODO remove columns that have "ref"
     feature_list = df_encoded_cols_dropped.columns
 
     df_encoded_cols_dropped.to_csv(out_file_prefix +
@@ -110,8 +112,8 @@ def merf_training_stats_plot(mrf, num_clusters):
     return training_stats_plot
 
 
-def y_estimate_y_known_correlation(y_estimated, y):
-    corr = stats.pearsonr(y_estimated, y)
+def y_estimate_y_known_correlation(y_predicted, y):
+    corr = stats.pearsonr(y_predicted, y)
     log_string = "Predicted vs observed response R2: " + \
                  str(round((corr[0] * corr[0]), 3)) + "p-value: " + \
                  str(round(corr[1], 3))
@@ -218,7 +220,7 @@ def main(in_file, out_file, random_forest_type, random_effect, sample_ID,
          response_var, delta_flag, join_flag):
     df = pd.read_csv(in_file, sep="\t")
     df = df.drop(columns=["FertilizerCost"])
-    # df = df.drop(columns=["FertilizerCost_reference"]) # for raw
+    # df = df.drop(columns=["FertilizerCost_reference"]) # remove for raw
     numeric_column_list = list(df._get_numeric_data().columns)
     column_list = list(df.columns)
     categoric_columns = [i for i in column_list if
@@ -254,11 +256,11 @@ def main(in_file, out_file, random_forest_type, random_effect, sample_ID,
     plot_list, feature_importance, top_features_list = shap_explainer(mrf, x)
     feature_importance.to_csv(out_file_prefix + "-feature-importance.txt",
                               sep='\t', mode='a')
-
+    df = pd.DataFrame({'important.features': top_features_list})
+    df.to_csv(out_file_prefix + "-top-features.csv", index=False)
     plot_partial_dependence(mrf, x, features=top_features_list)
     plot_some_partial_dependence = plt.gcf()
     plot_some_partial_dependence.set_size_inches(width, height)
-    plt.close()
     plot_list.append(plot_some_partial_dependence)
     build_result_pdf(out_file, plot_list)
 

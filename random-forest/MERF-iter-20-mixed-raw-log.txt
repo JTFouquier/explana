@@ -1,1 +1,1 @@
-Predicted vs observed response R2: 0.985p-value: 0.0
+Predicted vs observed response R2: 0.989p-value: 0.0
