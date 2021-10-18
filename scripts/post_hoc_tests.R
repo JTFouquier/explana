@@ -25,6 +25,8 @@ response = 'ResponseMint'
 random_effects_list = c("StudyID")
 interaction = "no"
 
+# TODO make log file containing LME errors and warnings
+
 lm_post_hoc <- function(df, response, fixed_effects_list, interaction){
   fixed_effects_formula = paste(fixed_effects_list, collapse = interaction)
 
@@ -44,42 +46,45 @@ lm_post_hoc <- function(df, response, fixed_effects_list, interaction){
 lme_post_hoc <- function(df, response, fixed_effects_list, random_effects_list,
                          interaction) {
 
-   fixed_effects_formula = paste(fixed_effects_list, collapse = interaction)
+  fixed_effects_formula = paste(fixed_effects_list, collapse = interaction)
 
    # linear mixed effects model (deltas)
-   random_effects_formula = paste0("(1|", random_effects_list, ")",
+  random_effects_formula = paste0("(1|", random_effects_list, ")",
                                    collapse = " + ")
-   reduced_formula = as.formula(paste0(response, " ~ 1", " + ",
+  reduced_formula = as.formula(paste0(response, " ~ 1", " + ",
                                      random_effects_formula ))
 
- full_formula = as.formula(paste0(response, " ~ ", fixed_effects_formula,
+  full_formula = as.formula(paste0(response, " ~ ", fixed_effects_formula,
                                   " + ", random_effects_formula))
- model_reduced = lmer(reduced_formula, data = df, REML=FALSE)
- model_full = lmer(full_formula, data = df, REML=FALSE)
- model_anova = anova(model_full, model_reduced)
- return(model_full)
+
+  model_reduced = lmer(reduced_formula, data = df, REML=FALSE)
+  model_full = lmer(full_formula, data = df, REML=FALSE)
+  model_anova = anova(model_full, model_reduced)
+  return(model_full)
 }
 
 
 if (interaction == "yes"){
- interaction = " * "
+  interaction = " * "
 } else if (interaction == "no"){
- interaction = " + "
+  interaction = " + "
 } else {
- stop("Interaction type incorrect")
+  stop("Interaction type incorrect")
 }
 
 # ENC_PlotName_is_P3 TODO remove modifiers
 
-lme_complete <- function(delta_file, fixed_effects_file, reference_type){
-  reference_order_list = list("first"="01", "previous"="02", "pairwise"="03", "raw" = "04")
+lme_complete <- function(delta_file, fixed_effects_file, reference_type,
+                         encoding_column){
+  reference_order_list = list("first"="01", "previous"="02", "pairwise"="03",
+                              "raw" = "04")
   reference_order = reference_order_list[[reference_type]]
   df = read.csv(delta_file, sep = "\t")
-  df$Timepoint = factor(df$Timepoint, ordered = TRUE)
+  # TODO this helps find linear relns. Keep categorical?
+  #df$Timepoint = factor(df$Timepoint, ordered = TRUE)
 
-  fixed_effects_list = read.csv(fixed_effects_file)
-  names(fixed_effects_list) = NULL
-  fixed_effects_list = unlist(fixed_effects_list)
+  fixed_effects_list = read.csv(fixed_effects_file, sep = "\t")
+  fixed_effects_list = unique(fixed_effects_list[[encoding_column]])
 
   lme_model = lme_post_hoc(df, response, fixed_effects_list,
                            random_effects_list, interaction)
@@ -120,34 +125,34 @@ lme_complete <- function(delta_file, fixed_effects_file, reference_type){
   return(lme_model)
 }
 
-#delta_file = "deltas/simulated-plants-deltas-first.txt"
-delta_file = "random-forest/mixed-RF-deltas-re_timepoint-first-df-after-encoding.txt"
-fixed_effects_file = "random-forest/mixed-RF-deltas-re_timepoint-first-top-features.csv"
+delta_file = "deltas/simulated-plants-deltas-first.txt"
+fixed_effects_file = "random-forest/mixed-RF-deltas-re_timepoint-first-top-features.txt"
 rt = "first"
 lme_first = lme_complete(delta_file = delta_file,
                          fixed_effects_file = fixed_effects_file,
-                         reference_type = rt)
+                         reference_type = rt,
+                         encoding_column = "decoded.features")
 
-#delta_file = "deltas/simulated-plants-deltas-previous.txt"
-delta_file = "random-forest/mixed-RF-deltas-re_timepoint-previous-df-after-encoding.txt"
-fixed_effects_file = "random-forest/mixed-RF-deltas-re_timepoint-previous-top-features.csv"
+delta_file = "deltas/simulated-plants-deltas-previous.txt"
+fixed_effects_file = "random-forest/mixed-RF-deltas-re_timepoint-previous-top-features.txt"
 rt = "previous"
 lme_previous = lme_complete(delta_file = delta_file,
-                            fixed_effects_file = fixed_effects_file,
-                            reference_type = rt)
+                         fixed_effects_file = fixed_effects_file,
+                         reference_type = rt,
+                         encoding_column = "decoded.features")
 
-#delta_file = "deltas/simulated-plants-deltas-pairwise.txt"
-delta_file = "random-forest/mixed-RF-deltas-re_timepoint-pairwise-df-after-encoding.txt"
-fixed_effects_file = "random-forest/mixed-RF-deltas-re_timepoint-pairwise-top-features.csv"
+delta_file = "deltas/simulated-plants-deltas-pairwise.txt"
+fixed_effects_file = "random-forest/mixed-RF-deltas-re_timepoint-pairwise-top-features.txt"
 rt = "pairwise"
 lme_pairwise = lme_complete(delta_file = delta_file,
                             fixed_effects_file = fixed_effects_file,
-                            reference_type = rt)
+                            reference_type = rt,
+                            encoding_column = "decoded.features")
 
 tab_model(lme_first, lme_previous, lme_pairwise,
           show.aic = TRUE,
           show.stat = TRUE,
-          title = "Longitudinal Analysis - All Models (note: predictors were
+          title = "Multivariate Longitudinal Analysis - All Models (note: predictors were
           not necessarily important for all models as indicated by blank cells)",
           string.stat = "Stat.",
           string.est = "Est.",
@@ -168,21 +173,21 @@ html_combine(
 )
 
 
-df = "random-forest/MERF-iter-20-mixed-raw-df-after-encoding.txt"
-fixed_effects_file = "random-forest/MERF-iter-20-mixed-raw-top-features.csv"
-rt = "raw"
-lme_raw = lme_complete(delta_file = df,
-                            fixed_effects_file = fixed_effects_file,
-                            reference_type = rt)
+#df = "random-forest/MERF-iter-20-mixed-raw-df-after-encoding.txt"
+#fixed_effects_file = "random-forest/MERF-iter-20-mixed-raw-top-features.csv"
+#rt = "raw"
+#lme_raw = lme_complete(delta_file = df,
+#                            fixed_effects_file = fixed_effects_file,
+#                            reference_type = rt)
+#
+#tab_model(lme_raw)
 
-tab_model(lme_raw)
 
-
-filenames_html <- sort(Sys.glob("*.html"))
-html_combine(
-  combine = list(filenames_html),
-  out = "test-COMBINED.html",
-)
+#filenames_html <- sort(Sys.glob("*.html"))
+#html_combine(
+#  combine = list(filenames_html),
+#  out = "test-COMBINED.html",
+#)
 
 
 

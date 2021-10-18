@@ -1,4 +1,5 @@
 # load package
+rm(list=ls()) # clear env
 
 library(sjPlot)
 library(sjmisc)
@@ -8,34 +9,19 @@ library(tidyverse)
 library(dplyr)
 library(colorspace)
 
-df = read.csv("deltas/dm-deltas-first.txt", sep = "\t")
+#df = read.csv("deltas/dm-deltas-first.txt", sep = "\t")
 df = read.csv("deltas/simulated-plants-deltas-previous.txt", sep = "\t")
 
-df$Timepoint = factor(df$Timepoint, ordered = TRUE)
-
 df.numeric = select_if(df, is.numeric)
-
-# TODO this is hardcoded, needs to be fixed for different datasets
-df.numeric0 <- df.numeric %>% select_if(~max(unique(as.vector(as.matrix(.))))<=1)
-df.numeric1 <- df.numeric %>% select_if(~max(unique(as.vector(as.matrix(.))))>1 && max(unique(as.vector(as.matrix(.))))<=10)
-df.numeric2 <- df.numeric %>% select_if(~max(unique(as.vector(as.matrix(.))))>10 && max(unique(as.vector(as.matrix(.))))<=100)
-df.numeric3 <- df.numeric %>% select_if(~max(unique(as.vector(as.matrix(.))))>100 && max(unique(as.vector(as.matrix(.))))<=1000)
-df.numeric4 <- df.numeric %>% select_if(~max(unique(as.vector(as.matrix(.))))>1000 && max(unique(as.vector(as.matrix(.))))<=10000)
-
-names(df.numeric1)
-names(df.numeric0)
-names(df.numeric1)
-names(df.numeric2)
-names(df.numeric3)
-names(df.numeric)
-
 df.other = select_if(df, negate(is.numeric))
 
+# CATEGORICAL colors
 color_palette = "ipsum"
 unique_df_values = unique(as.vector(as.matrix(df.other)))
-multiply_colors = length(unique_df_values)/length(sjplot_pal(pal = color_palette)) + 2
+total_colors_needed = length(unique_df_values) + length(colnames(df.numeric))
+multiply_colors = (total_colors_needed/length(sjplot_pal(pal = color_palette))) + 2
 unique_df_colors = rep(sjplot_pal(pal = color_palette),
-                       multiply_colors)[1:length(unique_df_values)]
+                       multiply_colors)[1:total_colors_needed]
 
 # lighten to use the colors as backgrounds
 unique_df_colors = lighten(
@@ -46,39 +32,32 @@ unique_df_colors = lighten(
   fixup = TRUE
 )
 
-x = datatable(df) %>%
-  formatStyle(names(df.numeric0),
-  background = styleColorBar(range(df.numeric0), unique_df_colors[[6]] ),
-  backgroundSize = '98% 88%',
-  backgroundRepeat = 'no-repeat',
-  backgroundPosition = 'center') %>%
+colors_categoric_cols = unique_df_colors[1:length(unique_df_values)]
+colors_numeric_cols = unique_df_colors[length(unique_df_values):length(unique_df_colors)]
 
-  formatStyle(names(df.numeric1),
-  background = styleColorBar(range(df.numeric1), color = unique_df_colors[[1]]),
-  backgroundSize = '98% 88%',
-  backgroundRepeat = 'no-repeat',
-  backgroundPosition = 'center') %>%
+x = datatable(df, options = list(lengthMenu = c(50, 100)))
 
-  formatStyle(names(df.numeric2),
-  background = styleColorBar(range(df.numeric2), color = unique_df_colors[[2]]),
-  backgroundSize = '98% 88%',
-  backgroundRepeat = 'no-repeat',
-  backgroundPosition = 'center') %>%
+col_num = 1
+for (i in colnames(df.numeric)) {
+  x = x %>%
+    formatStyle(i,
+      background = styleColorBar(range(df.numeric[,i]), colors_numeric_cols[[col_num]]),
+      backgroundSize = '98% 88%',
+      backgroundRepeat = 'no-repeat',
+      backgroundPosition = 'center')
 
-  formatStyle(names(df.numeric3),
-  background = styleColorBar(range(df.numeric3), color = unique_df_colors[[3]]),
-  backgroundSize = '98% 88%',
-  backgroundRepeat = 'no-repeat',
-  backgroundPosition = 'center') %>%
+  u.col = unique(df.numeric[i])
+  if (dim(u.col)[1] == 1){
+    print(i)
+    x = x %>%
+      formatStyle(i,
+      backgroundColor = styleEqual(unique(as.vector(as.matrix(df.numeric[i]))), colors_numeric_cols[[col_num]]))
+  }
+  col_num = col_num + 1
+}
 
-  formatStyle(names(df.numeric4),
-  background = styleColorBar(range(df.numeric4), color = unique_df_colors[[4]]),
-  backgroundSize = '98% 88%',
-  backgroundRepeat = 'no-repeat',
-  backgroundPosition = 'center') %>%
-
-
+x = x %>%
   formatStyle(names(df.other),
-  backgroundColor = styleEqual(unique_df_values, unique_df_colors))
+  backgroundColor = styleEqual(unique_df_values, colors_categoric_cols))
 
 saveWidget(x, 'dt-table.html')

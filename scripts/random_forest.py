@@ -74,7 +74,8 @@ out_file_prefix = out_file.split(".pdf")[0]
 
 def setup_df_do_encoding(df_encoded, random_effect, vars_to_encode,
                          response_var, delta_flag, join_flag):
-    df_encoded = _dummy_var_creation(vars_to_encode, df_encoded, join_flag)
+    df_encoded, dummy_dict = _dummy_var_creation(vars_to_encode, df_encoded,
+                                                 join_flag)
     df_encoded.to_csv(out_file_prefix + "-df-after-encoding.txt", index=False,
                       sep="\t")
 
@@ -101,7 +102,7 @@ def setup_df_do_encoding(df_encoded, random_effect, vars_to_encode,
     clusters_train = df_encoded["StudyID"]
     y = df_encoded[response_var]
 
-    return x, z, clusters_train, y, feature_list
+    return x, z, clusters_train, y, feature_list, dummy_dict
 
 
 def merf_training_stats_plot(mrf, num_clusters):
@@ -230,7 +231,7 @@ def main(in_file, out_file, random_forest_type, random_effect, sample_ID,
     to_drop = [random_effect, sample_ID]
     encode = [i for i in categoric_columns if i not in to_drop]
 
-    x, z, clusters, y, feature_list = \
+    x, z, clusters, y, feature_list, dummy_dict = \
         setup_df_do_encoding(df_encoded=df, random_effect=random_effect,
                              vars_to_encode=encode, response_var=response_var,
                              delta_flag=delta_flag, join_flag=join_flag)
@@ -256,8 +257,20 @@ def main(in_file, out_file, random_forest_type, random_effect, sample_ID,
     plot_list, feature_importance, top_features_list = shap_explainer(mrf, x)
     feature_importance.to_csv(out_file_prefix + "-feature-importance.txt",
                               sep='\t', mode='a')
-    df = pd.DataFrame({'important.features': top_features_list})
-    df.to_csv(out_file_prefix + "-top-features.csv", index=False)
+
+    # find prefix for encoded values "ENC_Location_is_1_3" decoded is Location
+    decoded_top_features_list = []
+    for i in top_features_list:
+        i_for_dict = i.split("_is_")[0] + "_is"
+        try:
+            decoded = dummy_dict[i_for_dict]
+        except KeyError:
+            decoded = i
+        decoded_top_features_list.append(''.join(decoded))
+
+    df = pd.DataFrame({'important.features': top_features_list,
+                       'decoded.features': decoded_top_features_list})
+    df.to_csv(out_file_prefix + "-top-features.txt", index=False, sep="\t")
     plot_partial_dependence(mrf, x, features=top_features_list)
     plot_some_partial_dependence = plt.gcf()
     plot_some_partial_dependence.set_size_inches(width, height)
