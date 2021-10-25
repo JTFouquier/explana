@@ -10,8 +10,8 @@ library(dplyr)
 library(colorspace)
 
 #df = read.csv("deltas/dm-deltas-first.txt", sep = "\t")
-df = read.csv("deltas/simulated-plants-deltas-previous.txt", sep = "\t")
-
+df = read.csv("deltas/simulated-diet-deltas-pairwise.txt", sep = "\t")
+out_file = "dt-viz-deltas-pairwise.html"
 df.numeric = select_if(df, is.numeric)
 df.other = select_if(df, negate(is.numeric))
 
@@ -60,4 +60,4 @@ x = x %>%
   formatStyle(names(df.other),
   backgroundColor = styleEqual(unique_df_values, colors_categoric_cols))
 
-saveWidget(x, 'dt-table.html')
+saveWidget(x, out_file)

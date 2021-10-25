@@ -17,9 +17,9 @@
 # TODO action items
 rule create_deltas:
     input:
-        in_file = "data/simulated-plants.txt"
+        in_file = "data/simulated-diet.txt"
     output:
-        out_file = "deltas/simulated-plants-deltas-{reference}.txt"
+        out_file = "deltas/simulated-diet-deltas-{reference}.txt"
     params:
         reference_time = "{reference}",
         absolute_values = "no",
@@ -46,16 +46,16 @@ rule create_deltas:
 # I wanted my file names to reflect the arguments
 rule run_random_forest:
     input:
-        in_file = "deltas/simulated-plants-deltas-{reference}.txt"  # TODO above
+        in_file = "deltas/simulated-diet-deltas-{reference}.txt"  # TODO above
     output:
         out_file = "random-forest/{mixed}-RF-{deltas}-{re_timepoint}-{reference}.pdf"
     params:
         random_forest_type = "{mixed}", # mixed or fixed
         random_effect = "StudyID",
         sample_ID = "StudyID.Timepoint",
-        response_var = "ResponseMint",
+        response_var = "IL6",
         delta_flag = "{deltas}", # raw or deltas
-        iterations = 20, # iterations, 20 is suggested, 10 for testing
+        iterations = 8, # iterations, 20 is suggested, 10 for testing
         re_timepoint = "{re_timepoint}" # re_timepoint or no_re
     script:
         "scripts/random_forest.py"
@@ -63,19 +63,37 @@ rule run_random_forest:
 # run random forest on repeated studies data, no deltas, still mixed effects
 rule run_random_forest_raw:
     input:
-        in_file = "data/simulated-plants.txt"  # TODO above
+        in_file = "data/simulated-diet.txt"  # TODO above
     output:
-        out_file = "random-forest/MERF-iter-20-mixed-raw.pdf"
+        out_file = "random-forest/MERF-iter-8-mixed-raw.pdf"
     params:
         random_forest_type = "mixed",
         random_effect = "StudyID",
         sample_ID = "StudyID.Timepoint",
-        response_var = "ResponseMint",
+        response_var = "IL6",
         delta_flag = "raw",
-        iterations = 20, # iterations, 20 is suggested, 10 for testing
+        iterations = 8, # iterations, 20 is suggested, 10 for testing
         re_timepoint = "no_re" # re_timepoint or no_re
     script:
         "scripts/random_forest.py"
+
+
+rule run_post_hoc_stats:
+    input:
+        deltas_first = "deltas/simulated-diet-deltas-first.txt",
+        deltas_previous = "deltas/simulated-diet-deltas-previous.txt",
+        deltas_pairwise = "deltas/simulated-diet-deltas-pairwise.txt",
+        df_raw = "data/simulated-diet.txt",
+        fixed_effects_first = "random-forest/mixed-RF-deltas-re_timepoint-first-top-features.txt",
+        fixed_effects_previous = "random-forest/mixed-RF-deltas-re_timepoint-previous-top-features.txt",
+        fixed_effects_pairwise = "random-forest/mixed-RF-deltas-re_timepoint-pairwise-top-features.txt",
+        fixed_effects_raw = "random-forest/MERF-iter-8-mixed-raw-top-features.txt"
+    output:
+        out_file = "post-hoc-analysis.html"
+    params:
+        response_var = "IL6"
+    script:
+        "scripts/post_hoc_tests.R"
 
 # look at results
 #

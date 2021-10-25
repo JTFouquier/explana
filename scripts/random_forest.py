@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 # import seaborn as sns
 import numpy as np
+import subprocess
 from matplotlib.backends.backend_pdf import PdfPages
 from scipy import stats
 
@@ -65,7 +66,7 @@ height = 10
 # features to show
 max_display = 8
 # for partial dep plots and more
-top_features = 6
+top_features = 8
 
 # TODO review this
 join_flag = True
@@ -94,7 +95,13 @@ def setup_df_do_encoding(df_encoded, random_effect, vars_to_encode,
                                    "-dummy-variables-dropped-columns.txt",
                                    index=False, sep="\t")
     # final variables for RF or MERF
+    # feature_list = [ x for x in feature_list if "Timepoint" not in x ]
+    # feature_list = [ x for x in feature_list if "FertilizerCost" not in x ]
+    feature_list = [ x for x in feature_list if "_reference" not in x ]
+    # feature_list = [ x for x in feature_list if "Timepoint" not in x ]
+
     x = df_encoded[feature_list]
+    # print(feature_list)
     if re_timepoint == "re_timepoint":
         z = df_encoded[["Timepoint_reference"]]
     if re_timepoint == "no_re":
@@ -157,7 +164,7 @@ def important_shapley_features(shap_values, x):
                                    ascending=False, inplace=True)
     feature_importance['feature_importance_vals'] = \
         feature_importance['feature_importance_vals'].apply(lambda x:
-                                                            round(x, 2))
+                                                            round(x, 4))
     print(feature_importance)
     return feature_importance
 
@@ -220,8 +227,6 @@ def build_result_pdf(out_file, plot_list):
 def main(in_file, out_file, random_forest_type, random_effect, sample_ID,
          response_var, delta_flag, join_flag):
     df = pd.read_csv(in_file, sep="\t")
-    df = df.drop(columns=["FertilizerCost"])
-    # df = df.drop(columns=["FertilizerCost_reference"]) # remove for raw
     numeric_column_list = list(df._get_numeric_data().columns)
     column_list = list(df.columns)
     categoric_columns = [i for i in column_list if
