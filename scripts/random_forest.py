@@ -5,6 +5,8 @@ import shap
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import logging
+import sys
 from matplotlib.backends.backend_pdf import PdfPages
 
 from merf.merf import MERF
@@ -27,6 +29,7 @@ Simple fixes
 - fix hardcoding & add sample ID for all
 - consider shadowed scope vars
 - fix rounding for feature importance output file
+- remove leading 'X' from feature names
 
 Features/Considerations for development
 - consider adding time as both categorical and continuous variable
@@ -70,6 +73,23 @@ join_flag = True
 out_file_prefix = out_file.split(".pdf")[0]
 
 
+# TODO this is not ideal for logging, but it works (issues with stream/file)
+class Logger(object):
+    def __init__(self):
+        self.terminal = sys.stdout
+        self.log = open(out_file_prefix + "-log.txt", "a")
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+
+    def flush(self):
+        pass
+
+
+sys.stdout = Logger()
+
+
 def setup_df_do_encoding(df_encoded, random_effect, vars_to_encode,
                          response_var, delta_flag, join_flag):
     df_encoded, dummy_dict = _dummy_var_creation(vars_to_encode, df_encoded,
@@ -92,50 +112,20 @@ def setup_df_do_encoding(df_encoded, random_effect, vars_to_encode,
                                    index=False, sep="\t")
 
     feature_list = [x for x in feature_list if "_reference" not in x]
+    # feature_list = [x for x in feature_list if "Timepoint" not in x]
+    # for Baseline feature analysis
+    # feature_list = [x for x in feature_list if "_reference" in x]
 
     x_for_split = df_encoded[feature_list + ["StudyID"]]
     x = df_encoded[feature_list]  # StudyID cannot be in features
-    if re_timepoint == "re_timepoint":
+    if re_timepoint == "re_timepoint": # TODO fix this
         # z = df_encoded[["Timepoint_reference"]]
         z = np.ones((len(x), 1))
     if re_timepoint == "no_re":
         z = np.ones((len(x), 1))
     clusters = df_encoded["StudyID"]
     y = df_encoded[response_var]
-
-    # Split into training and testing to check quality of model
-    x_train, x_test, y_train, y_test = train_test_split(x_for_split, y, test_size=0.2,
-                                                        random_state=42)
-    print("********TRAINING USING MERF")
-    # clusters for each individual
-    clusters_train = x_train["StudyID"]
-    clusters_test = x_test["StudyID"]
-
-    # remove clusters from features X
-    x_train = x_train[feature_list]
-    x_test = x_test[feature_list]
-
-    z_train = np.ones((len(x_train), 1))
-    z_test = np.ones((len(x_test), 1))
-
-    mrf_training, train_test_plots = train_merf_model(x_train, z_train,
-                                                      clusters_train, y_train)
-
-    y_train_estimate = mrf_training.predict(x_train, z_train, clusters_train)
-    y_test_estimate = mrf_training.predict(x_test, z_test, clusters_test)
-
-    corr_pearson_train = pearsonr(y_train_estimate, y_train)
-    print("R2 training", corr_pearson_train)
-
-    corr_pearson_test = pearsonr(y_test_estimate, y_test)
-    print("R2 testing", corr_pearson_test)
-
-    log_string = "Training R2: " + str(corr_pearson_train) + \
-                 "\nTesting R2: " + str(corr_pearson_test)
-
-    corr_plot_test = scatter_plot(y_test_estimate, y_test)
-
-    return x, z, clusters, y, feature_list, dummy_dict, log_string, corr_plot_test
+    return x, z, clusters, y, feature_list, dummy_dict
 
 
 def merf_training_stats_plot(mrf, num_clusters):
@@ -146,21 +136,30 @@ def merf_training_stats_plot(mrf, num_clusters):
     return training_stats_plot
 
 
-def scatter_plot(y_axis, x_axis):
+def scatter_plot(y_axis, x_axis, forest_score):
+    y = y_axis
+    x = x_axis
     x_axis = np.array(x_axis)
     y_axis = np.array(y_axis)
     plt.scatter(y_axis, x_axis)
+    plt.annotate("r-squared = {:.3f}".format(forest_score),
+                 (min(y), max(x)))
     corr_plot = plt.gcf()
     plt.close()
 
     return corr_plot
 
 
-def train_merf_model(x, z, clusters, y):
+def train_merf_model(x, z, clusters, y, max_iters):
     # TODO CHANGE THIS later! NEEDS MORE ITERATIONS
-    mrf = MERF(max_iterations=max_iters)
+    mrf = MERF(max_iterations=max_iters,
+               fixed_effects_model=RandomForestRegressor(n_estimators=100,
+                                                         n_jobs=-2,
+                                                         oob_score=True,
+                                                         max_features="auto"),
+    )
     mrf.fit(x, z, clusters, y)
-    training_stats_plot = plot_merf_training_stats(mrf, 7)
+    training_stats_plot = plot_merf_training_stats(mrf, 12)
     plt.close()
     return mrf, training_stats_plot
 
@@ -193,7 +192,6 @@ def important_shapley_features(shap_values, x):
     feature_importance['feature_importance_vals'] = \
         feature_importance['feature_importance_vals'].apply(lambda x:
                                                             round(x, 4))
-    print(feature_importance)
     return feature_importance
 
 
@@ -252,6 +250,11 @@ def build_result_pdf(out_file, plot_list):
 def main(in_file, out_file, random_forest_type, random_effect, sample_ID,
          response_var, delta_flag, join_flag):
     df = pd.read_csv(in_file, sep="\t")
+    # df = df.drop(["Timepoint", "Timepoint_reference", "SampleID"], axis=1)
+    df = df.drop(["Timepoint", "SampleID"], axis=1)
+    # df = df.drop(["Timepoint"], axis=1)
+    # df = df.drop(["Timepoint", "Timepoint_reference"], axis=1)
+
     numeric_column_list = list(df._get_numeric_data().columns)
     column_list = list(df.columns)
     categoric_columns = [i for i in column_list if
@@ -261,37 +264,36 @@ def main(in_file, out_file, random_forest_type, random_effect, sample_ID,
     to_drop = [random_effect, sample_ID]
     encode = [i for i in categoric_columns if i not in to_drop]
 
-    x, z, clusters, y, feature_list, dummy_dict, log_string, corr_plot_test = \
+    x, z, clusters, y, feature_list, dummy_dict = \
         setup_df_do_encoding(df_encoded=df, random_effect=random_effect,
                              vars_to_encode=encode, response_var=response_var,
                              delta_flag=delta_flag, join_flag=join_flag)
 
     if random_forest_type == "mixed":
-        mrf, training_stats_plot = train_merf_model(x, z, clusters, y)
+        mrf, training_stats_plot = train_merf_model(x, z, clusters, y,
+                                                    max_iters)
         y_predicted = mrf.predict(x, z, clusters)
 
         rf = mrf.trained_fe_model
+        forest_score = round(rf.oob_score_, 3)
+        print("Forest OOB score")
+        print(forest_score)
+        corr_plot = scatter_plot(y_predicted, y, forest_score)
 
-        pearson_r = pearsonr(y_predicted, y)
-        print("pearson correlation y_predicted, y known full data")
-        print(pearson_r)
-        log_string += "\nR2 Full: " + str(pearson_r)
+        plot_list, feature_importance, top_features_list = shap_explainer(
+            rf, x)
+        print("\nranking of top 10 features\n")
+        print(feature_importance.head(10))
+        feature_importance.to_csv(out_file_prefix + "-feature-imp.txt",
+                                  sep='\t', mode='a')
     else:
         mrf, training_stats_plot = train_rf_model(x, y)
-        y_predicted = mrf.predict(x)
-
-    corr_plot = scatter_plot(y_predicted, y)
-
-    # .pdf is final snakemake check, but rename files with prefix
-    out_file_prefix = out_file.split(".pdf")[0]
-
-    f_out = open(out_file_prefix + "-log.txt", "w")
-    f_out.write(log_string)
-    f_out.close()
 
     # TODO this only uses the fixed effects RF
-    plot_list, feature_importance, top_features_list = shap_explainer(rf, x)
-    feature_importance.to_csv(out_file_prefix + "-feature-importance.txt",
+    plot_list, feature_importance, top_features_list = shap_explainer(rf,
+                                                                      x)
+
+    feature_importance.to_csv(out_file_prefix + "-feature-imp-after.txt",
                               sep='\t', mode='a')
 
     # find prefix for encoded values "ENC_Location_is_1_3" decoded is Location
@@ -312,7 +314,6 @@ def main(in_file, out_file, random_forest_type, random_effect, sample_ID,
     plot_some_partial_dependence.set_size_inches(width, height)
     plot_list.append(plot_some_partial_dependence)
     plot_list.append(training_stats_plot)
-    plot_list.append(corr_plot_test)
     plot_list.append(corr_plot)
     build_result_pdf(out_file, plot_list)
 
