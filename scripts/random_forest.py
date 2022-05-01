@@ -8,12 +8,15 @@ import numpy as np
 import logging
 import sys
 from matplotlib.backends.backend_pdf import PdfPages
+from sklearn.inspection import plot_partial_dependence
 
 from merf.merf import MERF
 from merf.viz import plot_merf_training_stats
+from BorutaShap import BorutaShap
 
-from sklearn.inspection import plot_partial_dependence
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error
+
 from sklearn.model_selection import train_test_split
 
 # TODO switch to OneHotEncoder
@@ -26,6 +29,7 @@ TODO list
 Add baseline information and perform tests
 
 Simple fixes
+- add use reference for deltas with categorical 
 - fix hardcoding & add sample ID for all
 - consider shadowed scope vars
 - fix rounding for feature importance output file
@@ -54,6 +58,10 @@ out_file = snakemake.output["out_file"]
 random_forest_type = snakemake.params["random_forest_type"]
 random_effect = snakemake.params["random_effect"]
 sample_ID = snakemake.params["sample_ID"]
+drop_rows = snakemake.params["drop_rows"]
+subset_rows = snakemake.params["subset_rows"]
+drop_cols = snakemake.params["drop_cols"]
+subset_cols = snakemake.params["subset_cols"]
 response_var = snakemake.params["response_var"]
 delta_flag = snakemake.params["delta_flag"]
 max_iters = snakemake.params["iterations"]
@@ -86,24 +94,26 @@ class Logger(object):
     def flush(self):
         pass
 
-
 sys.stdout = Logger()
 
 
-def setup_df_do_encoding(df_encoded, random_effect, vars_to_encode,
+def setup_df_do_encoding(df, random_effect, vars_to_encode,
                          response_var, delta_flag, join_flag):
-    df_encoded, dummy_dict = _dummy_var_creation(vars_to_encode, df_encoded,
-                                                 join_flag)
-    df_encoded.to_csv(out_file_prefix + "-df-after-encoding.txt", index=False,
-                      sep="\t")
+    df.to_csv(out_file_prefix + "-df-before-encoding.txt", index=False,
+              sep="\t")
+
+    df, dummy_dict = _dummy_var_creation(vars_to_encode, df,
+                                         join_flag)
+    df.to_csv(out_file_prefix + "-df-after-encoding.txt", index=False,
+              sep="\t")
 
     if delta_flag == "deltas":
-        drop_cols = ["StudyID.Timepoint"] + \
-                    [random_effect] + vars_to_encode + [response_var]
+        drop = ["StudyID.Timepoint", "SampleID"] + \
+               [random_effect] + vars_to_encode + [response_var]
     if delta_flag == "raw":
-        drop_cols = [random_effect] + vars_to_encode + [response_var]
+        drop = [random_effect] + vars_to_encode + [response_var]
 
-    df_encoded_cols_dropped = df_encoded.drop(drop_cols, axis=1)
+    df_encoded_cols_dropped = df.drop(drop, axis=1)
     # TODO remove columns that have "ref"
     feature_list = df_encoded_cols_dropped.columns
 
@@ -112,25 +122,22 @@ def setup_df_do_encoding(df_encoded, random_effect, vars_to_encode,
                                    index=False, sep="\t")
 
     feature_list = [x for x in feature_list if "_reference" not in x]
-    # feature_list = [x for x in feature_list if "Timepoint" not in x]
-    # for Baseline feature analysis
-    # feature_list = [x for x in feature_list if "_reference" in x]
 
-    x_for_split = df_encoded[feature_list + ["StudyID"]]
-    x = df_encoded[feature_list]  # StudyID cannot be in features
+    x = df[feature_list]  # Raw analysis and ALL (new, remove ref)
+
     if re_timepoint == "re_timepoint": # TODO fix this
-        # z = df_encoded[["Timepoint_reference"]]
         z = np.ones((len(x), 1))
     if re_timepoint == "no_re":
         z = np.ones((len(x), 1))
-    clusters = df_encoded["StudyID"]
-    y = df_encoded[response_var]
+    clusters = df["StudyID"]
+    y = df[response_var]
+    x.to_csv(out_file_prefix + "-x.txt", index=False, sep="\t")
     return x, z, clusters, y, feature_list, dummy_dict
 
 
 def merf_training_stats_plot(mrf, num_clusters):
     # print training stats TODO understand this plot more
-    # plot_merf_training_stats(mrf, num_clusters_to_plot=num_clusters)
+    plot_merf_training_stats(mrf, num_clusters_to_plot=num_clusters)
     training_stats_plot = plt.gcf()
     plt.close()
     return training_stats_plot
@@ -146,7 +153,6 @@ def scatter_plot(y_axis, x_axis, forest_score):
                  (min(y), max(x)))
     corr_plot = plt.gcf()
     plt.close()
-
     return corr_plot
 
 
@@ -156,8 +162,7 @@ def train_merf_model(x, z, clusters, y, max_iters):
                fixed_effects_model=RandomForestRegressor(n_estimators=100,
                                                          n_jobs=-2,
                                                          oob_score=True,
-                                                         max_features="auto"),
-    )
+                                                         max_features="auto"),)
     mrf.fit(x, z, clusters, y)
     training_stats_plot = plot_merf_training_stats(mrf, 12)
     plt.close()
@@ -198,17 +203,17 @@ def important_shapley_features(shap_values, x):
 def shap_explainer(trained_forest_model, x):
     explainer = shap.TreeExplainer(trained_forest_model)
     shap_values = explainer.shap_values(x)
-
     plot_list = []
 
     # Bee swarm plot
-    shap.summary_plot(shap_values, x, show=False, plot_size=(width, height),
-                      max_display=max_display)
+    shap.summary_plot(shap_values=shap_values, features=x, show=False,
+                      plot_size=(width, height), max_display=max_display)
     plot_list.append(graphic_handling(plt.gcf()))
 
-    # Bar plot, just a different way to look at it
-    shap.summary_plot(shap_values, x, plot_type="bar", show=False,
-                      plot_size=(width, height), max_display=max_display)
+    # Bar plot
+    shap.summary_plot(shap_values=shap_values, features=x, plot_type="bar",
+                      show=False, plot_size=(width, height),
+                      max_display=max_display)
     plot_list.append(graphic_handling(plt.gcf()))
 
     # Feature Shapley values starting with best at explaining the model
@@ -221,15 +226,6 @@ def shap_explainer(trained_forest_model, x):
         p.set_size_inches(width, height)
         plot_list.append(p)
         plt.close()
-
-    # for col in top_features_list:
-    #     i = X.columns.get_loc(col)
-    #     shap.force_plot(explainer.expected_value, shap_values[i, :],
-    #                     X.iloc[i, :], show=False, matplotlib=True)
-    #     p = plt.gcf()
-    #     p.set_size_inches(width, height)
-    #     plot_list.append(p)
-    #     plt.close()
 
     return plot_list, feature_importance, top_features_list
 
@@ -250,10 +246,32 @@ def build_result_pdf(out_file, plot_list):
 def main(in_file, out_file, random_forest_type, random_effect, sample_ID,
          response_var, delta_flag, join_flag):
     df = pd.read_csv(in_file, sep="\t")
-    # df = df.drop(["Timepoint", "Timepoint_reference", "SampleID"], axis=1)
-    df = df.drop(["Timepoint", "SampleID"], axis=1)
-    # df = df.drop(["Timepoint"], axis=1)
-    # df = df.drop(["Timepoint", "Timepoint_reference"], axis=1)
+
+    # subsets of data
+    for k, v in drop_rows.items():
+        try:
+            df = df.loc[(df[k] != v)]
+        except:
+            pass
+
+    for k, v in subset_rows.items():
+        try:
+            df = df.loc[(df[k] == v)]
+        except:
+            pass
+
+    # Can't have both
+    if subset_cols:
+        if drop_cols:
+            print("Cannot have features (arguments) in 'drop_cols' and "
+                  "'subset_cols' parameters")
+
+    if subset_cols:
+        df = df[subset_cols]
+    else:
+        pass
+
+    df = df.drop(drop_cols, axis=1)
 
     numeric_column_list = list(df._get_numeric_data().columns)
     column_list = list(df.columns)
@@ -261,40 +279,45 @@ def main(in_file, out_file, random_forest_type, random_effect, sample_ID,
                          i not in numeric_column_list]
     # exclude random effect cols and SampleID
     # TODO do I want this in model? Fixed vs random effects?
-    to_drop = [random_effect, sample_ID]
-    encode = [i for i in categoric_columns if i not in to_drop]
+    to_drop = [random_effect, sample_ID, "SampleID"]
+    encode_this_list = [i for i in categoric_columns if i not in to_drop]
 
     x, z, clusters, y, feature_list, dummy_dict = \
-        setup_df_do_encoding(df_encoded=df, random_effect=random_effect,
-                             vars_to_encode=encode, response_var=response_var,
-                             delta_flag=delta_flag, join_flag=join_flag)
+        setup_df_do_encoding(df=df, random_effect=random_effect,
+                             vars_to_encode=encode_this_list,
+                             response_var=response_var, delta_flag=delta_flag,
+                             join_flag=join_flag)
 
     if random_forest_type == "mixed":
         mrf, training_stats_plot = train_merf_model(x, z, clusters, y,
                                                     max_iters)
         y_predicted = mrf.predict(x, z, clusters)
 
-        rf = mrf.trained_fe_model
-        forest_score = round(rf.oob_score_, 3)
+        print(mean_squared_error(y, y_predicted))
+        forest = mrf.trained_fe_model
+        forest_score = round(forest.oob_score_, 3)
         print("Forest OOB score")
         print(forest_score)
         corr_plot = scatter_plot(y_predicted, y, forest_score)
 
         plot_list, feature_importance, top_features_list = shap_explainer(
-            rf, x)
+            forest, x)
         print("\nranking of top 10 features\n")
         print(feature_importance.head(10))
         feature_importance.to_csv(out_file_prefix + "-feature-imp.txt",
                                   sep='\t', mode='a')
     else:
+        # TODO
         mrf, training_stats_plot = train_rf_model(x, y)
 
-    # TODO this only uses the fixed effects RF
-    plot_list, feature_importance, top_features_list = shap_explainer(rf,
-                                                                      x)
+    feature_selector = BorutaShap(model=forest,
+                                  importance_measure='shap',
+                                  classification=False)
 
-    feature_importance.to_csv(out_file_prefix + "-feature-imp-after.txt",
-                              sep='\t', mode='a')
+    feature_selector.fit(X=x, y=y, n_trials=20, train_or_test="train",
+                         sample=False)
+    feature_selector.plot(which_features='all', figsize=(14, 10),
+                          display=True)
 
     # find prefix for encoded values "ENC_Location_is_1_3" decoded is Location
     decoded_top_features_list = []
@@ -309,7 +332,7 @@ def main(in_file, out_file, random_forest_type, random_effect, sample_ID,
     df = pd.DataFrame({'important.features': top_features_list,
                        'decoded.features': decoded_top_features_list})
     df.to_csv(out_file_prefix + "-top-features.txt", index=False, sep="\t")
-    plot_partial_dependence(rf, x, features=top_features_list)
+    plot_partial_dependence(forest, x, features=top_features_list)
     plot_some_partial_dependence = plt.gcf()
     plot_some_partial_dependence.set_size_inches(width, height)
     plot_list.append(plot_some_partial_dependence)
