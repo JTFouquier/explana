@@ -5,7 +5,6 @@ import shap
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-import logging
 import sys
 from matplotlib.backends.backend_pdf import PdfPages
 from sklearn.inspection import plot_partial_dependence
@@ -15,12 +14,11 @@ from merf.viz import plot_merf_training_stats
 from BorutaShap import BorutaShap
 
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error
-
-from sklearn.model_selection import train_test_split
 
 # TODO switch to OneHotEncoder
 from hot_encoding import _dummy_var_creation
+from utils import _subset_simple
+from boruta_shap_plot import _boruta_shap_plot
 
 from scipy.stats.stats import pearsonr
 
@@ -52,10 +50,10 @@ Features/Considerations for development
 """
 
 # access values from snakemake's Snakefile
-in_file = snakemake.input["in_file"]
-out_file = snakemake.output["out_file"]
+df_deltas = snakemake.input["in_file"]
+pdf_report = snakemake.output["out_file"]
 
-random_forest_type = snakemake.params["random_forest_type"]
+fe_or_me = snakemake.params["random_forest_type"]
 random_effect = snakemake.params["random_effect"]
 sample_ID = snakemake.params["sample_ID"]
 drop_rows = snakemake.params["drop_rows"]
@@ -64,21 +62,20 @@ drop_cols = snakemake.params["drop_cols"]
 subset_cols = snakemake.params["subset_cols"]
 response_var = snakemake.params["response_var"]
 delta_flag = snakemake.params["delta_flag"]
-max_iters = snakemake.params["iterations"]
+iterations = snakemake.params["iterations"]
 re_timepoint = snakemake.params["re_timepoint"]
 
 # set graphics dimensions
-width = 18
-height = 10
+width = 14
+height = 8
 
-# features to show
-max_display = 8
-# for partial dep plots and more
+# max_features to display
+max_display = 10
 top_features = 8
 
 # TODO review this
 join_flag = True
-out_file_prefix = out_file.split(".pdf")[0]
+out_file_prefix = pdf_report.split(".pdf")[0]
 
 
 # TODO this is not ideal for logging, but it works (issues with stream/file)
@@ -94,6 +91,7 @@ class Logger(object):
     def flush(self):
         pass
 
+
 sys.stdout = Logger()
 
 
@@ -102,8 +100,7 @@ def setup_df_do_encoding(df, random_effect, vars_to_encode,
     df.to_csv(out_file_prefix + "-df-before-encoding.txt", index=False,
               sep="\t")
 
-    df, dummy_dict = _dummy_var_creation(vars_to_encode, df,
-                                         join_flag)
+    df, dummy_dict = _dummy_var_creation(vars_to_encode, df, join_flag)
     df.to_csv(out_file_prefix + "-df-after-encoding.txt", index=False,
               sep="\t")
 
@@ -114,18 +111,17 @@ def setup_df_do_encoding(df, random_effect, vars_to_encode,
         drop = [random_effect] + vars_to_encode + [response_var]
 
     df_encoded_cols_dropped = df.drop(drop, axis=1)
-    # TODO remove columns that have "ref"
-    feature_list = df_encoded_cols_dropped.columns
 
-    df_encoded_cols_dropped.to_csv(out_file_prefix +
-                                   "-dummy-variables-dropped-columns.txt",
-                                   index=False, sep="\t")
+    feature_list = df_encoded_cols_dropped.columns
 
     feature_list = [x for x in feature_list if "_reference" not in x]
 
     x = df[feature_list]  # Raw analysis and ALL (new, remove ref)
 
-    if re_timepoint == "re_timepoint": # TODO fix this
+    x.to_csv(out_file_prefix + "-input-features-to-model.txt", index=False,
+             sep="\t")
+
+    if re_timepoint == "re_timepoint":  # TODO fix this
         z = np.ones((len(x), 1))
     if re_timepoint == "no_re":
         z = np.ones((len(x), 1))
@@ -135,53 +131,18 @@ def setup_df_do_encoding(df, random_effect, vars_to_encode,
     return x, z, clusters, y, feature_list, dummy_dict
 
 
-def merf_training_stats_plot(mrf, num_clusters):
-    # print training stats TODO understand this plot more
-    plot_merf_training_stats(mrf, num_clusters_to_plot=num_clusters)
-    training_stats_plot = plt.gcf()
-    plt.close()
-    return training_stats_plot
-
-
-def scatter_plot(y_axis, x_axis, forest_score):
-    y = y_axis
-    x = x_axis
-    x_axis = np.array(x_axis)
-    y_axis = np.array(y_axis)
-    plt.scatter(y_axis, x_axis)
-    plt.annotate("r-squared = {:.3f}".format(forest_score),
-                 (min(y), max(x)))
-    corr_plot = plt.gcf()
-    plt.close()
-    return corr_plot
-
-
-def train_merf_model(x, z, clusters, y, max_iters):
-    # TODO CHANGE THIS later! NEEDS MORE ITERATIONS
-    mrf = MERF(max_iterations=max_iters,
-               fixed_effects_model=RandomForestRegressor(n_estimators=100,
-                                                         n_jobs=-2,
-                                                         oob_score=True,
-                                                         max_features="auto"),)
-    mrf.fit(x, z, clusters, y)
-    training_stats_plot = plot_merf_training_stats(mrf, 12)
-    plt.close()
-    return mrf, training_stats_plot
-
-
-def train_rf_model(x, y):
-    mrf = RandomForestRegressor()
-    mrf.fit(x, y)
+def train_rf_model(x, y, rf_regressor):
+    rf_regressor.fit(x, y)
     plt.plot([1, 2, 3, 4])
     plt.ylabel('place holder plot')
     training_stats_plot = plt.gcf()
     plt.close()
-
-    return mrf, training_stats_plot
+    return rf_regressor, training_stats_plot
 
 
 def graphic_handling(graphic):
-    p = graphic
+    plt.tight_layout()
+    p = plt.gcf()
     plt.close()
     return p
 
@@ -205,16 +166,14 @@ def shap_explainer(trained_forest_model, x):
     shap_values = explainer.shap_values(x)
     plot_list = []
 
-    # Bee swarm plot
     shap.summary_plot(shap_values=shap_values, features=x, show=False,
                       plot_size=(width, height), max_display=max_display)
-    plot_list.append(graphic_handling(plt.gcf()))
+    plot_list.append(graphic_handling(plt))
 
-    # Bar plot
     shap.summary_plot(shap_values=shap_values, features=x, plot_type="bar",
                       show=False, plot_size=(width, height),
                       max_display=max_display)
-    plot_list.append(graphic_handling(plt.gcf()))
+    plot_list.append(graphic_handling(plt))
 
     # Feature Shapley values starting with best at explaining the model
     feature_importance = important_shapley_features(shap_values, x)
@@ -231,52 +190,23 @@ def shap_explainer(trained_forest_model, x):
 
 
 def build_result_pdf(out_file, plot_list):
-    """
-    Build PDF containing multiple .gcf() objects (get current figure)
-    Args:
-        pdf_name: PDF name for storing multiple plots
-        plot_list: A list of .gcf() objects
-    """
     pp = PdfPages(out_file)
     for i in plot_list:
         pp.savefig(i)
     pp.close()
 
 
-def main(in_file, out_file, random_forest_type, random_effect, sample_ID,
+def main(df_input, out_file, random_forest_type, random_effect, sample_ID,
          response_var, delta_flag, join_flag):
-    df = pd.read_csv(in_file, sep="\t")
-
-    # subsets of data
-    for k, v in drop_rows.items():
-        try:
-            df = df.loc[(df[k] != v)]
-        except:
-            pass
-
-    for k, v in subset_rows.items():
-        try:
-            df = df.loc[(df[k] == v)]
-        except:
-            pass
-
-    # Can't have both
-    if subset_cols:
-        if drop_cols:
-            print("Cannot have features (arguments) in 'drop_cols' and "
-                  "'subset_cols' parameters")
-
-    if subset_cols:
-        df = df[subset_cols]
-    else:
-        pass
-
-    df = df.drop(drop_cols, axis=1)
+    df = pd.read_csv(df_input, sep="\t")
+    # keep only certain rows and features
+    df = _subset_simple(df, drop_rows, subset_rows, drop_cols, subset_cols)
 
     numeric_column_list = list(df._get_numeric_data().columns)
     column_list = list(df.columns)
     categoric_columns = [i for i in column_list if
                          i not in numeric_column_list]
+
     # exclude random effect cols and SampleID
     # TODO do I want this in model? Fixed vs random effects?
     to_drop = [random_effect, sample_ID, "SampleID"]
@@ -288,18 +218,22 @@ def main(in_file, out_file, random_forest_type, random_effect, sample_ID,
                              response_var=response_var, delta_flag=delta_flag,
                              join_flag=join_flag)
 
+    rf_regressor = RandomForestRegressor(n_jobs=-2, n_estimators=50,
+                                         oob_score=True, max_features=0.5)
+
     if random_forest_type == "mixed":
-        mrf, training_stats_plot = train_merf_model(x, z, clusters, y,
-                                                    max_iters)
-        y_predicted = mrf.predict(x, z, clusters)
+        # Instantiate, train MERF, plot stats
+        mrf = MERF(max_iterations=iterations, fixed_effects_model=rf_regressor)
+        mrf.fit(x, z, clusters, y)
+        plot_merf_training_stats(mrf, 12)  # TODO fix
+        training_stats_plot = plt.gcf()
+        plt.close()
 
-        print(mean_squared_error(y, y_predicted))
         forest = mrf.trained_fe_model
-        forest_score = round(forest.oob_score_, 3)
         print("Forest OOB score")
-        print(forest_score)
-        corr_plot = scatter_plot(y_predicted, y, forest_score)
+        print(round(forest.oob_score_, 3))
 
+        # Run SHAP Explainer
         plot_list, feature_importance, top_features_list = shap_explainer(
             forest, x)
         print("\nranking of top 10 features\n")
@@ -310,14 +244,20 @@ def main(in_file, out_file, random_forest_type, random_effect, sample_ID,
         # TODO
         mrf, training_stats_plot = train_rf_model(x, y)
 
-    feature_selector = BorutaShap(model=forest,
-                                  importance_measure='shap',
+    # Run BorutaShap feature selector
+    feature_selector = BorutaShap(model=forest, importance_measure='shap',
                                   classification=False)
-
     feature_selector.fit(X=x, y=y, n_trials=20, train_or_test="train",
                          sample=False)
-    feature_selector.plot(which_features='all', figsize=(14, 10),
-                          display=True)
+    # TODO make this save to file...
+
+    for feature_group in ['all', 'accepted', 'tentative', 'rejected']:
+        _boruta_shap_plot(feature_selector, which_features=feature_group,
+                          figsize=(width, height))
+        plt.tight_layout()
+        p = plt.gcf()
+        plt.close()
+        plot_list.append(p)
 
     # find prefix for encoded values "ENC_Location_is_1_3" decoded is Location
     decoded_top_features_list = []
@@ -336,11 +276,10 @@ def main(in_file, out_file, random_forest_type, random_effect, sample_ID,
     plot_some_partial_dependence = plt.gcf()
     plot_some_partial_dependence.set_size_inches(width, height)
     plot_list.append(plot_some_partial_dependence)
-    plot_list.append(training_stats_plot)
-    plot_list.append(corr_plot)
+    plot_list.append(training_stats_plot)  # TODO append all at once
     build_result_pdf(out_file, plot_list)
 
 
-main(in_file=in_file, out_file=out_file, random_forest_type=random_forest_type,
+main(df_input=df_deltas, out_file=pdf_report, random_forest_type=fe_or_me,
      random_effect=random_effect, sample_ID=sample_ID,
      response_var=response_var, delta_flag=delta_flag, join_flag=join_flag)
