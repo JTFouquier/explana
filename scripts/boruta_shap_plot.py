@@ -13,6 +13,7 @@ save to PDF file report and customize figure titles for improved report.
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+import re
 
 
 def _create_mapping_of_features_to_attribute(self, maps=[]):
@@ -33,7 +34,7 @@ def _create_mapping_of_features_to_attribute(self, maps=[]):
     return self.to_dictionary(keys, values)
 
 
-def _lala_box_plot(self, data, X_rotation, X_size, y_scale, figsize,
+def _make_box_plot(self, data, X_rotation, X_size, y_scale, figsize,
                    which_features):
 
     if y_scale == 'log':
@@ -55,10 +56,19 @@ def _lala_box_plot(self, data, X_rotation, X_size, y_scale, figsize,
     if y_scale == 'log':
         ax.set(yscale="log")
     ax.set_xticklabels(ax.get_xticklabels(), rotation=X_rotation, size=X_size)
+
+    ordered_list = []
+    for index, label in enumerate(ax.xaxis.get_ticklabels()):
+        new_label = re.split(r", |\)", str(label))[2]
+        new_label = new_label.replace("'", "")
+        if "Shadow" not in new_label:
+            ordered_list.append(new_label)
+
     ax.set_title(which_features.capitalize() + " Features from BorutaShap",
                  fontsize=14)
     ax.set_ylabel('Z-Score', fontsize=12)
     ax.set_xlabel('Features', fontsize=12)
+    return ordered_list
 
 
 def _boruta_shap_plot(self, X_rotation=90, X_size=10, figsize=(14, 6),
@@ -101,7 +111,9 @@ def _boruta_shap_plot(self, X_rotation=90, X_size=10, figsize=(14, 6),
     self.check_if_which_features_is_correct(which_features)
     data = options[which_features.lower()]
 
-    _lala_box_plot(self, data=data, X_rotation=X_rotation, X_size=X_size,
-                   y_scale=y_scale, figsize=figsize,
-                   which_features=which_features)
+    ordered_list = _make_box_plot(self, data=data, X_rotation=X_rotation,
+                                  X_size=X_size, y_scale=y_scale,
+                                  figsize=figsize,
+                                  which_features=which_features)
+    return ordered_list
 
