@@ -53,9 +53,9 @@ fe_or_me = snakemake.params["random_forest_type"]
 random_effect = snakemake.params["random_effect"]
 sample_ID = snakemake.params["sample_ID"]
 drop_rows = snakemake.params["drop_rows"]
-subset_rows = snakemake.params["subset_rows"]
+constrain_rows = snakemake.params["constrain_rows"]
 drop_cols = snakemake.params["drop_cols"]
-subset_cols = snakemake.params["subset_cols"]
+constrain_cols = snakemake.params["constrain_cols"]
 response_var = snakemake.params["response_var"]
 delta_flag = snakemake.params["delta_flag"]
 iterations = snakemake.params["iterations"]
@@ -106,7 +106,8 @@ def setup_df_do_encoding(df, random_effect, vars_to_encode, response_var,
         drop = ["StudyID.Timepoint", "SampleID"] + \
                [random_effect] + vars_to_encode + [response_var]
     if delta_flag == "raw":
-        drop = [random_effect] + vars_to_encode + [response_var]
+        drop = ["SampleID"] + \
+               [random_effect] + vars_to_encode + [response_var]
 
     df_encoded_cols_dropped = df.drop(drop, axis=1)
 
@@ -189,16 +190,16 @@ def shap_plots(shap_values, x, boruta_dict, feature_importance):
     graphic_handling(plt)
 
     for col in accepted_tentative_list:
-        print(x[col])
         shap.dependence_plot(col, shap_values, x, show=False, x_jitter=0.03)
-        plt.title("Accepted or tentative feature from BorutaShap displayed "
-                  "with SHAP values (with Interaction)",
+        plt.title("Dependence plot for accepted or tentative feature from "
+                  "BorutaShap \ndisplayed with SHAP values (with interaction)",
                   fontdict={'fontsize': 16})
         graphic_handling(plt)
         shap.dependence_plot(col, shap_values, x, show=False, x_jitter=0.03,
                              interaction_index=None)
-        plt.title("Accepted or tentative feature from BorutaShap displayed "
-                  "with SHAP values", fontdict={'fontsize': 16})
+        plt.title("Dependence plot for accepted or tentative feature from "
+                  "BorutaShap \ndisplayed with SHAP values",
+                  fontdict={'fontsize': 16})
         graphic_handling(plt)
 
 
@@ -214,10 +215,11 @@ def shap_explainer(trained_forest_model, x):
 
 def run_boruta_shap(forest, x, y):
     feature_selector = BorutaShap(model=forest, importance_measure='shap',
-                                  classification=False)
-    feature_selector.fit(X=x, y=y, n_trials=20,
-                         train_or_test="train",
-                         sample=False)
+                                  classification=False, percentile=85,
+                                  pvalue=0.05)
+
+    feature_selector.fit(X=x, y=y, n_trials=20, train_or_test="train",
+                         sample=False, verbose=True)
     boruta_dict = {'accepted': [], 'tentative': [],
                    'rejected': [], 'all': []}
 
@@ -234,7 +236,7 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_ID,
          response_var, delta_flag, join_flag):
     df = pd.read_csv(df_input, sep="\t")
     # keep only certain rows and features
-    df = _subset_simple(df, drop_rows, subset_rows, drop_cols, subset_cols)
+    df = _subset_simple(df, drop_rows, constrain_rows, drop_cols, constrain_cols)
 
     numeric_column_list = list(df._get_numeric_data().columns)
     column_list = list(df.columns)
@@ -252,7 +254,7 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_ID,
                              response_var=response_var, delta_flag=delta_flag,
                              join_flag=join_flag)
 
-    rf_regressor = RandomForestRegressor(n_jobs=-2, n_estimators=300,
+    rf_regressor = RandomForestRegressor(n_jobs=-2, n_estimators=200,
                                          oob_score=True, max_features='auto')
 
     if random_forest_type == "mixed":
