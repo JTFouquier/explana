@@ -11,8 +11,8 @@
 
 # TODO verify where to clear data in project. I don't want to reload libs
 # TODO check if vars exist in df, make sure no two vars are in any other list
-# TODO check for folder creation before, so use loops
 # TODO pass height and width values
+# TODO feature: use other options instead of list (slices, ranges, etc)
 
 rm(list=ls())
 # Adapted from code written by Abigail Armstrong, modified by Jennifer Fouquier
@@ -51,6 +51,19 @@ inf <- paste0(input_folder, input_file)
 df <- read.table(inf, header=TRUE, sep="\t", strip.white=FALSE,
                  row.names='SampleID')
 
+# verify none of the PCA folders exist before doing analysis
+check_for_directories <- function(folder_list){
+  for (i in folder_list){
+    if (file.exists(i)) {
+      cat(paste0(i, " directory already exists"))
+      break
+    } else {
+    dir.create(i)
+    }
+  }
+}
+
+
 perform_pca <- function(pca_list, df) {
 
   # get items from each list describing how to perform pca
@@ -59,13 +72,6 @@ perform_pca <- function(pca_list, df) {
   feature_list = pca_list$feature_list
   variance_threshold = pca_list$variance_threshold
 
-  # TODO check that folder exists earlier
-  if (file.exists(output_folder)) {
-    cat("Directory already exists")
-  } else {
-    dir.create(output_folder)
-  }
-
   pca.df <- subset(df, select=feature_list)
   # Scale PCA plot
   # TODO prcomp. this brings up need to allow user adjustments to functions
@@ -73,8 +79,6 @@ perform_pca <- function(pca_list, df) {
 
   eig.val <- get_eigenvalue(pca.scaled)
   eig.val # data frame with all info on eigen values and variance of axes
-
-  res.axis.perc <- eig.val$variance.percent # get percent variation explained for each axis
 
   res.var <- get_pca_var(pca.scaled)
   res.var #data frame of data frames with all the info on the variables
@@ -155,18 +159,22 @@ perform_pca <- function(pca_list, df) {
 }
 
 all_pca_lists = list(group_1, group_2)
+output_folder_list = character()
+# create the folders first, so that time isn't wasted processing PCAs
+for (pca_list in all_pca_lists) {
+  output_folder_from_group = pca_list$output_folder
+  output_folder_list = c(output_folder_list, output_folder_from_group)
+}
+
+# main output folder
+output_folder_list = c(output_folder_list, output_folder)
+check_for_directories(output_folder_list)
 
 for (pca_list in all_pca_lists) {
   df = perform_pca(pca_list = pca_list, df)
 }
 
-if (file.exists(output_folder)) {
-  cat("Directory already exists")
-} else {
-  dir.create(output_folder)
-}
-
-# TODO write file only after all pcs have been included loop
+# TODO write final file only after all pcs have been included loop
 write_table_special(df, folder_name = output_folder,
                     file_name = "final_dimensionality_reduction.txt")
 
