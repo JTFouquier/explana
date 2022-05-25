@@ -14,7 +14,7 @@
 # TODO pass height and width values
 # TODO feature: use other options instead of list (slices, ranges, etc)
 
-rm(list=ls())
+# rm(list=ls())
 # Adapted from code written by Abigail Armstrong, modified by Jennifer Fouquier
 # http://www.sthda.com/english/articles/31-principal-component-methods-in-r-practical-guide/118-principal-component-analysis-in-r-prcomp-vs-princomp/#theory-behind-pca-results
 
@@ -22,24 +22,14 @@ library(factoextra)
 library(MASS)
 library(dplyr)
 
-setwd("/Users/jenniferfouquier/repos/snakemake-merf/")
+# user inputs from Snake
+in_file = snakemake@input[["in_file"]]
+out_file = snakemake@output[["out_file"]]
 
-# TODO will later be user inputs
-input_folder = "data/"
-input_file = "real-data-no-asvs.txt"
-output_folder = "data/pca_output_final/"
+pca_groups_list = snakemake@params[["pca_groups_list"]]
 
-# These are examples of user input
-# PCA set 1
-feature_list1 <- c('Triglycerides', 'LDL', 'Leptin', 'Adiponectin',
-                   'Insulin', 'Glucose')
-group_1 = list(pca_name = "PCA1_", output_folder = "data/pca1_output/",
-               feature_list = feature_list1, variance_threshold=50)
-
-# PCA set 2
-feature_list2 <- c('Bact', 'Prev')
-group_2 = list(pca_name = "PCA2_", output_folder = "data/pca2_output/",
-               feature_list = feature_list2, variance_threshold = 70)
+# TODO sort out good folder names and locations
+final_output_folder = "random-forest/TEST/pca_output_final/"
 
 write_table_special <- function(df, folder_name, file_name) {
   outf <- paste0(folder_name, file_name)
@@ -47,12 +37,13 @@ write_table_special <- function(df, folder_name, file_name) {
   write.matrix(as.matrix(df), file = outf, sep='\t')
 }
 
-inf <- paste0(input_folder, input_file)
+inf <- paste0(in_file)
 df <- read.table(inf, header=TRUE, sep="\t", strip.white=FALSE,
                  row.names='SampleID')
 
 # verify none of the PCA folders exist before doing analysis
 check_for_directories <- function(folder_list){
+  print(folder_list)
   for (i in folder_list){
     if (file.exists(i)) {
       cat(paste0(i, " directory already exists"))
@@ -72,7 +63,7 @@ perform_pca <- function(pca_list, df) {
   feature_list = pca_list$feature_list
   variance_threshold = pca_list$variance_threshold
 
-  pca.df <- subset(df, select=feature_list)
+  pca.df <- df %>% select(all_of(feature_list))
   # Scale PCA plot
   # TODO prcomp. this brings up need to allow user adjustments to functions
   pca.scaled <- prcomp(pca.df, scale=TRUE)
@@ -82,7 +73,6 @@ perform_pca <- function(pca_list, df) {
 
   res.var <- get_pca_var(pca.scaled)
   res.var #data frame of data frames with all the info on the variables
-
   var.coord <- as.data.frame(res.var$coord)     # Coordinates
   var.cor <- as.data.frame(res.var$cor)         # Corrs between vars and dims
   var.contrib <- as.data.frame(res.var$contrib) # Contributions to the PCs
@@ -147,7 +137,7 @@ perform_pca <- function(pca_list, df) {
     pc_new_name = paste0(pca_name, pc)
     df[[pc_new_name]] <- ind.coord[[pc]]
   }
-  df = df %>% dplyr::select(!feature_list)
+  df = df %>% select(-all_of(feature_list))
 
   # FOR REPORT
   print(pc_name_list)
@@ -158,7 +148,8 @@ perform_pca <- function(pca_list, df) {
   return(df)
 }
 
-all_pca_lists = list(group_1, group_2)
+all_pca_lists = pca_groups_list
+all_pca_lists = eval(parse(text=all_pca_lists))
 output_folder_list = character()
 # create the folders first, so that time isn't wasted processing PCAs
 for (pca_list in all_pca_lists) {
@@ -166,15 +157,17 @@ for (pca_list in all_pca_lists) {
   output_folder_list = c(output_folder_list, output_folder_from_group)
 }
 
-# main output folder
-output_folder_list = c(output_folder_list, output_folder)
+# add main output folder to list
+output_folder_list = c(output_folder_list, final_output_folder)
+# see if PCA directories exist already and if not, make them
 check_for_directories(output_folder_list)
 
+# TODO check for unique items
 for (pca_list in all_pca_lists) {
   df = perform_pca(pca_list = pca_list, df)
 }
 
 # TODO write final file only after all pcs have been included loop
-write_table_special(df, folder_name = output_folder,
+write_table_special(df, folder_name = final_output_folder,
                     file_name = "final_dimensionality_reduction.txt")
 

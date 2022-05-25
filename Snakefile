@@ -1,13 +1,3 @@
-
-
-
-# rule run_scnic:
-# Python in its own environment
-#
-#     input:
-#         script =
-#         data =
-
 # look at results
 # rule scnic_between:
 # # ideas to test
@@ -15,6 +5,35 @@
 # this step does not have to be done
 # TODO add appended name to everything idea
 # TODO action items
+rule dim_reduction:
+    input:
+        in_file = "data/real-data-no-asvs.txt",
+    output:
+        out_file = "random-forest/TEST/pca_output_final/final_dimensionality_reduction.txt"
+    params:
+        pca_groups_list = "list(list("
+                          "pca_name = 'PCA1_', "
+                          "output_folder = 'random-forest/TEST/pca1_output/', "
+                          "feature_list = c('Triglycerides', 'LDL', 'Leptin', "
+                          "'Adiponectin', 'Insulin', 'Glucose'),"
+                          "variance_threshold=70), list(pca_name = 'PCA2_', "
+                          "output_folder = 'random-forest/TEST/pca2_output/', "
+                          "feature_list = c('Bact', 'Prev'), "
+                          "variance_threshold = 70))"
+    script:
+        "scripts/dim_reduction_pca.R"
+
+
+rule dim_reduction_scnic:
+    input:
+        in_file = "data/real-feature-table.biom",
+        in_file_metadata = "data/real-data-no-asvs.txt"
+    output:
+        out_file = "random-forest/TEST/SCNIC/metadata_with_SCNIC_modules.txt"
+    script:
+        "scripts/SCNIC_for_merf.py"
+
+
 rule create_deltas:
     input:
         in_file = "data/simulated-diet.txt"
