@@ -1,5 +1,6 @@
 
 library(dplyr)
+#devtools::install_github("jbisanz/qiime2R")
 library(qiime2R)
 library(usedist)
 
@@ -11,10 +12,10 @@ absolute_values = snakemake@params[["absolute_values"]]
 # TODO add option for looking at only subset of times
 #times_evaluated = snakemake@params[["times_evaluated"]]
 
-df = read.csv(in_file, sep = "\t")
+df = read.csv(in_file, sep = "\t", check.names = FALSE)
 
 df$Timepoint = factor(df$Timepoint, ordered = TRUE)
-
+df$StudyID.Timepoint = NULL
 # get all variables/features, except ones used for script
 #vars <- colnames(df %>% select(!c(Timepoint, StudyID)))
 vars <- colnames(df %>% select(!StudyID))
@@ -22,19 +23,18 @@ vars <- colnames(df %>% select(!StudyID))
 times = unique(df$Timepoint)
 
 delta.df = data.frame(StudyID.Timepoint = character())
-
 # TODO ref.times are zero in 'previous' improve this.
 # TODO make function for ref.times
 # TODO add StudyID.Timepoint AKA SampleID
 
 # TODO add ability to use .QZA or TSV
-#weighted.unifrac.file = "data/unweighted_unifrac_distance_matrix.qza"
-#dm <- read_qza(weighted.unifrac.file)
+#unweighted.unifrac.file = "data/unweighted_unifrac_distance_matrix.qza"
+#dm <- read_qza(unweighted.unifrac.file)
 #dm = dm$data
 
 # TODO allow multiple distance matrix files to be added via function
-weighted.unifrac.file = "data/distance-matrix.txt"
-dm = read.table(weighted.unifrac.file, fill=T)
+#weighted.unifrac.file = "data/simulated-distance-matrix.txt"
+#dm = read.table(weighted.unifrac.file, fill=T)
 
 for (studyid in unique(df$StudyID)){
   for (time in times) {

@@ -102,12 +102,8 @@ def setup_df_do_encoding(df, random_effect, vars_to_encode, response_var,
     df.to_csv(out_file_prefix + "-df-after-encoding.txt", index=False,
               sep="\t")
 
-    if delta_flag == "deltas":
-        drop = ["StudyID.Timepoint", "SampleID"] + \
-               [random_effect] + vars_to_encode + [response_var]
-    if delta_flag == "raw":
-        drop = ["SampleID"] + \
-               [random_effect] + vars_to_encode + [response_var]
+    drop = ["StudyID.Timepoint", "SampleID"] + \
+           [random_effect] + vars_to_encode + [response_var]
 
     df_encoded_cols_dropped = df.drop(drop, axis=1)
 
@@ -137,7 +133,7 @@ def train_rf_model(x, y, rf_regressor):
     return rf_regressor, training_stats_plot
 
 
-def graphic_handling(plt):
+def graphic_handling(plt, width=width, height=height):
     plt.tight_layout()
     p = plt.gcf()
     p.set_size_inches(width, height)
@@ -219,7 +215,7 @@ def run_boruta_shap(forest, x, y):
                                   pvalue=0.05)
 
     feature_selector.fit(X=x, y=y, n_trials=20, train_or_test="train",
-                         sample=False, verbose=True)
+                         sample=False, verbose=False)
     boruta_dict = {'accepted': [], 'tentative': [],
                    'rejected': [], 'all': []}
 
@@ -227,8 +223,8 @@ def run_boruta_shap(forest, x, y):
         boruta_dict[feature_group] = \
             _boruta_shap_plot(feature_selector,
                               which_features=feature_group,
-                              figsize=(width, height))
-        graphic_handling(plt)
+                              figsize=(28, 16), X_size=10)
+        graphic_handling(plt, width=28, height=16)
     return boruta_dict
 
 
@@ -254,7 +250,7 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_ID,
                              response_var=response_var, delta_flag=delta_flag,
                              join_flag=join_flag)
 
-    rf_regressor = RandomForestRegressor(n_jobs=-2, n_estimators=200,
+    rf_regressor = RandomForestRegressor(n_jobs=-2, n_estimators=300,
                                          oob_score=True, max_features='auto')
 
     if random_forest_type == "mixed":

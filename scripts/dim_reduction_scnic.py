@@ -7,8 +7,8 @@ import time
 import pandas as pd
 from biom import load_table
 
-# TODO fix this
-scnic_out_folder = "random-forest/TEST/SCNIC/"
+# TODO fix this: prefix + process + dataset as folder
+scnic_out_folder = "random-forest/TEST/HDL/01-DIM-SCNIC--biom/"
 # TODO rename
 biom_name = snakemake.input["in_file"]
 in_file_metadata = snakemake.input["in_file_metadata"]
@@ -45,15 +45,17 @@ def main(scnic_folder, biom_file_name):
     # adding to large df convert to df and add SCNIC modules to dataframe
     biom_table = load_table(scnic_folder + "modules_output/collapsed.biom")
     biom_table = biom_table.transpose()
-    df_scnic = biom_table.to_dataframe().rename_axis('StudyID.Timepoint')
+    df_scnic = biom_table.to_dataframe().rename_axis("StudyID.Timepoint")
     df_scnic.to_csv(scnic_folder + "SCNIC_modules.txt", sep="\t")
 
-    df_metadata = pd.read_csv(in_file_metadata, sep="\t", index_col="SampleID")
+    df_metadata = pd.read_csv(in_file_metadata, sep="\t",
+                              index_col="SampleID")
 
     # TODO update sample naming system for workflow
     # TODO check params here; suffixes, duplicate columns, etc
     df = pd.merge(df_metadata, df_scnic, left_index=True, right_index=True,
                   how="inner", validate="one_to_one", sort=False)
+    df = df.rename_axis("StudyID.Timepoint")
     df.to_csv(scnic_folder + "metadata_with_SCNIC_modules.txt", sep="\t")
 
 start_time = time.time()

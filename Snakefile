@@ -1,57 +1,77 @@
-# look at results
-# rule scnic_between:
-# # ideas to test
-# R simple environment
-# this step does not have to be done
+
+
+
 # TODO add appended name to everything idea
 # TODO action items
-rule dim_reduction:
+rule all:
+    input:
+        first = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                "agrarian-no-women-first/mixed-RF-deltas-"
+                "re_timepoint-first.pdf",
+        previous = "random-forest/TEST/HDL/04-SELECTED-FEATURES--"
+                   "HDL-agrarian-no-women-previous/mixed-RF-deltas-"
+                   "re_timepoint-previous.pdf",
+        pairwise = "random-forest/TEST/HDL/04-SELECTED-FEATURES--"
+                   "HDL-agrarian-no-women-pairwise/mixed-RF-deltas-"
+                   "re_timepoint-pairwise.pdf",
+        original = "random-forest/TEST/HDL/04-SELECTED-FEATURES--"
+                   "HDL-agrarian-no-women-original/MERF-original.pdf"
+
+
+rule dim_reduction_pca:
     input:
         in_file = "data/real-data-no-asvs.txt",
     output:
-        out_file = "random-forest/TEST/pca_output_final/final_dimensionality_reduction.txt"
+        out_file = "random-forest/TEST/HDL/01-DIM-PCA--metadata/"
+                   "final-pca-dim-reduction.txt"
     params:
         pca_groups_list = "list(list("
-                          "pca_name = 'PCA1_', "
-                          "output_folder = 'random-forest/TEST/pca1_output/', "
-                          "feature_list = c('Triglycerides', 'LDL', 'Leptin', "
+                          "pca_name='PCA1',"
+                          "feature_list=c('Triglycerides', 'LDL', 'Leptin', "
                           "'Adiponectin', 'Insulin', 'Glucose'),"
-                          "variance_threshold=70), list(pca_name = 'PCA2_', "
-                          "output_folder = 'random-forest/TEST/pca2_output/', "
-                          "feature_list = c('Bact', 'Prev'), "
-                          "variance_threshold = 70))"
+                          "cum_var_thres=70), list(pca_name='PCA2',"
+                          "feature_list=c('Bact', 'Prev'), "
+                          "cum_var_thres=70))"
     script:
         "scripts/dim_reduction_pca.R"
 
-
+# TODO remove in_file_metadata
 rule dim_reduction_scnic:
     input:
         in_file = "data/real-feature-table.biom",
         in_file_metadata = "data/real-data-no-asvs.txt"
     output:
-        out_file = "random-forest/TEST/SCNIC/metadata_with_SCNIC_modules.txt"
+        out_file = "random-forest/TEST/HDL/01-DIM-SCNIC--biom/"
+                   "SCNIC_modules.txt"
     script:
-        "scripts/SCNIC_for_merf.py"
+        "scripts/dim_reduction_scnic.py"
 
-
-rule create_deltas:
+# TODO have the default be to merge all datasets output from 01 steps
+rule merge_datasets:
     input:
-        in_file = "data/simulated-diet.txt"
+        dataset_list = ["random-forest/TEST/HDL/01-DIM-PCA--metadata/"
+                        "final-pca-dim-reduction.txt",
+                        "random-forest/TEST/HDL/01-DIM-SCNIC--biom/"
+                        "SCNIC_modules.txt"]
     output:
-        out_file = "deltas/simulated-diet-deltas-{reference}.txt"
+        out_file = "random-forest/TEST/HDL/02-MERGED-DATA/"
+                   "final-merged-dfs.txt"
+    script:
+        "scripts/merge_datasets.py"
+
+
+rule make_delta_datasets:
+    input:
+        in_file = "random-forest/TEST/HDL/02-MERGED-DATA/"
+                  "final-merged-dfs.txt"
+    output:
+        out_file = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                   "agrarian-no-women-{reference}/deltas-{reference}.txt"
     params:
         reference_time = "{reference}",
         absolute_values = "no",
     script:
         "scripts/create_deltas.R"
-
-# rule integrate_data:
-#     input:
-#         in_file = .biom, .txt, (and multiples of these) etc
-#         metadata = metadata file
-#
-#     output:
-#         out_file = "merged-data.txt"
 
 # Python in a complicated environment
 # MERF has extremely specific Python requirements that could pose problems
@@ -63,62 +83,83 @@ rule create_deltas:
 # Also, this whole thing is done a little strange with the variables in the
 # name of the output. Not sure how I want to handle this, but it was because
 # I wanted my file names to reflect the arguments
-rule run_random_forest:
+
+# TODO check constrain, and wildcards (not a good use)
+rule random_forest_deltas:
     input:
-        in_file = "deltas/simulated-diet-deltas-{reference}.txt"  # TODO above
+        in_file = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                  "agrarian-no-women-{reference}/deltas-{reference}.txt"
     output:
-        out_file = "random-forest/{mixed}-RF-{deltas}-{re_timepoint}-{reference}.pdf"
+        out_file = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                   "agrarian-no-women-{reference}/{mixed}-RF-{deltas}-"
+                   "{re_timepoint}-{reference}.pdf"
     params:
-        random_forest_type = "{mixed}", # mixed or fixed
+        random_forest_type = "{mixed}",  # mixed or fixed
         random_effect = "StudyID",
         sample_ID = "StudyID.Timepoint",
-        response_var = "IL6",
-        delta_flag = "{deltas}", # raw or deltas
-        iterations = 8, # iterations, 20 is suggested, 10 for testing
-        re_timepoint = "{re_timepoint}" # re_timepoint or no_re
+        drop_rows = {"SexualClassification": "Women_Women"},
+        constrain_rows = {"Diet": "Agrarian_Agrarian"},
+        drop_cols = ["Inflammation","TotalCholesterol", "PCA", "HOMAIR"],
+        constrain_cols = [],
+        response_var = "HDL",
+        delta_flag = "{deltas}",  # raw or deltas
+        iterations = 20,  # iterations, 20 is suggested, 10 for testing
+        re_timepoint = "{re_timepoint}"  # re_timepoint or no_re
     script:
         "scripts/random_forest.py"
 
-# run random forest on repeated studies data, no deltas, still mixed effects
-rule run_random_forest_raw:
+
+rule random_forest_original:
     input:
-        in_file = "data/simulated-diet.txt"  # TODO above
+        in_file = "random-forest/TEST/HDL/02-MERGED-DATA/"
+                  "final-merged-dfs.txt"
     output:
-        out_file = "random-forest/MERF-iter-8-mixed-raw.pdf"
+        out_file = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                   "agrarian-no-women-original/MERF-original.pdf"
     params:
         random_forest_type = "mixed",
         random_effect = "StudyID",
         sample_ID = "StudyID.Timepoint",
-        response_var = "IL6",
+        drop_rows = {"SexualClassification": "Women"},
+        constrain_rows = {"Diet": "Agrarian"},
+        drop_cols = ["Inflammation", "TotalCholesterol", "PCA", "HOMAIR"],
+        constrain_cols = [],
+        response_var = "HDL",
         delta_flag = "raw",
-        iterations = 8, # iterations, 20 is suggested, 10 for testing
-        re_timepoint = "no_re" # re_timepoint or no_re
+        iterations = 20,
+        re_timepoint = "no_re"
     script:
         "scripts/random_forest.py"
 
+# TODO needs work
+# rule run_post_hoc_stats:
+#     pass
+#     input:
+#         deltas_first = "random-forest/TEST/HDL/04-feature-selection-HDL-"
+#                        "agrarian-no-women-first/deltas-first.txt",
+#         deltas_previous = "random-forest/TEST/HDL/04-feature-selection-HDL-"
+#                           "agrarian-no-women-previous/deltas-previous.txt",
+#         deltas_pairwise = "random-forest/TEST/HDL/04-feature-selection-HDL-"
+#                           "agrarian-no-women-pairwise/deltas-pairwise.txt",
+#         df_raw = "random-forest/TEST/HDL/02-data-integration/"
+#                  "final-merged-dfs.txt",
+#         fixed_effects_first = "random-forest/ptests/real-HDLAgrarian-no-women-no-asvs-first/mixed-RF-deltas-re_timepoint-first-top-features.txt",
+#         fixed_effects_previous = "random-forest/ptests/real-HDLAgrarian-no-women-no-asvs-previous/mixed-RF-deltas-re_timepoint-previous-top-features.txt",
+#         fixed_effects_pairwise = "random-forest/ptests/real-HDLAgrarian-no-women-no-asvs-pairwise/mixed-RF-deltas-re_timepoint-pairwise-top-features.txt",
+#         fixed_effects_raw = "random-forest/ptests/real-HDLAgrarian-no-women-no-asvs-raw/MERF-iter-20-mixed-raw-top-features.txt"
+#     output:
+#         out_file = "random-forest/post-hoc-analysis-real-HDLAgrarian-no-women-no-asvs.html"
+#     params:
+#         response_var = "HDL"
+#     script:
+#         "scripts/post_hoc_tests.R"
 
-rule run_post_hoc_stats:
-    input:
-        deltas_first = "deltas/simulated-diet-deltas-first.txt",
-        deltas_previous = "deltas/simulated-diet-deltas-previous.txt",
-        deltas_pairwise = "deltas/simulated-diet-deltas-pairwise.txt",
-        df_raw = "data/simulated-diet.txt",
-        fixed_effects_first = "random-forest/mixed-RF-deltas-re_timepoint-first-top-features.txt",
-        fixed_effects_previous = "random-forest/mixed-RF-deltas-re_timepoint-previous-top-features.txt",
-        fixed_effects_pairwise = "random-forest/mixed-RF-deltas-re_timepoint-pairwise-top-features.txt",
-        fixed_effects_raw = "random-forest/MERF-iter-8-mixed-raw-top-features.txt"
-    output:
-        out_file = "post-hoc-analysis.html"
-    params:
-        response_var = "IL6"
-    script:
-        "scripts/post_hoc_tests.R"
-
-# look at results
-#
-#
-#
-# find correlating vars after TODO
-#
-# MERF
-# Python 3.6 - 3.7
+# TODO make report
+# rule make_report:
+#     input:
+#         "path/to/inputfile",
+#         "path/to/other/inputfile"
+#     output:
+#         "path/to/report.html",
+#     script:
+#         "path/to/report.Rmd"

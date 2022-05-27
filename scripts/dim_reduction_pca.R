@@ -29,14 +29,13 @@ out_file = snakemake@output[["out_file"]]
 pca_groups_list = snakemake@params[["pca_groups_list"]]
 
 # TODO sort out good folder names and locations
-final_output_folder = "random-forest/TEST/pca_output_final/"
+final_output_folder = "random-forest/TEST/HDL/01-DIM-PCA--metadata/"
 
 write_table_special <- function(df, folder_name, file_name) {
   outf <- paste0(folder_name, file_name)
   df = data.frame("StudyID.Timepoint"=rownames(df), df)
-  write.matrix(as.matrix(df), file = outf, sep='\t')
+  write.table(df, out_file, row.names=FALSE, sep = "\t")
 }
-
 inf <- paste0(in_file)
 df <- read.table(inf, header=TRUE, sep="\t", strip.white=FALSE,
                  row.names='SampleID')
@@ -55,13 +54,13 @@ check_for_directories <- function(folder_list){
 }
 
 
-perform_pca <- function(pca_list, df) {
+perform_pca <- function(pca_list, df, final_output_folder) {
 
   # get items from each list describing how to perform pca
   pca_name = pca_list$pca_name
-  output_folder = pca_list$output_folder
+  output_folder = paste0(final_output_folder, pca_name, "/")
   feature_list = pca_list$feature_list
-  variance_threshold = pca_list$variance_threshold
+  cum_var_thres = pca_list$cum_var_thres
 
   pca.df <- df %>% select(all_of(feature_list))
   # Scale PCA plot
@@ -86,6 +85,7 @@ perform_pca <- function(pca_list, df) {
   ind.cos2 <- as.data.frame(res.ind$cos2)          # Quality of representation
 
   # repetitive but not worth time
+  # TODO fix these files
   write_table_special(ind.coord, output_folder, file_name="ind.coord.txt")
   write_table_special(ind.contrib, output_folder, file_name="ind.contrib.txt")
   write_table_special(ind.cos2, output_folder, file_name="ind.cos2.txt")
@@ -97,8 +97,11 @@ perform_pca <- function(pca_list, df) {
   write_table_special(var.contrib, output_folder, file_name="var.contrib.txt")
   write_table_special(var.cos2, output_folder, file_name="var.cos2.txt")
 
+  # TODO loop through write_table_special
+  # for (i in list(var.c))
+
   # Get pcs that are over a threshold
-  bool_important = eig.val$cumulative.variance.percent < variance_threshold
+  bool_important = eig.val$cumulative.variance.percent < cum_var_thres
   pcs_over_threshold = sum(bool_important, na.rm = TRUE) + 1
   pc_name_list = rownames(eig.val)[1:pcs_over_threshold]
 
@@ -134,7 +137,7 @@ perform_pca <- function(pca_list, df) {
 
   # Replace original vars (remove) and add pcs
   for (pc in pc_name_list){
-    pc_new_name = paste0(pca_name, pc)
+    pc_new_name = paste0(pca_name, "_", pc)
     df[[pc_new_name]] <- ind.coord[[pc]]
   }
   df = df %>% select(-all_of(feature_list))
@@ -144,7 +147,7 @@ perform_pca <- function(pca_list, df) {
   print(feature_list)
 
   write_table_special(df, folder_name = output_folder,
-                      file_name = "dim_reduction_partial_dataframe.txt")
+                      file_name = "pca-dim-reduction_partial_df.txt")
   return(df)
 }
 
@@ -152,8 +155,8 @@ all_pca_lists = pca_groups_list
 all_pca_lists = eval(parse(text=all_pca_lists))
 output_folder_list = character()
 # create the folders first, so that time isn't wasted processing PCAs
-for (pca_list in all_pca_lists) {
-  output_folder_from_group = pca_list$output_folder
+for (pca_info in all_pca_lists) {
+  output_folder_from_group = paste0(final_output_folder, pca_info$pca_name)
   output_folder_list = c(output_folder_list, output_folder_from_group)
 }
 
@@ -163,11 +166,12 @@ output_folder_list = c(output_folder_list, final_output_folder)
 check_for_directories(output_folder_list)
 
 # TODO check for unique items
-for (pca_list in all_pca_lists) {
-  df = perform_pca(pca_list = pca_list, df)
+for (pca_info in all_pca_lists) {
+  df = perform_pca(pca_list=pca_info, df=df,
+                   final_output_folder=final_output_folder)
 }
 
 # TODO write final file only after all pcs have been included loop
 write_table_special(df, folder_name = final_output_folder,
-                    file_name = "final_dimensionality_reduction.txt")
+                    file_name = "final-pca-dim-reduction.txt")
 
