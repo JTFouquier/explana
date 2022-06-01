@@ -1,5 +1,3 @@
-# load package
-rm(list=ls()) # clear env
 
 library(sjPlot)
 library(sjmisc)
@@ -9,55 +7,71 @@ library(tidyverse)
 library(dplyr)
 library(colorspace)
 
-#df = read.csv("deltas/dm-deltas-first.txt", sep = "\t")
-df = read.csv("deltas/simulated-diet-deltas-pairwise.txt", sep = "\t")
-out_file = "dt-viz-deltas-pairwise.html"
-df.numeric = select_if(df, is.numeric)
-df.other = select_if(df, negate(is.numeric))
+in_file = snakemake@input[["in_file"]]
+out_file = snakemake@output[["out_file"]]
 
-# CATEGORICAL colors
-color_palette = "ipsum"
-unique_df_values = unique(as.vector(as.matrix(df.other)))
-total_colors_needed = length(unique_df_values) + length(colnames(df.numeric))
-multiply_colors = (total_colors_needed/length(sjplot_pal(pal = color_palette))) + 2
-unique_df_colors = rep(sjplot_pal(pal = color_palette),
-                       multiply_colors)[1:total_colors_needed]
+build_datatable <- function(df, output_file_name) {
 
-# lighten to use the colors as backgrounds
-unique_df_colors = lighten(
-  unique_df_colors,
-  amount = 0.3, # more is lighter
-  method = "relative", # absolute or relative
-  space = "HCL", # HCL, HLS, or combined
-  fixup = TRUE
-)
+  df = read.csv(df, sep = "\t", check.names = FALSE)
+  # TODO remove reference (change this earlier)
+  df = df[,!grepl("_reference$",names(df))]
 
-colors_categoric_cols = unique_df_colors[1:length(unique_df_values)]
-colors_numeric_cols = unique_df_colors[length(unique_df_values):length(unique_df_colors)]
+  df_round <- function(x, digits) {
+    numeric_columns <- sapply(x, mode) == 'numeric'
+    x[numeric_columns] <-  round(x[numeric_columns], digits)
+    x
+  }
 
-x = datatable(df, options = list(lengthMenu = c(50, 100)))
+  df = df_round(df, 4)
+  df.num = select_if(df, is.numeric)
+  df.other = select_if(df, negate(is.numeric))
 
-col_num = 1
-for (i in colnames(df.numeric)) {
-  x = x %>%
-    formatStyle(i,
-      background = styleColorBar(range(df.numeric[,i]), colors_numeric_cols[[col_num]]),
-      backgroundSize = '98% 88%',
-      backgroundRepeat = 'no-repeat',
-      backgroundPosition = 'center')
+  # CATEGORICAL colors
+  color_palette = "ipsum"
+  unique_df_vals = unique(as.vector(as.matrix(df.other)))
+  total_colors_needed = length(unique_df_vals) + length(colnames(df.num))
+  multiply_colors = (total_colors_needed/
+    length(sjplot_pal(pal = color_palette))) + 2
+  unique_df_colors = rep(sjplot_pal(pal = color_palette),
+                         multiply_colors)[1:total_colors_needed]
 
-  u.col = unique(df.numeric[i])
-  if (dim(u.col)[1] == 1){
-    print(i)
+  # lighten to use the colors as backgrounds
+  unique_df_colors = lighten(
+    unique_df_colors,
+    amount = 0.4, # more is lighter
+    method = "relative", # absolute or relative
+    space = "HCL", # HCL, HLS, or combined
+    fixup = TRUE
+  )
+
+  colors_cat = unique_df_colors[1:length(unique_df_vals)]
+  colors_num = unique_df_colors[length(unique_df_vals):
+                                length(unique_df_colors)]
+
+  x = datatable(df, options = list(lengthMenu = c(50, 100)))
+
+  col_num = 1
+  for (i in colnames(df.num)) {
     x = x %>%
       formatStyle(i,
-      backgroundColor = styleEqual(unique(as.vector(as.matrix(df.numeric[i]))), colors_numeric_cols[[col_num]]))
+        background = styleColorBar(range(df.num[, i]), colors_num[[col_num]]),
+        backgroundSize = '98% 88%',
+        backgroundRepeat = 'no-repeat',
+        backgroundPosition = 'center')
+
+    u.col = unique(df.num[i])
+    if (dim(u.col)[1] == 1){
+      x = x %>%
+        formatStyle(i,
+        backgroundColor = styleEqual(unique(as.vector(
+          as.matrix(df.num[i]))), colors_num[[col_num]]))
+    }
+    col_num = col_num + 1
   }
-  col_num = col_num + 1
+  x = x %>%
+    formatStyle(names(df.other),
+    backgroundColor = styleEqual(unique_df_vals, colors_cat))
+  saveWidget(x, output_file_name)
 }
 
-x = x %>%
-  formatStyle(names(df.other),
-  backgroundColor = styleEqual(unique_df_values, colors_categoric_cols))
-
-saveWidget(x, out_file)
+build_datatable(in_file, output_file_name=out_file)

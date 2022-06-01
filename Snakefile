@@ -16,6 +16,13 @@ rule all:
                    "re_timepoint-pairwise.pdf",
         original = "random-forest/TEST/HDL/04-SELECTED-FEATURES--"
                    "HDL-agrarian-no-women-original/MERF-original.pdf"
+                   "HDL-agrarian-no-women-original/MERF-original.pdf",
+        viz_first = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                    "agrarian-no-women-first/vizualizer-first.html",
+        viz_previous = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                       "agrarian-no-women-previous/vizualizer-previous.html",
+        viz_pairwise = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                       "agrarian-no-women-pairwise/vizualizer-pairwise.html"
 
 
 rule dim_reduction_pca:
@@ -72,6 +79,18 @@ rule make_delta_datasets:
         absolute_values = "no",
     script:
         "scripts/create_deltas.R"
+
+
+rule visualize_datasets:
+    input:
+        in_file = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                  "agrarian-no-women-{reference}/deltas-{reference}.txt"
+    output:
+        out_file = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                   "agrarian-no-women-{reference}/vizualizer-{reference}.html"
+    script:
+        "scripts/viz-datatable.R"
+
 
 # Python in a complicated environment
 # MERF has extremely specific Python requirements that could pose problems
