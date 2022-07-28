@@ -1,0 +1,244 @@
+---
+title: "Feature Selection Workflow Final Report"
+date: "`r Sys.Date()`"
+params:
+   rmd: "report.Rmd"
+output:
+  html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = FALSE,
+                      eval = TRUE)
+```
+***
+
+# *Summary*
+
+***
+
+This is a summary of the results. Additional figures and files
+can be found in the output directory. Please ensure you understand the workflow.
+When you are using all your data without prior
+hypotheses, you are performing exploratory analysis and should make this clear
+when discussing any results.
+
+```{r comment=""}
+response_var = snakemake@params[['response_var']]
+drop_cols = snakemake@params[['drop_cols']]
+constrain_rows = snakemake@params[['constrain_rows']]
+random_effect = snakemake@params[['random_effect']]
+drop_rows = snakemake@params[['drop_rows']]
+
+cat("Values of response variable are explained best with the important features")
+
+cat(paste0("RESPONSE VARIABLE: ", response_var))
+cat(paste0("RANDOM EFFECT: ", random_effect))
+
+cat(paste0("FEATURES DROPPED: ", toString(drop_cols)))
+cat(paste0("VALUES DROPED ({feature: value}): ", toString(drop_rows)))
+cat(paste0("CONSTRAINED TO ROWS: ", toString(constrain_rows)))
+
+
+
+
+```
+
+
+See the [Github repository](https://github.com/JTFouquier/snakemake-MERF "Still a work in progress!! :) ") for more information.
+
+***
+
+# Original Data
+
+***
+
+***
+
+## Original Data: Overview of Results
+
+***
+
+```{r, out.width = "100%", out.height = 600}
+include_graphics(snakemake@input[['original']])
+```
+
+***
+
+## Original Data: SHAP summary
+
+***
+
+`r include_graphics(snakemake@input[['original_shap']])`
+
+***
+
+## Original Data: BorutaSHAP
+
+***
+
+`r include_graphics(snakemake@input[['original_boruta']])`
+
+***
+
+## Original Data: Log File
+
+***
+
+
+```{r comment=""}
+cat(readLines(snakemake@input[['original_log']]), sep = '\n')
+```
+
+
+***
+
+# First Delta Dataset
+
+***
+
+## First Delta Dataset: Overview of Results
+
+***
+
+
+```{r, out.width = "100%", out.height = 600}
+include_graphics(snakemake@input[['first']])
+```
+
+***
+
+## First Delta Dataset: SHAP summary
+
+***
+
+`r include_graphics(snakemake@input[['first_shap']])`
+
+***
+
+## First Delta Dataset: BorutaSHAP
+
+***
+
+`r include_graphics(snakemake@input[['first_boruta']])`
+
+***
+
+## First Delta Dataset: Log File
+
+***
+
+```{r comment=""}
+cat(readLines(snakemake@input[['first_log']]), sep = '\n')
+```
+
+
+***
+
+# Previous Delta Dataset
+
+***
+
+## Previous Delta Dataset: Overview of Results
+
+***
+
+
+```{r, out.width = "100%", out.height = 600}
+include_graphics(snakemake@input[['previous']])
+```
+
+***
+
+## Previous Delta Dataset: SHAP summary
+
+***
+
+`r include_graphics(snakemake@input[['previous_shap']])`
+
+***
+
+## Previous Delta Dataset: BorutaSHAP
+
+***
+
+`r include_graphics(snakemake@input[['previous_boruta']])`
+
+***
+
+## Previous Delta Dataset: Log File
+
+***
+
+```{r comment=""}
+cat(readLines(snakemake@input[['previous_log']]), sep = '\n')
+```
+
+***
+
+# Pairwise Delta Dataset
+
+***
+
+## Pairwise Delta Dataset: Overview of Results
+
+***
+
+```{r, out.width = "100%", out.height = 600}
+include_graphics(snakemake@input[['pairwise']])
+```
+
+***
+
+## Pairwise Delta Dataset: SHAP summary
+
+***
+
+`r include_graphics(snakemake@input[['pairwise_shap']])`
+
+***
+
+## Pairwise Delta Dataset: BorutaSHAP
+
+***
+
+`r include_graphics(snakemake@input[['pairwise_boruta']])`
+
+***
+
+## Pairwise Delta Dataset: Log File
+
+***
+
+***
+
+```{r comment=""}
+cat(readLines(snakemake@input[['pairwise_log']]), sep = '\n')
+```
+***
+
+
+
+
+
+
+
+
+
+
+
+## Directed acyclic graph (DAG) showing workflow
+`r include_graphics(snakemake@input[['dag_plot']])`
+
+RF iters used TODO:
+`r snakemake@params[['iters']]`
+
+```{r}
+# read in a table example
+# df = read.csv(snakemake@input[['table_boruta']], sep = "\t")
+# knitr::kable(df$important.features, format = "html")
+```
+
+<a download="report.Rmd" href="`r base64enc::dataURI(file = params$rmd, mime='text/rmd', encoding='base64')`">Click here for R Markdown source file</a>
+

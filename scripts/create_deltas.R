@@ -3,12 +3,15 @@ library(dplyr)
 #devtools::install_github("jbisanz/qiime2R")
 library(qiime2R)
 library(usedist)
+source("scripts/viz-datatable.R")
 
 in_file = snakemake@input[["in_file"]]
 out_file = snakemake@output[["out_file"]]
 
 reference_time = snakemake@params[["reference_time"]]
 absolute_values = snakemake@params[["absolute_values"]]
+build_visualizer = snakemake@params[["build_visualizer"]]
+
 # TODO add option for looking at only subset of times
 #times_evaluated = snakemake@params[["times_evaluated"]]
 
@@ -87,3 +90,15 @@ for (studyid in unique(df$StudyID)){
 
 delta.df <- delta.df %>% arrange(StudyID.Timepoint, Timepoint)
 write.table(delta.df, out_file, row.names = FALSE, sep = "\t")
+
+# TODO optional create visualizer
+# TODO change this to either df or load the dataframe
+if (build_visualizer == TRUE){
+  input_file_name = paste0("random-forest/TEST/HDL/04-SELECTED-FEATURES",
+                           "--HDL-agrarian-no-women-", reference_time,
+                           "/deltas-", reference_time , ".txt")
+  output_file_name = paste0("random-forest/TEST/HDL/04-SELECTED-FEATURES",
+                            "--HDL-agrarian-no-women-", reference_time,
+                            "/vizualizer-", reference_time, ".html")
+  build_datatable(input_file_name, output_file_name)
+}

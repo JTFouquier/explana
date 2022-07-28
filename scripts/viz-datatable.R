@@ -47,14 +47,14 @@ build_datatable <- function(df, output_file_name) {
   colors_cat = unique_df_colors[1:length(unique_df_vals)]
   colors_num = unique_df_colors[length(unique_df_vals):
                                 length(unique_df_colors)]
-
+  # TODO this needs reorganization; negatives are not clear in the table
   x = datatable(df, options = list(lengthMenu = c(50, 100)))
-
   col_num = 1
   for (i in colnames(df.num)) {
     x = x %>%
       formatStyle(i,
-        background = styleColorBar(range(df.num[, i]), colors_num[[col_num]]),
+        # background = styleColorBar(range(df.num[, i]), colors_num[[col_num]]),
+        background = styleColorBar(c(0,1), colors_num[[col_num]]),
         backgroundSize = '98% 88%',
         backgroundRepeat = 'no-repeat',
         backgroundPosition = 'center')
@@ -74,4 +74,4 @@ build_datatable <- function(df, output_file_name) {
   saveWidget(x, output_file_name)
 }
 
-build_datatable(in_file, output_file_name=out_file)
+# build_datatable(in_file, output_file_name=out_file)

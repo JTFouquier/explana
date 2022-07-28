@@ -1,8 +1,8 @@
 
 
-
 # TODO add appended name to everything idea
 # TODO action items
+
 rule all:
     input:
         first = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
@@ -15,14 +15,7 @@ rule all:
                    "HDL-agrarian-no-women-pairwise/mixed-RF-deltas-"
                    "re_timepoint-pairwise.pdf",
         original = "random-forest/TEST/HDL/04-SELECTED-FEATURES--"
-                   "HDL-agrarian-no-women-original/MERF-original.pdf"
                    "HDL-agrarian-no-women-original/MERF-original.pdf",
-        viz_first = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                    "agrarian-no-women-first/vizualizer-first.html",
-        viz_previous = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                       "agrarian-no-women-previous/vizualizer-previous.html",
-        viz_pairwise = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                       "agrarian-no-women-pairwise/vizualizer-pairwise.html"
 
 
 rule dim_reduction_pca:
@@ -54,7 +47,8 @@ rule dim_reduction_scnic:
         "scripts/dim_reduction_scnic.py"
 
 # TODO have the default be to merge all datasets output from 01 steps
-rule merge_datasets:
+# TODO add drop columns or rows here instead
+rule integrate_datasets:
     input:
         dataset_list = ["random-forest/TEST/HDL/01-DIM-PCA--metadata/"
                         "final-pca-dim-reduction.txt",
@@ -77,6 +71,7 @@ rule make_delta_datasets:
     params:
         reference_time = "{reference}",
         absolute_values = "no",
+        build_visualizer = True, # TODO have this be optional default true
     script:
         "scripts/create_deltas.R"
 
@@ -122,7 +117,7 @@ rule random_forest_deltas:
         constrain_cols = [],
         response_var = "HDL",
         delta_flag = "{deltas}",  # raw or deltas
-        iterations = 20,  # iterations, 20 is suggested, 10 for testing
+        iterations = 5,  # iterations, 20 is suggested, 10 for testing
         re_timepoint = "{re_timepoint}"  # re_timepoint or no_re
     script:
         "scripts/random_forest.py"
@@ -145,12 +140,86 @@ rule random_forest_original:
         constrain_cols = [],
         response_var = "HDL",
         delta_flag = "raw",
-        iterations = 20,
+        iterations = 5,
         re_timepoint = "no_re"
     script:
         "scripts/random_forest.py"
 
-# TODO needs work
+# rule TODO might be better to build report dynamically:
+#     output:
+#         report(
+#             directory("random-forest/TEST/HDL/01-DIM-PCA--metadata/PCA1/"),
+#             patterns=["{name}.pdf"],
+#             caption="report/plot_pcas.rst")
+
+
+# TODO program if statements here and make report reflect missing data
+
+rule render_report:
+    input:
+        original = rules.random_forest_original.output.out_file,
+        original_shap= "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                       "agrarian-no-women-original/MERF-original-"
+                       "accepted_SHAP.svg",
+        original_boruta = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                          "agrarian-no-women-original/MERF-original-boruta-"
+                          "accepted-features.svg",
+        original_log = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                    "agrarian-no-women-original/MERF-original-log.txt",
+
+        first = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                "agrarian-no-women-first/mixed-RF-deltas-"
+                "re_timepoint-first.pdf",
+        first_shap= "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                    "agrarian-no-women-first/mixed-RF-deltas-re_timepoint-"
+                    "first-accepted_SHAP.svg",
+        first_boruta= "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                      "agrarian-no-women-first/mixed-RF-deltas-re_timepoint-"
+                      "first-boruta-accepted-features.svg",
+        first_log = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                    "agrarian-no-women-first/mixed-RF-deltas-"
+                    "re_timepoint-first-log.txt",
+
+        previous = "random-forest/TEST/HDL/04-SELECTED-FEATURES--"
+                   "HDL-agrarian-no-women-previous/mixed-RF-deltas-"
+                   "re_timepoint-previous.pdf",
+        previous_shap= "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                       "agrarian-no-women-previous/mixed-RF-deltas-"
+                       "re_timepoint-previous-accepted_SHAP.svg",
+        previous_boruta = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                          "agrarian-no-women-previous/mixed-RF-deltas-"
+                          "re_timepoint-previous-boruta-accepted-features.svg",
+        previous_log= "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                      "agrarian-no-women-previous/mixed-RF-deltas-"
+                      "re_timepoint-previous-log.txt",
+
+        pairwise = "random-forest/TEST/HDL/04-SELECTED-FEATURES--"
+                   "HDL-agrarian-no-women-pairwise/mixed-RF-deltas-"
+                   "re_timepoint-pairwise.pdf",
+        pairwise_shap= "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                       "agrarian-no-women-pairwise/mixed-RF-deltas-"
+                       "re_timepoint-pairwise-accepted_SHAP.svg",
+        pairwise_boruta = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                          "agrarian-no-women-pairwise/mixed-RF-deltas-"
+                          "re_timepoint-pairwise-boruta-accepted-features.svg",
+        pairwise_log= "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
+                      "agrarian-no-women-previous/mixed-RF-deltas-"
+                      "re_timepoint-previous-log.txt",
+
+        dag_plot = "scripts/dag.svg",
+    output:
+        md_doc="report.html",
+    params:
+        iters=rules.random_forest_original.params.iterations,
+        response_var= rules.random_forest_original.params.response_var,
+        drop_cols= rules.random_forest_original.params.drop_cols,
+        constrain_rows= rules.random_forest_original.params.constrain_rows,
+        random_effect= rules.random_forest_original.params.random_effect,
+        drop_rows= rules.random_forest_original.params.drop_rows,
+    script:
+        "scripts/report.Rmd"
+
+    # TODO needs work
 # rule run_post_hoc_stats:
 #     pass
 #     input:
@@ -172,13 +241,3 @@ rule random_forest_original:
 #         response_var = "HDL"
 #     script:
 #         "scripts/post_hoc_tests.R"
-
-# TODO make report
-# rule make_report:
-#     input:
-#         "path/to/inputfile",
-#         "path/to/other/inputfile"
-#     output:
-#         "path/to/report.html",
-#     script:
-#         "path/to/report.Rmd"
