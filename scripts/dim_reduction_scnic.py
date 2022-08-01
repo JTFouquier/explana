@@ -8,8 +8,8 @@ import pandas as pd
 from biom import load_table
 
 # TODO fix this: prefix + process + dataset as folder
-scnic_out_folder = "random-forest/TEST/HDL/01-DIM-SCNIC--biom/"
-# TODO rename
+
+scnic_out_folder = snakemake.config["out"] + "01-DIM-SCNIC-biom/"
 biom_name = snakemake.input["in_file"]
 in_file_metadata = snakemake.input["in_file_metadata"]
 
@@ -26,6 +26,7 @@ def within(out_folder, biom_file_name):
     process.communicate()
 
 
+# TODO add params
 def modules(out_folder, biom_file_name):
     process = Popen(["SCNIC_analysis.py", "modules", "-i", out_folder +
                      "within_output/correls.txt", "-o", out_folder +

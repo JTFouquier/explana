@@ -1,28 +1,23 @@
 
 
-# TODO add appended name to everything idea
-# TODO action items
+configfile: "config.yaml"
 
 rule all:
     input:
-        first = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                "agrarian-no-women-first/mixed-RF-deltas-"
+        first = config["out"] + "04-SELECTED-FEATURES-first/mixed-RF-deltas-"
                 "re_timepoint-first.pdf",
-        previous = "random-forest/TEST/HDL/04-SELECTED-FEATURES--"
-                   "HDL-agrarian-no-women-previous/mixed-RF-deltas-"
+        previous = config["out"] + "04-SELECTED-FEATURES-previous/mixed-RF-deltas-"
                    "re_timepoint-previous.pdf",
-        pairwise = "random-forest/TEST/HDL/04-SELECTED-FEATURES--"
-                   "HDL-agrarian-no-women-pairwise/mixed-RF-deltas-"
+        pairwise = config["out"] + "04-SELECTED-FEATURES-pairwise/mixed-RF-deltas-"
                    "re_timepoint-pairwise.pdf",
-        original = "random-forest/TEST/HDL/04-SELECTED-FEATURES--"
-                   "HDL-agrarian-no-women-original/MERF-original.pdf",
+        original = config["out"] + "04-SELECTED-FEATURES-original/MERF-original.pdf",
 
 
 rule dim_reduction_pca:
     input:
         in_file = "data/real-data-no-asvs.txt",
     output:
-        out_file = "random-forest/TEST/HDL/01-DIM-PCA--metadata/"
+        out_file = config["out"] + "01-DIM-PCA-metadata/"
                    "final-pca-dim-reduction.txt"
     params:
         pca_groups_list = "list(list("
@@ -41,7 +36,7 @@ rule dim_reduction_scnic:
         in_file = "data/real-feature-table.biom",
         in_file_metadata = "data/real-data-no-asvs.txt"
     output:
-        out_file = "random-forest/TEST/HDL/01-DIM-SCNIC--biom/"
+        out_file = config["out"] + "01-DIM-SCNIC-biom/"
                    "SCNIC_modules.txt"
     script:
         "scripts/dim_reduction_scnic.py"
@@ -50,12 +45,12 @@ rule dim_reduction_scnic:
 # TODO add drop columns or rows here instead
 rule integrate_datasets:
     input:
-        dataset_list = ["random-forest/TEST/HDL/01-DIM-PCA--metadata/"
+        dataset_list = [config["out"] + "01-DIM-PCA-metadata/"
                         "final-pca-dim-reduction.txt",
-                        "random-forest/TEST/HDL/01-DIM-SCNIC--biom/"
+                        config["out"] + "01-DIM-SCNIC-biom/"
                         "SCNIC_modules.txt"]
     output:
-        out_file = "random-forest/TEST/HDL/02-MERGED-DATA/"
+        out_file = config["out"] + "02-MERGED-DATA/"
                    "final-merged-dfs.txt"
     script:
         "scripts/merge_datasets.py"
@@ -63,11 +58,9 @@ rule integrate_datasets:
 
 rule make_delta_datasets:
     input:
-        in_file = "random-forest/TEST/HDL/02-MERGED-DATA/"
-                  "final-merged-dfs.txt"
+        in_file = config["out"] + "02-MERGED-DATA/final-merged-dfs.txt"
     output:
-        out_file = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                   "agrarian-no-women-{reference}/deltas-{reference}.txt"
+        out_file = config["out"] + "04-SELECTED-FEATURES-{reference}/deltas-{reference}.txt"
     params:
         reference_time = "{reference}",
         absolute_values = "no",
@@ -78,11 +71,11 @@ rule make_delta_datasets:
 
 rule visualize_datasets:
     input:
-        in_file = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                  "agrarian-no-women-{reference}/deltas-{reference}.txt"
+        in_file = config["out"] + "04-SELECTED-FEATURES-{reference}/"
+                                  "deltas-{reference}.txt"
     output:
-        out_file = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                   "agrarian-no-women-{reference}/vizualizer-{reference}.html"
+        out_file = config["out"] + "04-SELECTED-FEATURES-{reference}/"
+                                   "vizualizer-{reference}.html"
     script:
         "scripts/viz-datatable.R"
 
@@ -101,21 +94,19 @@ rule visualize_datasets:
 # TODO check constrain, and wildcards (not a good use)
 rule random_forest_deltas:
     input:
-        in_file = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                  "agrarian-no-women-{reference}/deltas-{reference}.txt"
+        in_file = config["out"] + "04-SELECTED-FEATURES-{reference}/deltas-{reference}.txt"
     output:
-        out_file = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                   "agrarian-no-women-{reference}/{mixed}-RF-{deltas}-"
+        out_file = config["out"] + "04-SELECTED-FEATURES-{reference}/{mixed}-RF-{deltas}-"
                    "{re_timepoint}-{reference}.pdf"
     params:
         random_forest_type = "{mixed}",  # mixed or fixed
-        random_effect = "StudyID",
+        random_effect = config["random_effect"],
         sample_ID = "StudyID.Timepoint",
         drop_rows = {"SexualClassification": "Women_Women"},
         constrain_rows = {"Diet": "Agrarian_Agrarian"},
         drop_cols = ["Inflammation","TotalCholesterol", "PCA", "HOMAIR"],
         constrain_cols = [],
-        response_var = "HDL",
+        response_var = config["response_var"],
         delta_flag = "{deltas}",  # raw or deltas
         iterations = 5,  # iterations, 20 is suggested, 10 for testing
         re_timepoint = "{re_timepoint}"  # re_timepoint or no_re
@@ -125,20 +116,21 @@ rule random_forest_deltas:
 
 rule random_forest_original:
     input:
-        in_file = "random-forest/TEST/HDL/02-MERGED-DATA/"
-                  "final-merged-dfs.txt"
+        in_file = config["out"] + "02-MERGED-DATA/final-merged-dfs.txt"
     output:
-        out_file = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                   "agrarian-no-women-original/MERF-original.pdf"
+        # report("{my_dir}/04-SELECTED-FEATURES-original/MERF-original.pdf",
+        #         caption="report/plot_pcas.rst", category="Selected Features",
+        #         subcategory="Original Dataset"),
+        out_file = config["out"] + "04-SELECTED-FEATURES-original/MERF-original.pdf"
     params:
         random_forest_type = "mixed",
-        random_effect = "StudyID",
+        random_effect = config["response_var"],
         sample_ID = "StudyID.Timepoint",
         drop_rows = {"SexualClassification": "Women"},
         constrain_rows = {"Diet": "Agrarian"},
         drop_cols = ["Inflammation", "TotalCholesterol", "PCA", "HOMAIR"],
         constrain_cols = [],
-        response_var = "HDL",
+        response_var = config["response_var"],
         delta_flag = "raw",
         iterations = 5,
         re_timepoint = "no_re"
@@ -148,7 +140,7 @@ rule random_forest_original:
 # rule TODO might be better to build report dynamically:
 #     output:
 #         report(
-#             directory("random-forest/TEST/HDL/01-DIM-PCA--metadata/PCA1/"),
+#             directory("random-forest/TEST/HDL/01-DIM-PCA-metadata/PCA1/"),
 #             patterns=["{name}.pdf"],
 #             caption="report/plot_pcas.rst")
 
@@ -158,52 +150,37 @@ rule random_forest_original:
 rule render_report:
     input:
         original = rules.random_forest_original.output.out_file,
-        original_shap= "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                       "agrarian-no-women-original/MERF-original-"
+        original_shap= config["out"] + "04-SELECTED-FEATURES-original/MERF-original-"
                        "accepted_SHAP.svg",
-        original_boruta = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                          "agrarian-no-women-original/MERF-original-boruta-"
+        original_boruta = config["out"] + "04-SELECTED-FEATURES-original/MERF-original-boruta-"
                           "accepted-features.svg",
-        original_log = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                    "agrarian-no-women-original/MERF-original-log.txt",
+        original_log = config["out"] + "04-SELECTED-FEATURES-original/MERF-original-log.txt",
 
-        first = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                "agrarian-no-women-first/mixed-RF-deltas-"
+        first = config["out"] + "04-SELECTED-FEATURES-first/mixed-RF-deltas-"
                 "re_timepoint-first.pdf",
-        first_shap= "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                    "agrarian-no-women-first/mixed-RF-deltas-re_timepoint-"
+        first_shap= config["out"] + "04-SELECTED-FEATURES-first/mixed-RF-deltas-re_timepoint-"
                     "first-accepted_SHAP.svg",
-        first_boruta= "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                      "agrarian-no-women-first/mixed-RF-deltas-re_timepoint-"
+        first_boruta= config["out"] + "04-SELECTED-FEATURES-first/mixed-RF-deltas-re_timepoint-"
                       "first-boruta-accepted-features.svg",
-        first_log = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                    "agrarian-no-women-first/mixed-RF-deltas-"
+        first_log = config["out"] + "04-SELECTED-FEATURES-first/mixed-RF-deltas-"
                     "re_timepoint-first-log.txt",
 
-        previous = "random-forest/TEST/HDL/04-SELECTED-FEATURES--"
-                   "HDL-agrarian-no-women-previous/mixed-RF-deltas-"
+        previous = config["out"] + "04-SELECTED-FEATURES-previous/mixed-RF-deltas-"
                    "re_timepoint-previous.pdf",
-        previous_shap= "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                       "agrarian-no-women-previous/mixed-RF-deltas-"
+        previous_shap= config["out"] + "04-SELECTED-FEATURES-previous/mixed-RF-deltas-"
                        "re_timepoint-previous-accepted_SHAP.svg",
-        previous_boruta = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                          "agrarian-no-women-previous/mixed-RF-deltas-"
+        previous_boruta = config["out"] + "04-SELECTED-FEATURES-previous/mixed-RF-deltas-"
                           "re_timepoint-previous-boruta-accepted-features.svg",
-        previous_log= "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                      "agrarian-no-women-previous/mixed-RF-deltas-"
+        previous_log= config["out"] + "04-SELECTED-FEATURES-previous/mixed-RF-deltas-"
                       "re_timepoint-previous-log.txt",
 
-        pairwise = "random-forest/TEST/HDL/04-SELECTED-FEATURES--"
-                   "HDL-agrarian-no-women-pairwise/mixed-RF-deltas-"
+        pairwise = config["out"] + "04-SELECTED-FEATURES-pairwise/mixed-RF-deltas-"
                    "re_timepoint-pairwise.pdf",
-        pairwise_shap= "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                       "agrarian-no-women-pairwise/mixed-RF-deltas-"
+        pairwise_shap= config["out"] + "04-SELECTED-FEATURES-pairwise/mixed-RF-deltas-"
                        "re_timepoint-pairwise-accepted_SHAP.svg",
-        pairwise_boruta = "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                          "agrarian-no-women-pairwise/mixed-RF-deltas-"
+        pairwise_boruta = config["out"] + "04-SELECTED-FEATURES-pairwise/mixed-RF-deltas-"
                           "re_timepoint-pairwise-boruta-accepted-features.svg",
-        pairwise_log= "random-forest/TEST/HDL/04-SELECTED-FEATURES--HDL-"
-                      "agrarian-no-women-previous/mixed-RF-deltas-"
+        pairwise_log= config["out"] + "04-SELECTED-FEATURES-previous/mixed-RF-deltas-"
                       "re_timepoint-previous-log.txt",
 
         dag_plot = "scripts/dag.svg",
@@ -211,7 +188,7 @@ rule render_report:
         md_doc="report.html",
     params:
         iters=rules.random_forest_original.params.iterations,
-        response_var= rules.random_forest_original.params.response_var,
+        response_var= config["response_var"],
         drop_cols= rules.random_forest_original.params.drop_cols,
         constrain_rows= rules.random_forest_original.params.constrain_rows,
         random_effect= rules.random_forest_original.params.random_effect,

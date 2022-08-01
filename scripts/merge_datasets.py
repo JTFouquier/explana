@@ -3,7 +3,7 @@
 import pandas as pd
 from functools import reduce
 
-output_folder = "random-forest/TEST/HDL/02-MERGED-DATA/"
+output_folder = snakemake.config["out"] + "02-MERGED-DATA/"
 dataset_file_list = snakemake.input["dataset_list"]
 
 # TODO metadata-pcas needs be clear as this can be done on other datasets
@@ -24,6 +24,8 @@ df = reduce(lambda x, y: pd.merge(x, y, left_index=True, right_index=True,
                                   sort=False), df_list)
 df = df.rename_axis("StudyID.Timepoint")
 df["SampleID"] = df.index
+#
+# df = df[df.columns.drop(list(df.filter(regex='_reference')))]
 
 df.to_csv(output_folder + "final-merged-dfs.txt", sep="\t")
 

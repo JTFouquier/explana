@@ -29,7 +29,8 @@ out_file = snakemake@output[["out_file"]]
 pca_groups_list = snakemake@params[["pca_groups_list"]]
 
 # TODO sort out good folder names and locations
-final_output_folder = "random-forest/TEST/HDL/01-DIM-PCA--metadata/"
+final_output_folder = paste0(snakemake@config[["out"]], "01-DIM-PCA-metadata/")
+
 
 write_table_special <- function(df, folder_name, file_name) {
   outf <- paste0(folder_name, file_name)

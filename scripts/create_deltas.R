@@ -7,6 +7,7 @@ source("scripts/viz-datatable.R")
 
 in_file = snakemake@input[["in_file"]]
 out_file = snakemake@output[["out_file"]]
+output_dir = snakemake@config[["out"]]
 
 reference_time = snakemake@params[["reference_time"]]
 absolute_values = snakemake@params[["absolute_values"]]
@@ -94,11 +95,10 @@ write.table(delta.df, out_file, row.names = FALSE, sep = "\t")
 # TODO optional create visualizer
 # TODO change this to either df or load the dataframe
 if (build_visualizer == TRUE){
-  input_file_name = paste0("random-forest/TEST/HDL/04-SELECTED-FEATURES",
-                           "--HDL-agrarian-no-women-", reference_time,
+  input_file_name = paste0(output_dir, "04-SELECTED-FEATURES-", reference_time,
                            "/deltas-", reference_time , ".txt")
-  output_file_name = paste0("random-forest/TEST/HDL/04-SELECTED-FEATURES",
-                            "--HDL-agrarian-no-women-", reference_time,
-                            "/vizualizer-", reference_time, ".html")
+  output_file_name = paste0(output_dir, "04-SELECTED-FEATURES-",
+                            reference_time, "/vizualizer-", reference_time,
+                            ".html")
   build_datatable(input_file_name, output_file_name)
 }
