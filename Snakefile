@@ -2,23 +2,32 @@
 
 configfile: "config.yaml"
 
+# TODO add outputs concatenated with final output file
+path_rf_original = config["out"] + config["path_rf_original"]
+path_rf_first = config["out"] + config["path_rf_first"]
+path_rf_previous = config["out"] + config["path_rf_previous"]
+path_rf_pairwise = config["out"] + config["path_rf_pairwise"]
+
+path_dim_pca = config["out"] + config["path_dim_pca"]
+path_dim_scnic = config["out"] + config["path_dim_scnic"]
+
+path_merged_data = config["out"] + config["path_merged_data"]
+
 rule all:
     input:
-        first = config["out"] + "04-SELECTED-FEATURES-first/mixed-RF-deltas-"
-                "re_timepoint-first.pdf",
-        previous = config["out"] + "04-SELECTED-FEATURES-previous/mixed-RF-deltas-"
-                   "re_timepoint-previous.pdf",
-        pairwise = config["out"] + "04-SELECTED-FEATURES-pairwise/mixed-RF-deltas-"
-                   "re_timepoint-pairwise.pdf",
-        original = config["out"] + "04-SELECTED-FEATURES-original/MERF-original.pdf",
+        original = path_rf_original + "MERF-original.pdf",
+        first = path_rf_first + "mixed-RF-deltas-re_timepoint-first.pdf",
+        previous = path_rf_previous +
+                   "mixed-RF-deltas-re_timepoint-previous.pdf",
+        pairwise = path_rf_pairwise +
+                   "mixed-RF-deltas-re_timepoint-pairwise.pdf",
 
 
 rule dim_reduction_pca:
     input:
         in_file = "data/real-data-no-asvs.txt",
     output:
-        out_file = config["out"] + "01-DIM-PCA-metadata/"
-                   "final-pca-dim-reduction.txt"
+        out_file = path_dim_pca + "final-pca-dim-reduction.txt"
     params:
         pca_groups_list = "list(list("
                           "pca_name='PCA1',"
@@ -36,8 +45,7 @@ rule dim_reduction_scnic:
         in_file = "data/real-feature-table.biom",
         in_file_metadata = "data/real-data-no-asvs.txt"
     output:
-        out_file = config["out"] + "01-DIM-SCNIC-biom/"
-                   "SCNIC_modules.txt"
+        out_file = path_dim_scnic + "SCNIC_modules.txt"
     script:
         "scripts/dim_reduction_scnic.py"
 
@@ -45,22 +53,20 @@ rule dim_reduction_scnic:
 # TODO add drop columns or rows here instead
 rule integrate_datasets:
     input:
-        dataset_list = [config["out"] + "01-DIM-PCA-metadata/"
-                        "final-pca-dim-reduction.txt",
-                        config["out"] + "01-DIM-SCNIC-biom/"
-                        "SCNIC_modules.txt"]
+        dataset_list = [path_dim_pca + "final-pca-dim-reduction.txt",
+                        path_dim_scnic + "SCNIC_modules.txt"]
     output:
-        out_file = config["out"] + "02-MERGED-DATA/"
-                   "final-merged-dfs.txt"
+        out_file = path_merged_data + "final-merged-dfs.txt"
     script:
         "scripts/merge_datasets.py"
 
 
 rule make_delta_datasets:
     input:
-        in_file = config["out"] + "02-MERGED-DATA/final-merged-dfs.txt"
+        in_file = path_merged_data + "final-merged-dfs.txt"
     output:
-        out_file = config["out"] + "04-SELECTED-FEATURES-{reference}/deltas-{reference}.txt"
+        out_file = config["out"] + "04-SELECTED-FEATURES-{reference}/"
+                                   "deltas-{reference}.txt"
     params:
         reference_time = "{reference}",
         absolute_values = "no",
@@ -94,21 +100,23 @@ rule visualize_datasets:
 # TODO check constrain, and wildcards (not a good use)
 rule random_forest_deltas:
     input:
-        in_file = config["out"] + "04-SELECTED-FEATURES-{reference}/deltas-{reference}.txt"
+        in_file = config["out"] +
+                  "04-SELECTED-FEATURES-{reference}/deltas-{reference}.txt"
     output:
-        out_file = config["out"] + "04-SELECTED-FEATURES-{reference}/{mixed}-RF-{deltas}-"
+        out_file = config["out"] +
+                   "04-SELECTED-FEATURES-{reference}/{mixed}-RF-{deltas}-"
                    "{re_timepoint}-{reference}.pdf"
     params:
         random_forest_type = "{mixed}",  # mixed or fixed
         random_effect = config["random_effect"],
-        sample_ID = "StudyID.Timepoint",
+        sample_ID = config["sample_ID"],
         drop_rows = {"SexualClassification": "Women_Women"},
         constrain_rows = {"Diet": "Agrarian_Agrarian"},
         drop_cols = ["Inflammation","TotalCholesterol", "PCA", "HOMAIR"],
         constrain_cols = [],
         response_var = config["response_var"],
         delta_flag = "{deltas}",  # raw or deltas
-        iterations = 5,  # iterations, 20 is suggested, 10 for testing
+        iterations = config["iterations"],  # 20 is suggested, 10 for testing
         re_timepoint = "{re_timepoint}"  # re_timepoint or no_re
     script:
         "scripts/random_forest.py"
@@ -116,82 +124,66 @@ rule random_forest_deltas:
 
 rule random_forest_original:
     input:
-        in_file = config["out"] + "02-MERGED-DATA/final-merged-dfs.txt"
+        in_file = path_merged_data + "final-merged-dfs.txt"
     output:
-        # report("{my_dir}/04-SELECTED-FEATURES-original/MERF-original.pdf",
-        #         caption="report/plot_pcas.rst", category="Selected Features",
-        #         subcategory="Original Dataset"),
-        out_file = config["out"] + "04-SELECTED-FEATURES-original/MERF-original.pdf"
+        out_file = path_rf_original + "MERF-original.pdf"
     params:
         random_forest_type = "mixed",
         random_effect = config["response_var"],
-        sample_ID = "StudyID.Timepoint",
+        sample_ID = config["sample_ID"],
         drop_rows = {"SexualClassification": "Women"},
         constrain_rows = {"Diet": "Agrarian"},
         drop_cols = ["Inflammation", "TotalCholesterol", "PCA", "HOMAIR"],
         constrain_cols = [],
         response_var = config["response_var"],
         delta_flag = "raw",
-        iterations = 5,
+        iterations = config["iterations"],
         re_timepoint = "no_re"
     script:
         "scripts/random_forest.py"
 
-# rule TODO might be better to build report dynamically:
-#     output:
-#         report(
-#             directory("random-forest/TEST/HDL/01-DIM-PCA-metadata/PCA1/"),
-#             patterns=["{name}.pdf"],
-#             caption="report/plot_pcas.rst")
-
 
 # TODO program if statements here and make report reflect missing data
-
+# TODO consider if statements with all rule
 rule render_report:
     input:
         original = rules.random_forest_original.output.out_file,
-        original_shap= config["out"] + "04-SELECTED-FEATURES-original/MERF-original-"
-                       "accepted_SHAP.svg",
-        original_boruta = config["out"] + "04-SELECTED-FEATURES-original/MERF-original-boruta-"
-                          "accepted-features.svg",
-        original_log = config["out"] + "04-SELECTED-FEATURES-original/MERF-original-log.txt",
+        original_shap= path_rf_original + "MERF-original-accepted_SHAP.svg",
+        original_boruta = path_rf_original + "MERF-original-boruta-"
+                        "accepted-features.svg",
+        original_log = path_rf_original + "MERF-original-log.txt",
 
-        first = config["out"] + "04-SELECTED-FEATURES-first/mixed-RF-deltas-"
-                "re_timepoint-first.pdf",
-        first_shap= config["out"] + "04-SELECTED-FEATURES-first/mixed-RF-deltas-re_timepoint-"
-                    "first-accepted_SHAP.svg",
-        first_boruta= config["out"] + "04-SELECTED-FEATURES-first/mixed-RF-deltas-re_timepoint-"
-                      "first-boruta-accepted-features.svg",
-        first_log = config["out"] + "04-SELECTED-FEATURES-first/mixed-RF-deltas-"
+        first = path_rf_first + "mixed-RF-deltas-re_timepoint-first.pdf",
+        first_shap= path_rf_first + "mixed-RF-deltas-re_timepoint-first-accepted_SHAP.svg",
+        first_boruta= path_rf_first + "mixed-RF-"
+                      "deltas-re_timepoint-first-boruta-accepted-features.svg",
+        first_log = path_rf_first + "mixed-RF-deltas-"
                     "re_timepoint-first-log.txt",
 
-        previous = config["out"] + "04-SELECTED-FEATURES-previous/mixed-RF-deltas-"
+        previous = path_rf_previous + "mixed-RF-deltas-"
                    "re_timepoint-previous.pdf",
-        previous_shap= config["out"] + "04-SELECTED-FEATURES-previous/mixed-RF-deltas-"
+        previous_shap= path_rf_previous + "mixed-RF-deltas-"
                        "re_timepoint-previous-accepted_SHAP.svg",
-        previous_boruta = config["out"] + "04-SELECTED-FEATURES-previous/mixed-RF-deltas-"
+        previous_boruta = path_rf_previous + "mixed-RF-deltas-"
                           "re_timepoint-previous-boruta-accepted-features.svg",
-        previous_log= config["out"] + "04-SELECTED-FEATURES-previous/mixed-RF-deltas-"
+        previous_log= path_rf_previous + "mixed-RF-deltas-"
                       "re_timepoint-previous-log.txt",
 
-        pairwise = config["out"] + "04-SELECTED-FEATURES-pairwise/mixed-RF-deltas-"
+        pairwise = path_rf_pairwise + "mixed-RF-deltas-"
                    "re_timepoint-pairwise.pdf",
-        pairwise_shap= config["out"] + "04-SELECTED-FEATURES-pairwise/mixed-RF-deltas-"
+        pairwise_shap= path_rf_pairwise + "mixed-RF-deltas-"
                        "re_timepoint-pairwise-accepted_SHAP.svg",
-        pairwise_boruta = config["out"] + "04-SELECTED-FEATURES-pairwise/mixed-RF-deltas-"
+        pairwise_boruta = path_rf_pairwise + "mixed-RF-deltas-"
                           "re_timepoint-pairwise-boruta-accepted-features.svg",
-        pairwise_log= config["out"] + "04-SELECTED-FEATURES-previous/mixed-RF-deltas-"
-                      "re_timepoint-previous-log.txt",
+        pairwise_log = path_rf_pairwise + "mixed-RF-deltas-"
+                      "re_timepoint-pairwise-log.txt",
 
         dag_plot = "scripts/dag.svg",
     output:
         md_doc="report.html",
     params:
-        iters=rules.random_forest_original.params.iterations,
-        response_var= config["response_var"],
         drop_cols= rules.random_forest_original.params.drop_cols,
         constrain_rows= rules.random_forest_original.params.constrain_rows,
-        random_effect= rules.random_forest_original.params.random_effect,
         drop_rows= rules.random_forest_original.params.drop_rows,
     script:
         "scripts/report.Rmd"

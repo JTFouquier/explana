@@ -3,3 +3,19 @@
 out: "random-forest/TEST/HDL/"
 response_var: "HDL"
 random_effect: "StudyID"
+sample_ID: "StudyID.Timepoint"
+iterations: "10"
+
+
+# paths (relocate to path config file)
+# TODO add dataset and create new folder
+path_dim_pca: "01-DIM-PCA-metadata/"
+path_dim_scnic: "01-DIM-SCNIC-biom/"
+
+path_merged_data: "02-MERGEDs-DATA/"
+
+path_rf_original: "04-SELECTED-FEATURES-original/"
+path_rf_first: "04-SELECTED-FEATURES-first/"
+path_rf_previous: "04-SELECTED-FEATURES-previous/"
+path_rf_pairwise: "04-SELECTED-FEATURES-pairwise/"
+

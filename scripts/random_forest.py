@@ -58,7 +58,7 @@ drop_cols = snakemake.params["drop_cols"]
 constrain_cols = snakemake.params["constrain_cols"]
 response_var = snakemake.params["response_var"]
 delta_flag = snakemake.params["delta_flag"]
-iterations = snakemake.params["iterations"]
+iterations = int(snakemake.params["iterations"])
 re_timepoint = snakemake.params["re_timepoint"]
 
 # set graphics dimensions
