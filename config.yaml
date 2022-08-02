@@ -4,15 +4,15 @@ out: "random-forest/TEST/HDL/"
 response_var: "HDL"
 random_effect: "StudyID"
 sample_ID: "StudyID.Timepoint"
-iterations: "10"
-
+iterations: "20"
+distance_matrix: "data/distance-matrix-hdl.tsv"
 
 # paths (relocate to path config file)
 # TODO add dataset and create new folder
 path_dim_pca: "01-DIM-PCA-metadata/"
 path_dim_scnic: "01-DIM-SCNIC-biom/"
 
-path_merged_data: "02-MERGEDs-DATA/"
+path_merged_data: "02-MERGED-DATA/"
 
 path_rf_original: "04-SELECTED-FEATURES-original/"
 path_rf_first: "04-SELECTED-FEATURES-first/"

@@ -71,6 +71,7 @@ rule make_delta_datasets:
         reference_time = "{reference}",
         absolute_values = "no",
         build_visualizer = True, # TODO have this be optional default true
+        distance_matrix = config["distance_matrix"]
     script:
         "scripts/create_deltas.R"
 
