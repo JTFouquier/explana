@@ -25,6 +25,7 @@ library(dplyr)
 # user inputs from Snake
 in_file = snakemake@input[["in_file"]]
 out_file = snakemake@output[["out_file"]]
+sample_id = snakemake@config[["sample_id"]]
 
 pca_groups_list = snakemake@params[["pca_groups_list"]]
 
@@ -33,22 +34,23 @@ final_output_folder = paste0(snakemake@config[["out"]], "01-DIM-PCA-metadata/")
 
 
 write_table_special <- function(df, folder_name, file_name) {
-  outf <- paste0(folder_name, file_name)
-  df = data.frame("StudyID.Timepoint"=rownames(df), df)
+  outf <- paste0(folder_name, file_name) # TODO
   write.table(df, out_file, row.names=FALSE, sep = "\t")
 }
 inf <- paste0(in_file)
-df <- read.table(inf, header=TRUE, sep="\t", strip.white=FALSE,
-                 row.names='SampleID')
+df <- read.table(inf, header=TRUE, sep="\t", strip.white=FALSE)
 
 # verify none of the PCA folders exist before doing analysis
 check_for_directories <- function(folder_list){
-  print(folder_list)
+  print(paste0("folder_list", folder_list))
   for (i in folder_list){
     if (file.exists(i)) {
-      cat(paste0(i, " directory already exists"))
+      print(paste0("i", i))
+      print(paste0(i, " directory already exists"))
       break
     } else {
+      print(paste0("i", i))
+      print(paste0(i, "created directory"))
     dir.create(i)
     }
   }
@@ -144,8 +146,9 @@ perform_pca <- function(pca_list, df, final_output_folder) {
   df = df %>% select(-all_of(feature_list))
 
   # FOR REPORT
-  print(pc_name_list)
-  print(feature_list)
+
+  print(paste0("pc_name_list", pc_name_list))
+  print(paste0("feature_list", feature_list))
 
   write_table_special(df, folder_name = output_folder,
                       file_name = "pca-dim-reduction_partial_df.txt")
@@ -157,6 +160,8 @@ all_pca_lists = eval(parse(text=all_pca_lists))
 output_folder_list = character()
 # create the folders first, so that time isn't wasted processing PCAs
 for (pca_info in all_pca_lists) {
+  print(paste0("pca_info", pca_info))
+
   output_folder_from_group = paste0(final_output_folder, pca_info$pca_name)
   output_folder_list = c(output_folder_list, output_folder_from_group)
 }

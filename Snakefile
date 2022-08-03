@@ -110,7 +110,7 @@ rule random_forest_deltas:
     params:
         random_forest_type = "{mixed}",  # mixed or fixed
         random_effect = config["random_effect"],
-        sample_ID = config["sample_ID"],
+        sample_id = config["sample_id"],
         drop_rows = {"SexualClassification": "Women_Women"},
         constrain_rows = {"Diet": "Agrarian_Agrarian"},
         drop_cols = ["Inflammation","TotalCholesterol", "PCA", "HOMAIR"],
@@ -131,7 +131,7 @@ rule random_forest_original:
     params:
         random_forest_type = "mixed",
         random_effect = config["response_var"],
-        sample_ID = config["sample_ID"],
+        sample_id = config["sample_id"],
         drop_rows = {"SexualClassification": "Women"},
         constrain_rows = {"Diet": "Agrarian"},
         drop_cols = ["Inflammation", "TotalCholesterol", "PCA", "HOMAIR"],

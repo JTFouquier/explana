@@ -4,13 +4,13 @@ out: "random-forest/TEST/HDL/"
 
 # files
 # TODO make list
-metadata: "data/real-data-no-asvs.txt"
-asv_biom: "data/real-feature-table.biom"
-distance_matrix: "data/distance-matrix-hdl.tsv"
+metadata: "data/hdl-test/real-data-no-asvs.txt"
+asv_biom: "data/hdl-test/real-feature-table.biom"
+distance_matrix: "data/hdl-test/distance-matrix-hdl.tsv"
 
 response_var: "HDL"
 random_effect: "StudyID"
-sample_ID: "StudyID.Timepoint"
+sample_id: "SampleID"
 
 # MERF arguments
 iterations: "5"

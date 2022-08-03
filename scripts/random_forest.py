@@ -54,7 +54,7 @@ pdf_report = snakemake.output["out_file"]
 
 fe_or_me = snakemake.params["random_forest_type"]
 random_effect = snakemake.params["random_effect"]
-sample_ID = snakemake.params["sample_ID"]
+sample_id = snakemake.params["sample_id"]
 drop_rows = snakemake.params["drop_rows"]
 constrain_rows = snakemake.params["constrain_rows"]
 drop_cols = snakemake.params["drop_cols"]
@@ -101,7 +101,7 @@ def setup_df_do_encoding(df, random_effect, vars_to_encode, response_var,
     df.to_csv(out_file_prefix + "-df-after-encoding.txt", index=False,
               sep="\t")
 
-    drop = ["StudyID.Timepoint", "SampleID"] + \
+    drop = [sample_id] + \
            [random_effect] + vars_to_encode + [response_var]
 
     df_encoded_cols_dropped = df.drop(drop, axis=1)
@@ -210,7 +210,7 @@ def run_boruta_shap(forest, x, y):
     return boruta_dict
 
 
-def main(df_input, out_file, random_forest_type, random_effect, sample_ID,
+def main(df_input, out_file, random_forest_type, random_effect, sample_id,
          response_var, delta_flag, join_flag):
     df = pd.read_csv(df_input, sep="\t")
     # keep only certain rows and features
@@ -225,9 +225,9 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_ID,
     categoric_columns = [i for i in column_list if
                          i not in numeric_column_list]
 
-    # exclude random effect cols and SampleID
+    # exclude random effect cols and sample_id
     # TODO do I want this in model? Fixed vs random effects?
-    to_drop = [random_effect, sample_ID, "SampleID"]
+    to_drop = [random_effect, sample_id]
     encode_this_list = [i for i in categoric_columns if i not in to_drop]
 
     x, z, clusters, y, feature_list, dummy_dict = \
@@ -298,5 +298,5 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_ID,
 
 
 main(df_input=df_deltas, out_file=pdf_report, random_forest_type=fe_or_me,
-     random_effect=random_effect, sample_ID=sample_ID,
+     random_effect=random_effect, sample_id=sample_id,
      response_var=response_var, delta_flag=delta_flag, join_flag=join_flag)
