@@ -14,37 +14,43 @@ knitr::opts_chunk$set(echo = FALSE,
 ```
 ***
 
-# *Summary*
+# Summary:
 
 ***
 
-This is a summary of the results. Additional figures and files
-can be found in the output directory. Please ensure you understand the workflow.
+Values of the response variable are explained best with the important features selected using this workflow. Additional figures and files
+can be found in the output directory. Please ensure you understand the workflow and that the accuracy of the model is adequate for your purposes.
 When you are using all your data without prior
-hypotheses, you are performing exploratory analysis and should make this clear
+hypotheses, you are performing *exploratory analysis* and should make this clear
 when discussing any results.
 
+***
+
+## Arguments:
+
+***
+
 ```{r comment=""}
-response_var = snakemake@params[['response_var']]
+response_var = snakemake@config[["response_var"]]
 drop_cols = snakemake@params[['drop_cols']]
 constrain_rows = snakemake@params[['constrain_rows']]
-random_effect = snakemake@params[['random_effect']]
+random_effect = snakemake@config[['random_effect']]
 drop_rows = snakemake@params[['drop_rows']]
-
-cat("Values of response variable are explained best with the important features")
+iterations = snakemake@config[["iterations"]]
 
 cat(paste0("RESPONSE VARIABLE: ", response_var))
 cat(paste0("RANDOM EFFECT: ", random_effect))
-
 cat(paste0("FEATURES DROPPED: ", toString(drop_cols)))
 cat(paste0("VALUES DROPED ({feature: value}): ", toString(drop_rows)))
 cat(paste0("CONSTRAINED TO ROWS: ", toString(constrain_rows)))
 
 
+cat(paste0("This pipeline was used to identify important features predictive of ", response_var, " values. A random effect of ", random_effect, " was used to adjust for non-independence. Mixed-effects software MERF was used with ", iterations, " iterations. (Include log file here)"))
 
 
 ```
 
+***
 
 See the [Github repository](https://github.com/JTFouquier/snakemake-MERF "Still a work in progress!! :) ") for more information.
 

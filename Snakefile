@@ -25,7 +25,7 @@ rule all:
 
 rule dim_reduction_pca:
     input:
-        in_file = "data/real-data-no-asvs.txt",
+        in_file = config["metadata"],
     output:
         out_file = path_dim_pca + "final-pca-dim-reduction.txt"
     params:
@@ -42,8 +42,8 @@ rule dim_reduction_pca:
 # TODO remove in_file_metadata
 rule dim_reduction_scnic:
     input:
-        in_file = "data/real-feature-table.biom",
-        in_file_metadata = "data/real-data-no-asvs.txt"
+        in_file = config["asv_biom"],
+        in_file_metadata = config["metadata"]
     output:
         out_file = path_dim_scnic + "SCNIC_modules.txt"
     script:

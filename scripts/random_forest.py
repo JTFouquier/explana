@@ -45,7 +45,10 @@ Features/Considerations for development
 
 """
 
-# access values from snakemake's Snakefile-sofia
+n_estimators = int(snakemake.config["n_estimators"])
+borutaSHAP_trials = int(snakemake.config["borutaSHAP_trials"])
+borutaSHAP_percentile = int(snakemake.config["borutaSHAP_percentile"])
+
 df_deltas = snakemake.input["in_file"]
 pdf_report = snakemake.output["out_file"]
 
@@ -64,10 +67,6 @@ re_timepoint = snakemake.params["re_timepoint"]
 # set graphics dimensions
 width = 14
 height = 8
-
-# max_features to display
-max_display = 10
-top_features = 8
 
 # TODO review this
 join_flag = True
@@ -142,36 +141,19 @@ def graphic_handling(plt, plot_file_name, width=width, height=height):
     plot_list.append(p)
 
 
-def important_shapley_features(shap_values, x):
-    feature_names = list(x.columns.values)
-    vals = np.abs(shap_values).mean(0)
-    feature_importance = pd.DataFrame(list(zip(feature_names, vals)),
-                                      columns=['col_name',
-                                               'feature_importance_vals'])
-    feature_importance.sort_values(by=['feature_importance_vals'],
-                                   ascending=False, inplace=True)
-    feature_importance['feature_importance_vals'] = \
-        feature_importance['feature_importance_vals'].apply(lambda x:
-                                                            round(x, 5))
-    return feature_importance
+def shap_plots(shap_values, x, boruta_accepted, boruta_accepted_tentative,
+               feature_importance):
 
-
-def shap_plots(shap_values, x, boruta_dict, feature_importance):
-
-    accepted_list = boruta_dict['accepted']
     index_list = list(feature_importance[feature_importance[
-        "col_name"].isin(accepted_list)].index)
+        "col_name"].isin(boruta_accepted)].index)
     shap.summary_plot(shap_values=shap_values[:, index_list],
                       features=x.iloc[:, index_list], show=False,
                       plot_size=(width, height), sort=False)
     plt.title("Accepted important features from BorutaShap displayed "
               "with SHAP values", fontdict={'fontsize': 16})
     graphic_handling(plt, "-accepted_SHAP")
-    # accepted_tentative_list = boruta_dict['accepted'] + \
-    #                           boruta_dict['tentative']
-    accepted_tentative_list = boruta_dict['accepted']
     index_list = list(feature_importance[feature_importance[
-        "col_name"].isin(accepted_tentative_list)].index)
+        "col_name"].isin(boruta_accepted_tentative)].index)
     shap.summary_plot(shap_values=shap_values[:, index_list],
                       features=x.iloc[:, index_list], show=False,
                       plot_size=(width, height), sort=False)
@@ -179,58 +161,52 @@ def shap_plots(shap_values, x, boruta_dict, feature_importance):
               "displayed using SHAP values", fontdict={'fontsize': 16})
     graphic_handling(plt, "-accepted-tentative-SHAP-summary")
 
-    shap.summary_plot(shap_values=shap_values[:, index_list],
-                      features=x.iloc[:, index_list], plot_type="bar",
-                      show=False, plot_size=(width, height), sort=False)
-    plt.title("Accepted and tentative important features from BorutaShap "
-              "displayed with SHAP values", fontdict={'fontsize': 16})
-    graphic_handling(plt, "-accepted-tentative-SHAP-summary-bar")
-
     col_count = 1
     # TODO make either accepted or accepted and tentative
-    for col in accepted_tentative_list:
+    for col in boruta_accepted:
         shap.dependence_plot(col, shap_values, x, show=False, x_jitter=0.03)
-        plt.title("Dependence plot for accepted or tentative feature from "
+        plt.title("Dependence plot for accepted features from "
                   "BorutaShap \ndisplayed with SHAP values (with interaction)",
                   fontdict={'fontsize': 16})
-        graphic_handling(plt, "-dependence-plot-interaction-" + str(col_count) +
-                         str(col))
-        shap.dependence_plot(col, shap_values, x, show=False, x_jitter=0.03,
-                             interaction_index=None)
-        plt.title("Dependence plot for accepted or tentative feature from "
-                  "BorutaShap \ndisplayed with SHAP values",
-                  fontdict={'fontsize': 16})
-        graphic_handling(plt, "-dependence-plot-no-interaction-" +
+        graphic_handling(plt, "-dependence-plot-interaction-" +
                          str(col_count) + str(col))
 
 
-def shap_explainer(trained_forest_model, x):
+def run_shap(trained_forest_model, x):
     explainer = shap.TreeExplainer(trained_forest_model)
     shap_values = explainer.shap_values(x)
-    feature_importance = important_shapley_features(shap_values, x)
 
-    top_features_list = list(feature_importance['col_name'][0:top_features])
+    feature_names = list(x.columns.values)
+    vals = np.abs(shap_values).mean(0)
+    shap_imp = \
+        pd.DataFrame(list(zip(feature_names, vals)), columns=['col_name',
+                     'feature_importance_vals'])
+    shap_imp.sort_values(by=['feature_importance_vals'],
+                         ascending=False, inplace=True)
+    shap_imp['feature_importance_vals'] = \
+        shap_imp['feature_importance_vals'].apply(lambda x: round(x, 5))
 
-    return feature_importance, top_features_list, shap_values
+    return shap_imp, shap_values
+
 
 # TODO check percentile
 def run_boruta_shap(forest, x, y):
-    feature_selector = BorutaShap(model=forest, importance_measure='shap',
-                                  classification=False, percentile=85,
-                                  pvalue=0.05)
+    feature_selector = \
+        BorutaShap(model=forest, importance_measure='shap',
+                   classification=False, percentile=borutaSHAP_percentile,
+                   pvalue=0.05)
 
-    feature_selector.fit(X=x, y=y, n_trials=20, train_or_test="train",
-                         sample=False, verbose=False)
+    feature_selector.fit(X=x, y=y, n_trials=borutaSHAP_trials,
+                         train_or_test="train", sample=False, verbose=False)
     boruta_dict = {'accepted': [], 'tentative': [],
                    'rejected': [], 'all': []}
 
     for feature_group in ['all', 'accepted', 'tentative', 'rejected']:
         boruta_dict[feature_group] = \
-            _boruta_shap_plot(feature_selector,
-                              which_features=feature_group,
-                              figsize=(width, height), X_size=10)
+            _boruta_shap_plot(feature_selector, which_features=feature_group,
+                              figsize=(40, 16), X_size=12)
         graphic_handling(plt, "-boruta-" + feature_group + "-features",
-                         width=width, height=height)
+                         width=40, height=16)
     return boruta_dict
 
 
@@ -260,13 +236,12 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_ID,
                              response_var=response_var, delta_flag=delta_flag,
                              join_flag=join_flag)
 
-    rf_regressor = RandomForestRegressor(n_jobs=-2, n_estimators=20,
+    rf_regressor = RandomForestRegressor(n_jobs=-2, n_estimators=n_estimators,
                                          oob_score=True, max_features='auto')
 
     if random_forest_type == "mixed":
         # Instantiate, train MERF, plot stats
-        mrf = MERF(max_iterations=iterations,
-                   fixed_effects_model=rf_regressor)
+        mrf = MERF(max_iterations=iterations, fixed_effects_model=rf_regressor)
         mrf.fit(x, z, clusters, y)
         plot_merf_training_stats(mrf, 12)  # TODO fix
         plt.tight_layout()
@@ -274,46 +249,45 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_ID,
         plt.close()
 
         forest = mrf.trained_fe_model
-        print("forest" + str(forest))
-        print("rf_regressor params:" + str(rf_regressor.get_params()))
-        print("Forest OOB score: " + str(round(forest.oob_score_, 3)))
-        # print(round(forest.oob_score_, 3))
+        print("\nRandom Forest out-of-bag (OOB) score: " +
+              str(round(forest.oob_score_, 3)))
+        print("\n\nrf_regressor params:" + str(rf_regressor.get_params()))
 
     else:
         # TODO
         mrf, training_stats_plot = train_rf_model(x, y)
 
-    # SHAP, BorutaShap, then plot data
-    feature_importance, top_features_list, shap_values = \
-        shap_explainer(forest, x)
+    # BorutaSHAP to select features
     boruta_dict = run_boruta_shap(forest, x, y)
-    shap_plots(shap_values, x, boruta_dict, feature_importance)
+    boruta_accepted = boruta_dict['accepted']
+    boruta_accepted_tentative = \
+        boruta_dict['accepted'] + boruta_dict['tentative']
 
-    # print("\nranking of top 10 features\n")
-    # print(feature_importance.head(10))
-    feature_importance.to_csv(out_file_prefix + "-feature-imp.txt",
-                              sep='\t', mode='a')
+    # SHAP to explain/detail features' values' effects on response variable
+    shap_imp, shap_values = run_shap(forest, x)
+    shap_plots(shap_values, x, boruta_accepted, boruta_accepted_tentative,
+               shap_imp)
+
+    shap_imp.to_csv(out_file_prefix + "-feature-imp.txt", sep='\t', mode='a')
 
     # find prefix for encoded values "ENC_Location_is_1_3" decoded is Location
     # TODO find key words that can't be in column names (_is_, ENC_, etc)
     decoded_top_features_list = []
-    boruta_important = boruta_dict['accepted']
-    # boruta_important = boruta_dict['accepted'] + boruta_dict['tentative']
-    for i in boruta_important:
-        i_for_dict = i.split("_is_")[0] + "_is"
+    for i in boruta_accepted:
+        i_for_dict = i.split("_is_")[0] + "_is"  # TODO important word features
         try:
             decoded = dummy_dict[i_for_dict]
         except KeyError:
             decoded = i
         decoded_top_features_list.append(''.join(decoded))
 
-    df_boruta = pd.DataFrame({'important.features': boruta_important,
+    df_boruta = pd.DataFrame({'important.features': boruta_accepted,
                               'decoded.features': decoded_top_features_list})
     df_boruta.to_csv(out_file_prefix + "-boruta-important.txt", index=False,
                      sep="\t")
     print("\nRanking of top BorutaSHAP Features (max 20 displayed)\n")
     print(df_boruta.head(20))
-    plot_partial_dependence(forest, x, features=boruta_important)
+    plot_partial_dependence(forest, x, features=boruta_accepted)
     plot_some_partial_dependence = plt.gcf()
     plot_some_partial_dependence.set_size_inches(width*1.4, height*1.4)
     plot_list.append(plot_some_partial_dependence)

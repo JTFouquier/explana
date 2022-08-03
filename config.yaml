@@ -1,11 +1,24 @@
 
-
+# output directory
 out: "random-forest/TEST/HDL/"
+
+# files
+# TODO make list
+metadata: "data/real-data-no-asvs.txt"
+asv_biom: "data/real-feature-table.biom"
+distance_matrix: "data/distance-matrix-hdl.tsv"
+
 response_var: "HDL"
 random_effect: "StudyID"
 sample_ID: "StudyID.Timepoint"
-iterations: "20"
-distance_matrix: "data/distance-matrix-hdl.tsv"
+
+# MERF arguments
+iterations: "5"
+n_estimators: "20"
+
+# BorutaSHAP arguments
+borutaSHAP_trials: "20"
+borutaSHAP_percentile: "85"
 
 # paths (relocate to path config file)
 # TODO add dataset and create new folder
