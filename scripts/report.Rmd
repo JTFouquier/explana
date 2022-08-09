@@ -60,6 +60,15 @@ See the [Github repository](https://github.com/JTFouquier/snakemake-MERF "Still 
 
 ***
 
+## Original Data: Log File
+
+***
+
+
+```{r comment=""}
+cat(readLines(snakemake@input[['original_log']]), sep = '\n')
+```
+
 ***
 
 ## Original Data: Overview of Results
@@ -86,22 +95,23 @@ include_graphics(snakemake@input[['original']])
 
 `r include_graphics(snakemake@input[['original_boruta']])`
 
-***
 
-## Original Data: Log File
-
-***
-
-
-```{r comment=""}
-cat(readLines(snakemake@input[['original_log']]), sep = '\n')
-```
 
 
 ***
 
 # First Delta Dataset
 
+
+***
+
+## First Delta Dataset: Log File
+
+***
+
+```{r comment=""}
+cat(readLines(snakemake@input[['first_log']]), sep = '\n')
+```
 ***
 
 ## First Delta Dataset: Overview of Results
@@ -129,15 +139,7 @@ include_graphics(snakemake@input[['first']])
 
 `r include_graphics(snakemake@input[['first_boruta']])`
 
-***
 
-## First Delta Dataset: Log File
-
-***
-
-```{r comment=""}
-cat(readLines(snakemake@input[['first_log']]), sep = '\n')
-```
 
 
 ***
@@ -146,6 +148,13 @@ cat(readLines(snakemake@input[['first_log']]), sep = '\n')
 
 ***
 
+## Previous Delta Dataset: Log File
+
+***
+
+```{r comment=""}
+cat(readLines(snakemake@input[['previous_log']]), sep = '\n')
+```
 ## Previous Delta Dataset: Overview of Results
 
 ***
@@ -171,20 +180,21 @@ include_graphics(snakemake@input[['previous']])
 
 `r include_graphics(snakemake@input[['previous_boruta']])`
 
-***
 
-## Previous Delta Dataset: Log File
-
-***
-
-```{r comment=""}
-cat(readLines(snakemake@input[['previous_log']]), sep = '\n')
-```
 
 ***
 
 # Pairwise Delta Dataset
 
+***
+
+## Pairwise Delta Dataset: Log File
+
+***
+
+```{r comment=""}
+cat(readLines(snakemake@input[['pairwise_log']]), sep = '\n')
+```
 ***
 
 ## Pairwise Delta Dataset: Overview of Results
@@ -211,17 +221,6 @@ include_graphics(snakemake@input[['pairwise']])
 
 `r include_graphics(snakemake@input[['pairwise_boruta']])`
 
-***
-
-## Pairwise Delta Dataset: Log File
-
-***
-
-***
-
-```{r comment=""}
-cat(readLines(snakemake@input[['pairwise_log']]), sep = '\n')
-```
 ***
 
 

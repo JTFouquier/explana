@@ -43,9 +43,8 @@ rule dim_reduction_pca:
 rule dim_reduction_scnic:
     input:
         in_file = config["asv_biom"],
-        in_file_metadata = config["metadata"]
     output:
-        out_file = path_dim_scnic + "SCNIC_modules.txt"
+        out_file = path_dim_scnic + "SCNIC_modules_for_workflow.txt"
     script:
         "scripts/dim_reduction_scnic.py"
 
@@ -54,7 +53,7 @@ rule dim_reduction_scnic:
 rule integrate_datasets:
     input:
         dataset_list = [path_dim_pca + "final-pca-dim-reduction.txt",
-                        path_dim_scnic + "SCNIC_modules.txt"]
+                        path_dim_scnic + "SCNIC_modules_for_workflow.txt"]
     output:
         out_file = path_merged_data + "final-merged-dfs.txt"
     script:

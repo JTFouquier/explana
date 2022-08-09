@@ -2,25 +2,66 @@
 # output directory
 out: "random-forest/TEST/HDL/"
 
+
 # files
 # TODO make list
-metadata: "data/hdl-test/real-data-no-asvs.txt"
-asv_biom: "data/hdl-test/real-feature-table.biom"
-distance_matrix: "data/hdl-test/distance-matrix-hdl.tsv"
+
+# TODO add original, first, previous and pairwise options
 
 response_var: "HDL"
 random_effect: "StudyID"
 sample_id: "SampleID"
 
+
+##### DIMENSIONALITY REDUCTION AND INTEGRATION #####
+#rule dim_reduction_scnic and dim_reduction_pca can be combined
+#rule integrate_datasets
+
+metadata: "data/hdl-test/real-data-no-asvs.txt"
+asv_biom: "data/hdl-test/real-feature-table.biom"
+
+# TODO https://codebeautify.org/jsonviewer
+# TODO add json parser for running snakemake rules
+#{
+#  "DS_ASVS": {
+#    "dim_method": "SCNIC",
+#    "file_path": "data/hdl-test/real-feature-table.biom",
+#    "param_dict": {}
+#  },
+#  "DS_metadata": {
+#    "dim_method": "PCA",
+#    "file_path": "data/hdl-test/real-data-no-asvs.txt",
+#    "param_dict": {}
+#  },
+#  "DS_other": {
+#    "dim_method": "NONE",
+#    "file_path": "TODO",
+#    "param_dict": {}
+#  }
+#}
+# TODO add drop columns here
+
+#rule make_delta_datasets
+distance_matrix: "data/hdl-test/distance-matrix-hdl.tsv"
+
+# MOVE TO RF as a flag.
+#rule visualize_datasets
+
+
+##### Random Forest Arguments #####
+#rule random_forest_deltas
+#rule random_forest_original
+
 # MERF arguments
-iterations: "5"
-n_estimators: "20"
+iterations: "20"
+n_estimators: "100"
 
 # BorutaSHAP arguments
 borutaSHAP_trials: "20"
 borutaSHAP_percentile: "85"
 
-# paths (relocate to path config file)
+
+# paths (relocate to path config file away from users)
 # TODO add dataset and create new folder
 path_dim_pca: "01-DIM-PCA-metadata/"
 path_dim_scnic: "01-DIM-SCNIC-biom/"

@@ -9,9 +9,9 @@ from biom import load_table
 
 # TODO fix this: prefix + process + dataset as folder
 
-scnic_out_folder = snakemake.config["out"] + "01-DIM-SCNIC-biom/" # TODO fix
+scnic_out_folder = snakemake.config["out"] + \
+                   snakemake.config["path_dim_scnic"]
 biom_name = snakemake.input["in_file"]
-in_file_metadata = snakemake.input["in_file_metadata"]
 sample_id = snakemake.config["sample_id"]
 
 
@@ -48,17 +48,7 @@ def main(scnic_folder, biom_file_name):
     biom_table = load_table(scnic_folder + "modules_output/collapsed.biom")
     biom_table = biom_table.transpose()
     df_scnic = biom_table.to_dataframe().rename_axis(sample_id)
-    df_scnic.to_csv(scnic_folder + "SCNIC_modules.txt", sep="\t")
-
-    df_metadata = pd.read_csv(in_file_metadata, sep="\t",
-                              index_col=sample_id)
-
-    # TODO update sample naming system for workflow
-    # TODO check params here; suffixes, duplicate columns, etc
-    df = pd.merge(df_metadata, df_scnic, left_index=True, right_index=True,
-                  how="inner", validate="one_to_one", sort=False)
-    df = df.rename_axis(sample_id)
-    df.to_csv(scnic_folder + "metadata_with_SCNIC_modules.txt", sep="\t")
+    df_scnic.to_csv(scnic_folder + "SCNIC_modules_for_workflow.txt", sep="\t")
 
 start_time = time.time()
 main(scnic_folder=scnic_out_folder, biom_file_name=biom_name)
