@@ -20,26 +20,31 @@ sample_id: "SampleID"
 metadata: "data/hdl-test/real-data-no-asvs.txt"
 asv_biom: "data/hdl-test/real-feature-table.biom"
 
-# TODO https://codebeautify.org/jsonviewer
-# TODO add json parser for running snakemake rules
-#{
-#  "DS_ASVS": {
-#    "dim_method": "SCNIC",
-#    "file_path": "data/hdl-test/real-feature-table.biom",
-#    "param_dict": {}
-#  },
-#  "DS_metadata": {
-#    "dim_method": "PCA",
-#    "file_path": "data/hdl-test/real-data-no-asvs.txt",
-#    "param_dict": {}
-#  },
-#  "DS_other": {
-#    "dim_method": "NONE",
-#    "file_path": "TODO",
-#    "param_dict": {}
-#  }
-#}
-# TODO add drop columns here
+# Thttps://codebeautify.org/jsonviewer
+dataset_json: '{
+  "datasets": {
+    "dataset": [
+      {
+        "ds_name": "DS_ASVS",
+        "dim_method": "SCNIC",
+        "file_path": "random-forest/TEST/HDL/01-DIM-SCNIC-biom/SCNIC_modules_for_workflow.txt",
+        "param_dict": ""
+      },
+      {
+        "ds_name": "DS_metadata",
+        "dim_method": "PCA",
+        "file_path": "data/hdl-test/real-data-no-asvs.txt",
+        "param_dict": ""
+      }
+    ]
+  }
+}'
+
+drop_rows: '{"SexualClassification": "Women"}'
+constrain_rows: '{"Diet": "Agrarian"}'
+drop_cols: '["Inflammation", "TotalCholesterol", "PCA", "HOMAIR"]'
+constrain_cols: '[]'
+
 
 #rule make_delta_datasets
 distance_matrix: "data/hdl-test/distance-matrix-hdl.tsv"

@@ -56,6 +56,8 @@ rule integrate_datasets:
                         path_dim_scnic + "SCNIC_modules_for_workflow.txt"]
     output:
         out_file = path_merged_data + "final-merged-dfs.txt"
+    params:
+        dataset_json = config["dataset_json"]
     script:
         "scripts/merge_datasets.py"
 
@@ -110,10 +112,6 @@ rule random_forest_deltas:
         random_forest_type = "{mixed}",  # mixed or fixed
         random_effect = config["random_effect"],
         sample_id = config["sample_id"],
-        drop_rows = {"SexualClassification": "Women_Women"},
-        constrain_rows = {"Diet": "Agrarian_Agrarian"},
-        drop_cols = ["Inflammation","TotalCholesterol", "PCA", "HOMAIR"],
-        constrain_cols = [],
         response_var = config["response_var"],
         delta_flag = "{deltas}",  # raw or deltas
         iterations = config["iterations"],  # 20 is suggested, 10 for testing
@@ -131,10 +129,6 @@ rule random_forest_original:
         random_forest_type = "mixed",
         random_effect = config["response_var"],
         sample_id = config["sample_id"],
-        drop_rows = {"SexualClassification": "Women"},
-        constrain_rows = {"Diet": "Agrarian"},
-        drop_cols = ["Inflammation", "TotalCholesterol", "PCA", "HOMAIR"],
-        constrain_cols = [],
         response_var = config["response_var"],
         delta_flag = "raw",
         iterations = config["iterations"],
@@ -145,6 +139,8 @@ rule random_forest_original:
 
 # TODO program if statements here and make report reflect missing data
 # TODO consider if statements with all rule
+# TODO idea make four new render reports
+
 rule render_report:
     input:
         original = rules.random_forest_original.output.out_file,
@@ -182,9 +178,9 @@ rule render_report:
     output:
         md_doc="report.html",
     params:
-        drop_cols= rules.random_forest_original.params.drop_cols,
-        constrain_rows= rules.random_forest_original.params.constrain_rows,
-        drop_rows= rules.random_forest_original.params.drop_rows,
+        drop_cols= config["drop_cols"],
+        constrain_rows= config["constrain_rows"],
+        drop_rows= config["drop_rows"],
     script:
         "scripts/report.Rmd"
 

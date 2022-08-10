@@ -8,32 +8,33 @@ import json
 output_folder = snakemake.config["out"] + snakemake.config["path_merged_data"]
 sample_id = snakemake.config["sample_id"]
 
-dataset_file_list = snakemake.input["dataset_list"]
+# dataset_file_list = snakemake.input["dataset_list"]
+dataset_json = snakemake.config["dataset_json"]
 
 
 # TODO metadata-pcas needs be clear as this can be done on other datasets
 # TODO add name of dataset to folder and file names to stay organized
 
-dataset_json = {
-  "datasets": {
-    "dataset": [
-      {
-        "ds_name": "DS_ASVS",
-        "dim_method": "SCNIC",
-        "file_path": "random-forest/TEST/HDL/01-DIM-SCNIC-biom/SCNIC_modules_for_workflow.txt",
-        "param_dict": ""
-      },
-      {
-        "ds_name": "DS_metadata",
-        "dim_method": "PCA",
-        "file_path": "data/hdl-test/real-data-no-asvs.txt",
-        "param_dict": ""
-      }
-    ]
-  }
-}
+# dataset_json = {
+#   "datasets": {
+#     "dataset": [
+#       {
+#         "ds_name": "DS_ASVS",
+#         "dim_method": "SCNIC",
+#         "file_path": "random-forest/TEST/HDL/01-DIM-SCNIC-biom/SCNIC_modules_for_workflow.txt",
+#         "param_dict": ""
+#       },
+#       {
+#         "ds_name": "DS_metadata",
+#         "dim_method": "PCA",
+#         "file_path": "data/hdl-test/real-data-no-asvs.txt",
+#         "param_dict": ""
+#       }
+#     ]
+#   }
+# }
 
-dataset_json = json.dumps(dataset_json)
+# dataset_json = json.dumps(dataset_json)
 dataset_json = json.loads(dataset_json)
 
 df_list = []
@@ -43,26 +44,24 @@ unique_cols = []
 for dataset in dataset_json:
     for k, v in dataset_json[dataset].items():
         for i in v:
-            df = pd.read_csv(i["file_path"], sep="\t",
-                             index_col=sample_id)
+            df = pd.read_csv(i["file_path"], sep="\t", index_col=sample_id)
             df_dict[i["ds_name"]] = df
             unique_cols += list(df.columns)
             df_list.append(df)
 
-# TODO
-
+# TODO create fail here
 if len(set(unique_cols)) == len(unique_cols):
     pass
 else:
    print("Warning: Dataset columns are not unique and may create problems")
 
 # TODO VERIFY THIS MERGE *** review merge decisions ***
+# TODO improve memory use here, don't load all to df
 df = reduce(lambda x, y: pd.merge(x, y, left_index=True, right_index=True,
                                   how="inner", validate="one_to_one",
                                   sort=False), df_list)
 #
 # df = df[df.columns.drop(list(df.filter(regex='_reference')))]
-print(df)
 
 def _subset_simple(df_input, drop_rows, subset_rows, drop_cols, constrain_cols):
 
@@ -93,10 +92,10 @@ def _subset_simple(df_input, drop_rows, subset_rows, drop_cols, constrain_cols):
     return df_input
 
 
-drop_rows = {"SexualClassification": "Women"}
-constrain_rows = {"Diet": "Agrarian"}
-drop_cols = ["Inflammation", "TotalCholesterol", "PCA", "HOMAIR"]
-constrain_cols = []
+drop_rows = eval(snakemake.config["drop_rows"])
+constrain_rows = eval(snakemake.config["constrain_rows"])
+drop_cols = eval(snakemake.config["drop_cols"])
+constrain_cols = eval(snakemake.config["constrain_cols"])
 
 df = _subset_simple(df, drop_rows, constrain_rows, drop_cols,
                     constrain_cols)

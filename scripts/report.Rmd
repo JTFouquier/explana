@@ -32,10 +32,10 @@ when discussing any results.
 
 ```{r comment=""}
 response_var = snakemake@config[["response_var"]]
-drop_cols = snakemake@params[['drop_cols']]
-constrain_rows = snakemake@params[['constrain_rows']]
+drop_cols = snakemake@config[['drop_cols']]
+constrain_rows = snakemake@config[['constrain_rows']]
 random_effect = snakemake@config[['random_effect']]
-drop_rows = snakemake@params[['drop_rows']]
+drop_rows = snakemake@config[['drop_rows']]
 iterations = snakemake@config[["iterations"]]
 
 cat(paste0("RESPONSE VARIABLE: ", response_var))

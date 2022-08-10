@@ -16,7 +16,7 @@ from sklearn.ensemble import RandomForestRegressor
 
 # TODO switch to OneHotEncoder
 from hot_encoding import _dummy_var_creation
-from utils import _subset_simple, _build_result_pdf
+from utils import _build_result_pdf
 from boruta_shap_plot import _boruta_shap_plot
 
 """
@@ -54,14 +54,10 @@ pdf_report = snakemake.output["out_file"]
 
 fe_or_me = snakemake.params["random_forest_type"]
 random_effect = snakemake.params["random_effect"]
-sample_id = snakemake.params["sample_id"]
-drop_rows = snakemake.params["drop_rows"]
-constrain_rows = snakemake.params["constrain_rows"]
-drop_cols = snakemake.params["drop_cols"]
-constrain_cols = snakemake.params["constrain_cols"]
-response_var = snakemake.params["response_var"]
+sample_id = snakemake.config["sample_id"]
+response_var = snakemake.config["response_var"]
 delta_flag = snakemake.params["delta_flag"]
-iterations = int(snakemake.params["iterations"])
+iterations = int(snakemake.config["iterations"])
 re_timepoint = snakemake.params["re_timepoint"]
 
 # set graphics dimensions
@@ -213,12 +209,6 @@ def run_boruta_shap(forest, x, y):
 def main(df_input, out_file, random_forest_type, random_effect, sample_id,
          response_var, delta_flag, join_flag):
     df = pd.read_csv(df_input, sep="\t")
-    # keep only certain rows and features
-    # raise error: "Cannot include response var in `drop_cols` list"
-    # if response_var in drop_cols:
-    #     raise ValueError("Cannot include response var in `drop_cols` list")
-    df = _subset_simple(df, drop_rows, constrain_rows, drop_cols,
-                        constrain_cols)
 
     numeric_column_list = list(df._get_numeric_data().columns)
     column_list = list(df.columns)
