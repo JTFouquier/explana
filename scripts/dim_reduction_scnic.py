@@ -11,7 +11,7 @@ from biom import load_table
 
 scnic_out_folder = snakemake.config["out"] + \
                    snakemake.config["path_dim_scnic"] + \
-                   snakemake.config["scnic_name"] + "/"
+                   snakemake.params["dataset_name"] + "/"
 biom_name = snakemake.input["in_file"]
 sample_id = snakemake.config["sample_id"]
 
