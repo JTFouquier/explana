@@ -2,58 +2,24 @@
 
 import pandas as pd
 from functools import reduce
-import json
 
 # From config first, then from rule
 output_folder = snakemake.config["out"] + snakemake.config["path_merged_data"]
 sample_id = snakemake.config["sample_id"]
 
 fp_list = snakemake.input["fp_list"]
-# dataset_json = snakemake.config["dataset_json"]
 
 
 # TODO metadata-pcas needs be clear as this can be done on other datasets
 # TODO add name of dataset to folder and file names to stay organized
 
-# dataset_json = {
-#   "datasets": {
-#     "dataset": [
-#       {
-#         "ds_name": "DS_ASVS",
-#         "dim_method": "SCNIC",
-#         "file_path": "random-forest/TEST/HDL/01-DIM-SCNIC-biom/SCNIC_modules_for_workflow.txt",
-#         "param_dict": ""
-#       },
-#       {
-#         "ds_name": "DS_metadata",
-#         "dim_method": "PCA",
-#         "file_path": "data/hdl-test/real-data-no-asvs.txt",
-#         "param_dict": ""
-#       }
-#     ]
-#   }
-# }
-
-# dataset_json = json.dumps(dataset_json)
-# dataset_json = json.loads(dataset_json)
-
-
 df_list = []
 df_dict = {}
 
 unique_cols = []
-# for dataset in dataset_json:
-#     for k, v in dataset_json[dataset].items():
-#         for i in v:
-#             df = pd.read_csv(i["file_path"], sep="\t", index_col=sample_id)
-#             df_dict[i["ds_name"]] = df
-#             unique_cols += list(df.columns)
-#             df_list.append(df)
 
 for i in range(len(fp_list)):
     df = pd.read_csv(fp_list[i], sep="\t", index_col=sample_id)
-    # df_name = 'df' + str(i)
-    # df_dict[df_name] = df
     unique_cols += list(df.columns)
     df_list.append(df)
 

@@ -32,7 +32,7 @@ pca_groups_list = snakemake@params[["pca_groups_list"]]
 # TODO sort out good folder names and locations
 final_output_folder = paste0(snakemake@config[["out"]],
                              snakemake@config[["path_dim_pca"]],
-                             snakemake@config[["ds_name"]], "/")
+                             snakemake@config[["pca_name"]], "/")
 
 
 write_table_special <- function(df, folder_name, file_name) {
