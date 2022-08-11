@@ -1,3 +1,4 @@
+import json
 
 
 configfile: "config.yaml"
@@ -13,21 +14,81 @@ path_dim_scnic = config["out"] + config["path_dim_scnic"]
 
 path_merged_data = config["out"] + config["path_merged_data"]
 
+def dim_reduction():
+    dataset_json = json.loads(config["dataset_json"])
+    config["fp_list"] = None
+    fp_list = []
+    for dataset in dataset_json:
+        for k, v in dataset_json[dataset].items():
+            print('k')
+            print(k)
+            print('v')
+            print(v)
+            for i in v:
+                print("i")
+                print(i)
+                config["ds_fp"] = None
+                config["ds_name"] = None
+                config["pca_out"] = None
+                config["scnic_out"] = None
+                # ds_fp = ""
+                # ds_name = ""
+                # dim_flag = ""
+
+                ds_fp = i["file_path"]
+                ds_name = i["ds_name"]
+                dim_flag = i["dim_method"]
+
+                print(ds_name)
+                print(ds_fp)
+                print(dim_flag)
+
+                if dim_flag == "pca":
+                    # config["dim_flag"] = dim_flag
+                    config["ds_fp"] = ds_fp
+                    config["ds_name"] = ds_name
+                    pca_out = path_dim_pca + ds_name + \
+                                        "/final-pca-dim-reduction.txt"
+                    print(pca_out)
+                    fp_list.append(pca_out)
+                    config["scnic_out"] = scnic_out
+                if dim_flag == "scnic":
+                    config["ds_fp"] = ds_fp
+                    config["ds_name"] = ds_name
+                    scnic_out = path_dim_scnic + ds_name + \
+                                          "/SCNIC_modules_for_workflow.txt"
+                    print(scnic_out)
+                    # fp_list.append(config["scnic_out"])
+                    fp_list.append(scnic_out)
+                    config["scnic_out"] = scnic_out
+
+
+        config["fp_list"] = fp_list
+        print(config["fp_list"])
+
+dim_reduction()
+
+
 rule all:
     input:
-        original = path_rf_original + "MERF-original.pdf",
-        first = path_rf_first + "mixed-RF-deltas-re_timepoint-first.pdf",
-        previous = path_rf_previous +
-                   "mixed-RF-deltas-re_timepoint-previous.pdf",
-        pairwise = path_rf_pairwise +
-                   "mixed-RF-deltas-re_timepoint-pairwise.pdf",
+        original=path_rf_original + "MERF-original.pdf",
+        first=path_rf_first + "mixed-RF-deltas-re_timepoint-first.pdf",
+        previous=path_rf_previous +
+                 "mixed-RF-deltas-re_timepoint-previous.pdf",
+        pairwise=path_rf_pairwise +
+                 "mixed-RF-deltas-re_timepoint-pairwise.pdf",
+
+
+# rules.dim_reduction_scnic.input.in_file
 
 
 rule dim_reduction_pca:
     input:
-        in_file = config["metadata"],
+        # in_file = config["ds_fp"],
+        in_file = config["ds_fp"],
+
     output:
-        out_file = path_dim_pca + "final-pca-dim-reduction.txt"
+        out_file = path_dim_pca + "metadata" + "/final-pca-dim-reduction.txt"
     params:
         pca_groups_list = "list(list("
                           "pca_name='PCA1',"
@@ -42,9 +103,9 @@ rule dim_reduction_pca:
 # TODO remove in_file_metadata
 rule dim_reduction_scnic:
     input:
-        in_file = config["asv_biom"],
+        in_file = config["ds_fp"],
     output:
-        out_file = path_dim_scnic + "SCNIC_modules_for_workflow.txt"
+        out_file = path_dim_scnic + "asvs" + "/SCNIC_modules_for_workflow.txt"
     script:
         "scripts/dim_reduction_scnic.py"
 
@@ -52,12 +113,13 @@ rule dim_reduction_scnic:
 # TODO add drop columns or rows here instead
 rule integrate_datasets:
     input:
-        dataset_list = [path_dim_pca + "final-pca-dim-reduction.txt",
-                        path_dim_scnic + "SCNIC_modules_for_workflow.txt"]
+        fp_list = config["fp_list"],
+        # dataset_list = [path_dim_pca + "final-pca-dim-reduction.txt",
+        #                 path_dim_scnic + "SCNIC_modules_for_workflow.txt"]
     output:
         out_file = path_merged_data + "final-merged-dfs.txt"
-    params:
-        dataset_json = config["dataset_json"]
+    # params:
+    #     dataset_json = config["dataset_json"]
     script:
         "scripts/merge_datasets.py"
 

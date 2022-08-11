@@ -17,23 +17,23 @@ sample_id: "SampleID"
 #rule dim_reduction_scnic and dim_reduction_pca can be combined
 #rule integrate_datasets
 
-metadata: "data/hdl-test/real-data-no-asvs.txt"
-asv_biom: "data/hdl-test/real-feature-table.biom"
+#metadata: "data/hdl-test/real-data-no-asvs.txt"
+#asv_biom: "data/hdl-test/real-feature-table.biom"
 
 # Thttps://codebeautify.org/jsonviewer
 dataset_json: '{
   "datasets": {
     "dataset": [
       {
-        "ds_name": "DS_ASVS",
-        "dim_method": "SCNIC",
-        "file_path": "random-forest/TEST/HDL/01-DIM-SCNIC-biom/SCNIC_modules_for_workflow.txt",
+        "ds_name": "asvs",
+        "file_path": "data/hdl-test/real-feature-table.biom",
+        "dim_method": "scnic",
         "param_dict": ""
       },
       {
-        "ds_name": "DS_metadata",
-        "dim_method": "PCA",
+        "ds_name": "metadata",
         "file_path": "data/hdl-test/real-data-no-asvs.txt",
+        "dim_method": "pca",
         "param_dict": ""
       }
     ]
@@ -68,8 +68,8 @@ borutaSHAP_percentile: "85"
 
 # paths (relocate to path config file away from users)
 # TODO add dataset and create new folder
-path_dim_pca: "01-DIM-PCA-metadata/"
-path_dim_scnic: "01-DIM-SCNIC-biom/"
+path_dim_pca: "01-DIM-PCA/"
+path_dim_scnic: "01-DIM-SCNIC/"
 
 path_merged_data: "02-MERGED-DATA/"
 
