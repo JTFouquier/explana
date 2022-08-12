@@ -21,24 +21,49 @@ sample_id: "SampleID"
 #asv_biom: "data/hdl-test/real-feature-table.biom"
 
 # Thttps://codebeautify.org/jsonviewer
+#dataset_json: '{
+#  "datasets": {
+#    "dataset": [
+#      {
+#        "ds_name": "asvs",
+#        "file_path": "data/hdl-test/real-feature-table.biom",
+#        "dim_method": "scnic",
+#        "param_dict": ""
+#      },
+#      {
+#        "ds_name": "metadata",
+#        "file_path": "data/hdl-test/real-data-no-asvs.txt",
+#        "dim_method": "pca",
+#        "param_dict": ""
+#      }
+#    ]
+#  }
+#}'
+
+
 dataset_json: '{
   "datasets": {
-    "dataset": [
-      {
-        "ds_name": "asvs",
-        "file_path": "data/hdl-test/real-feature-table.biom",
-        "dim_method": "scnic",
-        "param_dict": ""
-      },
-      {
-        "ds_name": "metadata",
-        "file_path": "data/hdl-test/real-data-no-asvs.txt",
-        "dim_method": "pca",
-        "param_dict": ""
-      }
-    ]
+      "metadata": {
+      "ds_name": "metadata",
+      "file_path": "data/hdl-test/real-data-no-asvs.txt",
+      "dim_method": "pca",
+      "param_dict": ""
+    },
+    "asvs": {
+      "ds_name": "asvs",
+      "file_path": "data/hdl-test/real-feature-table.biom",
+      "dim_method": "scnic",
+      "param_dict": ""
+    }
   }
 }'
+#    "metadata2": {
+#      "ds_name": "metadata2",
+#      "file_path": "data/hdl-test/real-data-no-asvs-2.txt",
+#      "dim_method": "pca",
+#      "param_dict": ""
+#    }
+
 
 drop_rows: '{"SexualClassification": "Women"}'
 constrain_rows: '{"Diet": "Agrarian"}'

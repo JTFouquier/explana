@@ -14,49 +14,37 @@ path_dim_scnic = config["out"] + config["path_dim_scnic"]
 
 path_merged_data = config["out"] + config["path_merged_data"]
 
-pca_counter = 0
-scnic_counter = 0
 
-def dim_reduction(pca_counter, scnic_counter):
+def dim_reduction():
     dataset_json = json.loads(config["dataset_json"])
-    config["fp_list"] = None
     fp_list = []
-    for w in range(len(dataset_json["datasets"]["dataset"])):
+    for w in dataset_json["datasets"]:
 
-        ds_name = dataset_json["datasets"]["dataset"][w]["ds_name"]
-        file_path = dataset_json["datasets"]["dataset"][w]["file_path"]
-        dim_method = dataset_json["datasets"]["dataset"][w]["dim_method"]
-        param_dict = dataset_json["datasets"]["dataset"][w]["param_dict"]
+        ds_name = dataset_json["datasets"][w]["ds_name"]
+        file_path = dataset_json["datasets"][w]["file_path"]
+        dim_method = dataset_json["datasets"][w]["dim_method"]
+        param_dict = dataset_json["datasets"][w]["param_dict"]
 
         if dim_method == "pca":
-            config["pc" + str(pca_counter)] = str(pca_counter)
-            config[str(pca_counter)] = str(pca_counter)
-            config["pca_fp" + str(pca_counter)] = file_path
-            config["pca_name" + str(pca_counter)] = ds_name
-
-            pca_out = path_dim_pca + ds_name + \
-                      "/final-pca-dim-reduction.txt"
-            fp_list.append(pca_out)
-            pca_counter += 1
+            config["pca_file_path"] = file_path
+            config["pca_ds_name"] = ds_name
+            f_out = path_dim_pca + ds_name + "/final-pca-dim-reduction.txt"
 
         elif dim_method == "scnic":
-            config["sc" + str(scnic_counter)] = str(scnic_counter)
-            config[str(scnic_counter)] = str(scnic_counter)
-            config["scnic_fp" + str(scnic_counter)] = file_path
-            config["scnic_name" + str(scnic_counter)] = ds_name
+            config["scnic_file_path"] = file_path
+            config["scnic_ds_name"] = ds_name
+            f_out = path_dim_scnic + ds_name + "/SCNIC_modules_for_workflow.txt"
 
-            scnic_out = path_dim_scnic + ds_name + \
-                        "/SCNIC_modules_for_workflow.txt"
-            fp_list.append(scnic_out)
-            scnic_counter += 1
+        fp_list.append(f_out)
 
-
-    config["fp_list"] = fp_list
+    # print(fp_list)
     print(config)
 
+    return fp_list
 
-dim_reduction(pca_counter, scnic_counter)
 
+fp_list = dim_reduction()
+config["fp_list"] = fp_list
 
 
 rule all:
@@ -68,14 +56,13 @@ rule all:
         pairwise=path_rf_pairwise +
                  "mixed-RF-deltas-re_timepoint-pairwise.pdf",
 
-
 rule dim_reduction_pca:
     input:
-        in_file = config["pca_fp" + config[str(pca_counter)]]
+        in_file = config["pca_file_path"]
     output:
-        out_file = path_dim_pca + config["pca_name" + config[str(pca_counter)]] + "/final-pca-dim-reduction.txt"
+        out_file = path_dim_pca + config["pca_ds_name"] + "/final-pca-dim-reduction.txt"
     params:
-        dataset_name = config["pca_name" + config[str(pca_counter)]],
+        dataset_name = config["pca_ds_name"],
         pca_groups_list = "list(list("
                           "pca_name='PCA1',"
                           "feature_list=c('Triglycerides', 'LDL', 'Leptin', "
@@ -89,16 +76,17 @@ rule dim_reduction_pca:
 # TODO remove in_file_metadata
 rule dim_reduction_scnic:
     input:
-        in_file = config["scnic_fp" + config[str(scnic_counter)]]
+        in_file = config["scnic_file_path"]
     output:
-        out_file = path_dim_scnic + config["scnic_name" + config[str(scnic_counter)]] + "/SCNIC_modules_for_workflow.txt"
+        out_file =  path_dim_scnic + config["scnic_ds_name"] + "/SCNIC_modules_for_workflow.txt"
     params:
-        dataset_name = config["scnic_name" + config[str(scnic_counter)]]
+        dataset_name = config["scnic_ds_name"]
     script:
         "scripts/dim_reduction_scnic.py"
 
 # TODO have the default be to merge all datasets output from 01 steps
 # TODO add drop columns or rows here instead
+
 rule integrate_datasets:
     input:
         fp_list = config["fp_list"],
