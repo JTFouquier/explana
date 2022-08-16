@@ -1,7 +1,8 @@
 import json
 
 
-configfile: "config.yaml"
+configfile: "config/config-demo.yaml"
+configfile: "config/config-paths.yaml"
 
 # TODO add outputs concatenated with final output file
 path_rf_original = config["out"] + config["path_rf_original"]
@@ -210,7 +211,7 @@ rule render_report:
 
         dag_plot = "scripts/dag.svg",
     output:
-        md_doc="report.html",
+        md_doc=config["report_name"],
     params:
         drop_cols= config["drop_cols"],
         constrain_rows= config["constrain_rows"],

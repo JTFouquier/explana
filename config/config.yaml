@@ -1,0 +1,152 @@
+
+# output directory
+
+
+
+
+
+# Demo1 highlight out scnic
+out: "random-forest/TEST/HDL-Demo1/"
+report_name: "HDL-Demo1.html"
+
+## Demo2
+#out: "random-forest/TEST/HDL-Demo2/"
+#report_name: "HDL-Demo2.html"
+#
+## Demo3
+#out: "random-forest/TEST/HDL-Demo3/"
+#report_name: "HDL-Demo3.html"
+#
+## Demo3
+#out: "random-forest/TEST/HDL-Demo4/"
+#report_name: "HDL-Demo4.html"
+
+
+##### DIMENSIONALITY REDUCTION AND INTEGRATION #####
+#rule dim_reduction_scnic and dim_reduction_pca
+
+# Thttps://codebeautify.org/jsonviewer
+
+# Demo3
+#dataset_json: '{
+#  "datasets": {
+#      "metadata": {
+#      "ds_name": "metadata",
+#      "file_path": "data/hdl-test/real-data-no-asvs.txt",
+#      "dim_method": "pca",
+#      "param_dict": ""
+#    },
+#    "asvs": {
+#      "ds_name": "asvs",
+#      "file_path": "data/hdl-test/real-feature-table.biom",
+#      "dim_method": "scnic",
+#      "param_dict": ""
+#    }
+#  }
+#}'
+
+# Demo1 and Demo2
+dataset_json: '{
+  "datasets": {
+      "metadata": {
+      "ds_name": "metadata",
+      "file_path": "data/hdl-test/real-data-no-asvs.txt",
+      "dim_method": "pca",
+      "param_dict": ""
+    }
+  }
+}'
+
+## Demo4
+#dataset_json: '{
+#  "datasets": {
+#    "asvs": {
+#      "ds_name": "asvs",
+#      "file_path": "data/hdl-test/real-feature-table.biom",
+#      "dim_method": "scnic",
+#      "param_dict": ""
+#    }
+#  }
+#}'
+
+
+
+# Demo1 Demo3
+drop_cols: '["Inflammation", "TotalCholesterol", "PCA", "HOMAIR"]'
+
+# Demo2
+#drop_cols: '["Inflammation", "TotalCholesterol", "PCA", "HOMAIR",
+#"Adiponectin", "LDL", "Leptin", "Triglycerides", "Glucose", "Insulin"]'
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+constrain_cols: '[]'
+
+drop_rows: '{"SexualClassification": "Women"}'
+constrain_rows: '{"Diet": "Agrarian"}'
+
+#rule make_delta_datasets
+distance_matrix: "data/hdl-test/distance-matrix-hdl.tsv"
+
+# MOVE TO RF as a flag.
+#rule visualize_datasets
+
+
+##### Random Forest Arguments #####
+#rule random_forest_deltas
+#rule random_forest_original
+
+# MERF arguments
+iterations: "10"
+n_estimators: "300"
+
+# BorutaSHAP arguments
+borutaSHAP_trials: "50"
+borutaSHAP_percentile: "80"
+
+
+# paths (relocate to path config file away from users)
+# TODO add dataset and create new folder
+path_dim_pca: "01-DIM-PCA/"
+path_dim_scnic: "01-DIM-SCNIC/"
+
+path_merged_data: "02-MERGED-DATA/"
+
+path_rf_original: "04-SELECTED-FEATURES-original/"
+path_rf_first: "04-SELECTED-FEATURES-first/"
+path_rf_previous: "04-SELECTED-FEATURES-previous/"
+path_rf_pairwise: "04-SELECTED-FEATURES-pairwise/"
+
+
+
+
+#    "metadata2": {
+#      "ds_name": "metadata2",
+#      "file_path": "data/hdl-test/real-data-no-asvs-2.txt",
+#      "dim_method": "pca",
+#      "param_dict": ""
+#    }
+
+
+
