@@ -1,7 +1,8 @@
 import json
 
 
-configfile: "config/config-demo.yaml"
+# configfile: "config/config-demo.yaml"
+configfile: "config/config.yaml"
 configfile: "config/config-paths.yaml"
 
 # TODO add outputs concatenated with final output file
@@ -18,35 +19,34 @@ path_merged_data = config["out"] + config["path_merged_data"]
 
 def dim_reduction():
     dataset_json = json.loads(config["dataset_json"])
-    fp_list = []
-    for w in dataset_json["datasets"]:
-
-        ds_name = dataset_json["datasets"][w]["ds_name"]
-        file_path = dataset_json["datasets"][w]["file_path"]
-        dim_method = dataset_json["datasets"][w]["dim_method"]
-        param_dict = dataset_json["datasets"][w]["param_dict"]
-
+    fp_list_for_merge = []
+    pca_ds_list = []
+    scnic_ds_list = []
+    for ds_name in dataset_json["datasets"]:
+        dim_method = dataset_json["datasets"][ds_name]["dim_method"]
         if dim_method == "pca":
-            config["pca_file_path"] = file_path
-            config["pca_ds_name"] = ds_name
             f_out = path_dim_pca + ds_name + "/final-pca-dim-reduction.txt"
+            pca_ds_list.append(ds_name)
 
         elif dim_method == "scnic":
-            config["scnic_file_path"] = file_path
-            config["scnic_ds_name"] = ds_name
-            f_out = path_dim_scnic + ds_name + "/SCNIC_modules_for_workflow.txt"
+            f_out = path_dim_scnic + ds_name + \
+                    "/SCNIC_modules_for_workflow.txt"
+            scnic_ds_list.append(ds_name)
 
-        fp_list.append(f_out)
+        else:
+            f_out = dataset_json["datasets"][ds_name]["file_path"]
 
-    # print(fp_list)
-    print(config)
+        fp_list_for_merge.append(f_out)
 
-    return fp_list
+    return fp_list_for_merge, pca_ds_list, scnic_ds_list, dataset_json
 
 
-fp_list = dim_reduction()
-config["fp_list"] = fp_list
+fp_list_for_merge, pca_ds_list, scnic_ds_list, dataset_json = dim_reduction()
+config["fp_list_for_merge"] = fp_list_for_merge
+config["dataset_json"] = dataset_json
 
+config["scnic_ds_list"] = scnic_ds_list
+config["pca_ds_list"] = pca_ds_list
 
 rule all:
     input:
@@ -57,13 +57,31 @@ rule all:
         pairwise=path_rf_pairwise +
                  "mixed-RF-deltas-re_timepoint-pairwise.pdf",
 
+
+def get_pca_in_file(wildcards):
+    in_file = dataset_json["datasets"][wildcards.pca_ds_name]["file_path"]
+    return in_file
+
+def get_scnic_in_file(wildcards):
+    in_file = dataset_json["datasets"][wildcards.scnic_ds_name]["file_path"]
+    return in_file
+
+def get_scnic_method(wildcards):
+    method = dataset_json["datasets"][wildcards.scnic_ds_name]["param_dict"]["method"]
+    return method
+
+def get_scnic_min_r(wildcards):
+    min_r = dataset_json["datasets"][wildcards.scnic_ds_name]["param_dict"]["min_r"]
+    return min_r
+
+
 rule dim_reduction_pca:
     input:
-        in_file = config["pca_file_path"]
+        in_file = get_pca_in_file,
     output:
-        out_file = path_dim_pca + config["pca_ds_name"] + "/final-pca-dim-reduction.txt"
+        out_file = path_dim_pca + "{pca_ds_name}" + "/final-pca-dim-reduction.txt"
     params:
-        dataset_name = config["pca_ds_name"],
+        dataset_name = expand("{pca_ds_name}", pca_ds_name=config["pca_ds_list"]),
         pca_groups_list = "list(list("
                           "pca_name='PCA1',"
                           "feature_list=c('Triglycerides', 'LDL', 'Leptin', "
@@ -77,11 +95,13 @@ rule dim_reduction_pca:
 # TODO remove in_file_metadata
 rule dim_reduction_scnic:
     input:
-        in_file = config["scnic_file_path"]
+        in_file = get_scnic_in_file,
     output:
-        out_file =  path_dim_scnic + config["scnic_ds_name"] + "/SCNIC_modules_for_workflow.txt"
+        out_file =  path_dim_scnic + "{scnic_ds_name}" + "/SCNIC_modules_for_workflow.txt"
     params:
-        dataset_name = config["scnic_ds_name"]
+        dataset_name = expand("{scnic_ds_name}", scnic_ds_name=config["scnic_ds_list"]),
+        method = get_scnic_method,
+        min_r = get_scnic_min_r
     script:
         "scripts/dim_reduction_scnic.py"
 
@@ -90,7 +110,7 @@ rule dim_reduction_scnic:
 
 rule integrate_datasets:
     input:
-        fp_list = config["fp_list"],
+        fp_list = config["fp_list_for_merge"],
     output:
         out_file = path_merged_data + "final-merged-dfs.txt"
     script:

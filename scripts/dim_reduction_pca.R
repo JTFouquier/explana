@@ -9,21 +9,13 @@
 # var1 var2 var3 might get converted to dim1 and dim2;
 # Overall, a dimensionality reduction from 3 to 2 variables
 
-# TODO verify where to clear data in project. I don't want to reload libs
-# TODO check if vars exist in df, make sure no two vars are in any other list
-# TODO pass height and width values
-# TODO feature: use other options instead of list (slices, ranges, etc)
-
-# rm(list=ls())
-# Adapted from code written by Abigail Armstrong, modified by Jennifer Fouquier
-# http://www.sthda.com/english/articles/31-principal-component-methods-in-r-practical-guide/118-principal-component-analysis-in-r-prcomp-vs-princomp/#theory-behind-pca-results
-
 library(factoextra)
 library(MASS)
 library(dplyr)
 
-# user inputs from Snake
-in_file = snakemake@input[["in_file"]]
+dataset_json <- snakemake@config[["dataset_json"]]
+in_file = dataset_json[["datasets"]][[snakemake@params[["dataset_name"]]]][["file_path"]]
+
 out_file = snakemake@output[["out_file"]]
 sample_id = snakemake@config[["sample_id"]]
 
@@ -32,7 +24,7 @@ pca_groups_list = snakemake@params[["pca_groups_list"]]
 # TODO sort out good folder names and locations
 final_output_folder = paste0(snakemake@config[["out"]],
                              snakemake@config[["path_dim_pca"]],
-                             snakemake@config[["pca_ds_name"]], "/")
+                             snakemake@params[["dataset_name"]], "/")
 
 
 write_table_special <- function(df, folder_name, file_name) {
