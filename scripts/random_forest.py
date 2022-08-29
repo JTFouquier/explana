@@ -58,7 +58,6 @@ sample_id = snakemake.config["sample_id"]
 response_var = snakemake.config["response_var"]
 delta_flag = snakemake.params["delta_flag"]
 iterations = int(snakemake.config["iterations"])
-re_timepoint = snakemake.params["re_timepoint"]
 
 # set graphics dimensions
 _width = 14
@@ -91,34 +90,24 @@ sys.stdout = Logger()
 
 def setup_df_do_encoding(df, random_effect, vars_to_encode, response_var,
                          delta_flag, join_flag):
-    df.to_csv(out_file_prefix + "-df-before-encoding.txt", index=False,
-              sep="\t")
-
     df, dummy_dict = _dummy_var_creation(vars_to_encode, df, join_flag)
-    df.to_csv(out_file_prefix + "-df-after-encoding.txt", index=False,
-              sep="\t")
-
     drop = [sample_id] + \
            [random_effect] + vars_to_encode + [response_var]
-
     df_encoded_cols_dropped = df.drop(drop, axis=1)
 
     feature_list = df_encoded_cols_dropped.columns
     feature_list = [x for x in feature_list if "_reference" not in x]
-    feature_list = [x for x in feature_list if "StudyID" not in x]
-    print("Input features after encoding:\n")
-    print(feature_list)
+    feature_list = [x for x in feature_list if random_effect not in x]
     x = df[feature_list]  # Raw analysis and ALL (new, remove ref)
-    x.to_csv(out_file_prefix + "-input-features-to-model.txt", index=False,
-             sep="\t")
+    final_input_features = x.columns
+    df_final_input_features = pd.DataFrame(final_input_features,
+                                           columns=['InputFeatures'])
+    df_final_input_features.to_csv(out_file_prefix + "-input-features.txt",
+                                   index=False, sep="\t")
 
-    if re_timepoint == "re_timepoint":  # TODO fix this
-        z = np.ones((len(x), 1))
-    if re_timepoint == "no_re":
-        z = np.ones((len(x), 1))
+    z = np.ones((len(x), 1))
     clusters = df["StudyID"]
     y = df[response_var]
-    x.to_csv(out_file_prefix + "-x.txt", index=False, sep="\t")
     return x, z, clusters, y, feature_list, dummy_dict
 
 
@@ -151,7 +140,14 @@ def shap_plots(shap_values, x, boruta_accepted, boruta_accepted_tentative,
                       plot_size=(_width, _height), sort=False)
     plt.title("Accepted important features from BorutaShap displayed "
               "with SHAP Summary Plot", fontdict={'fontsize': _font_title})
-    graphic_handling(plt, "-accepted_SHAP")
+    graphic_handling(plt, "-accepted-SHAP")
+    shap.summary_plot(shap_values=shap_values[:, index_list],
+                      features=x.iloc[:, index_list], show=False,
+                      plot_size=(_width, _height), sort=False, plot_type="bar")
+    plt.title("Accepted important features from BorutaShap displayed "
+              "with SHAP Summary Plot Bar", fontdict={'fontsize': _font_title})
+    graphic_handling(plt, "-accepted-SHAP-bar")
+
     index_list = list(feature_importance[feature_importance[
         "col_name"].isin(boruta_accepted_tentative)].index)
     shap.summary_plot(shap_values=shap_values[:, index_list],
@@ -238,16 +234,14 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_id,
         mrf = MERF(max_iterations=iterations, fixed_effects_model=model)
         mrf.fit(x, z, clusters, y)
         forest = mrf.trained_fe_model
-
-        return forest, mrf
-
-    if random_forest_type == "mixed":
-
-        forest, mrf = run_mixed_effects_random_forest(x, z, clusters, y,
-                                                      rf_regressor)
         print("\nRandom Forest out-of-bag (OOB) score: " +
               str(round(forest.oob_score_, 3)))
         print("\n\nrf_regressor params:" + str(rf_regressor.get_params()))
+        return forest, mrf
+
+    if random_forest_type == "mixed":
+        forest, mrf = run_mixed_effects_random_forest(x, z, clusters, y,
+                                                      rf_regressor)
 
         plot_merf_training_stats(mrf, 12)  # TODO fix
         plt.tight_layout()
@@ -265,9 +259,23 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_id,
         boruta_dict['accepted'] + boruta_dict['tentative']
 
     # SHAP to explain/detail features' values' effects on response variable
+    # With rerunning SHAP on only important features (i.e. adding all
+    # unimportant features causes unrealistic plots and poor interpretation)
+
+    # rerun SHAP
+    rerun = "True"
+    if rerun == "True":
+        x = x.drop(boruta_dict['rejected'], axis=1) # TODO tentative?
+        z = np.ones((len(x), 1))
+        forest, mrf = run_mixed_effects_random_forest(x, z, clusters,
+                                                      y, rf_regressor)
+
+    else:
+        print("SHAP plots visualized using all input features")
+
     shap_imp, shap_values = run_shap(forest, x)
-    shap_plots(shap_values, x, boruta_accepted, boruta_accepted_tentative,
-               shap_imp)
+    shap_plots(shap_values, x, boruta_accepted,
+               boruta_accepted_tentative, shap_imp)
 
     shap_imp.to_csv(out_file_prefix + "SHAP-feature-imp.txt",
                     sep='\t', mode='a')

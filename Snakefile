@@ -1,7 +1,6 @@
 import json
 
 
-# configfile: "config/config-demo.yaml"
 configfile: "config/config.yaml"
 configfile: "config/config-paths.yaml"
 
@@ -19,43 +18,40 @@ path_merged_data = config["out"] + config["path_merged_data"]
 
 def dim_reduction():
     dataset_json = json.loads(config["dataset_json"])
-    fp_list_for_merge = []
+    file_path_list_for_merge = []
     pca_ds_list = []
     scnic_ds_list = []
     for ds_name in dataset_json["datasets"]:
         dim_method = dataset_json["datasets"][ds_name]["dim_method"]
         if dim_method == "pca":
-            f_out = path_dim_pca + ds_name + "/final-pca-dim-reduction.txt"
+            f_out = path_dim_pca + ds_name + "/PCA-dim-reduction-" \
+                                             "for-workflow.txt"
             pca_ds_list.append(ds_name)
 
         elif dim_method == "scnic":
             f_out = path_dim_scnic + ds_name + \
-                    "/SCNIC_modules_for_workflow.txt"
+                    "/SCNIC-dim-reduction-for-workflow.txt"
             scnic_ds_list.append(ds_name)
 
         else:
             f_out = dataset_json["datasets"][ds_name]["file_path"]
 
-        fp_list_for_merge.append(f_out)
+        file_path_list_for_merge.append(f_out)
 
-    return fp_list_for_merge, pca_ds_list, scnic_ds_list, dataset_json
+    return file_path_list_for_merge, pca_ds_list, scnic_ds_list, dataset_json
 
-
-fp_list_for_merge, pca_ds_list, scnic_ds_list, dataset_json = dim_reduction()
-config["fp_list_for_merge"] = fp_list_for_merge
+config["file_path_list_for_merge"], config["pca_ds_list"], \
+config["scnic_ds_list"], dataset_json = dim_reduction()
 config["dataset_json"] = dataset_json
-
-config["scnic_ds_list"] = scnic_ds_list
-config["pca_ds_list"] = pca_ds_list
 
 rule all:
     input:
         original=path_rf_original + "MERF-original.pdf",
-        first=path_rf_first + "mixed-RF-deltas-re_timepoint-first.pdf",
+        first=path_rf_first + "mixed-RF-deltas-first.pdf",
         previous=path_rf_previous +
-                 "mixed-RF-deltas-re_timepoint-previous.pdf",
+                 "mixed-RF-deltas-previous.pdf",
         pairwise=path_rf_pairwise +
-                 "mixed-RF-deltas-re_timepoint-pairwise.pdf",
+                 "mixed-RF-deltas-pairwise.pdf",
 
 
 def get_pca_in_file(wildcards):
@@ -79,7 +75,8 @@ rule dim_reduction_pca:
     input:
         in_file = get_pca_in_file,
     output:
-        out_file = path_dim_pca + "{pca_ds_name}" + "/final-pca-dim-reduction.txt"
+        out_file = path_dim_pca + "{pca_ds_name}" + "/PCA-dim-reduction-"
+                                                    "for-workflow.txt"
     params:
         dataset_name = expand("{pca_ds_name}", pca_ds_name=config["pca_ds_list"]),
         pca_groups_list = "list(list("
@@ -97,7 +94,8 @@ rule dim_reduction_scnic:
     input:
         in_file = get_scnic_in_file,
     output:
-        out_file =  path_dim_scnic + "{scnic_ds_name}" + "/SCNIC_modules_for_workflow.txt"
+        out_file =  path_dim_scnic + "{scnic_ds_name}" + "/SCNIC-dim-reduction"
+                                                         "-for-workflow.txt"
     params:
         dataset_name = expand("{scnic_ds_name}", scnic_ds_name=config["scnic_ds_list"]),
         method = get_scnic_method,
@@ -105,12 +103,10 @@ rule dim_reduction_scnic:
     script:
         "scripts/dim_reduction_scnic.py"
 
-# TODO have the default be to merge all datasets output from 01 steps
-# TODO add drop columns or rows here instead
 
 rule integrate_datasets:
     input:
-        fp_list = config["fp_list_for_merge"],
+        file_path_list = config["file_path_list_for_merge"],
     output:
         out_file = path_merged_data + "final-merged-dfs.txt"
     script:
@@ -126,7 +122,7 @@ rule make_delta_datasets:
     params:
         reference_time = "{reference}",
         absolute_values = "no",
-        build_visualizer = True, # TODO have this be optional default true
+        build_visualizer = False, # TODO have this be optional default true
         distance_matrix = config["distance_matrix"]
     script:
         "scripts/create_deltas.R"
@@ -161,8 +157,8 @@ rule random_forest_deltas:
                   "04-SELECTED-FEATURES-{reference}/deltas-{reference}.txt"
     output:
         out_file = config["out"] +
-                   "04-SELECTED-FEATURES-{reference}/{mixed}-RF-{deltas}-"
-                   "{re_timepoint}-{reference}.pdf"
+                   "04-SELECTED-FEATURES-{reference}/"
+                   "{mixed}-RF-{deltas}-{reference}.pdf"
     params:
         random_forest_type = "{mixed}",  # mixed or fixed
         random_effect = config["random_effect"],
@@ -170,7 +166,6 @@ rule random_forest_deltas:
         response_var = config["response_var"],
         delta_flag = "{deltas}",  # raw or deltas
         iterations = config["iterations"],  # 20 is suggested, 10 for testing
-        re_timepoint = "{re_timepoint}"  # re_timepoint or no_re
     script:
         "scripts/random_forest.py"
 
@@ -182,12 +177,11 @@ rule random_forest_original:
         out_file = path_rf_original + "MERF-original.pdf"
     params:
         random_forest_type = "mixed",
-        random_effect = config["response_var"],
+        random_effect = config["random_effect"],
         sample_id = config["sample_id"],
         response_var = config["response_var"],
         delta_flag = "raw",
         iterations = config["iterations"],
-        re_timepoint = "no_re"
     script:
         "scripts/random_forest.py"
 
@@ -199,35 +193,31 @@ rule random_forest_original:
 rule render_report:
     input:
         original = rules.random_forest_original.output.out_file,
-        original_shap= path_rf_original + "MERF-original-accepted_SHAP.svg",
+        original_shap= path_rf_original + "MERF-original-accepted-SHAP.svg",
         original_boruta = path_rf_original + "MERF-original-boruta-"
                         "accepted-features.svg",
         original_log = path_rf_original + "MERF-original-log.txt",
 
-        first = path_rf_first + "mixed-RF-deltas-re_timepoint-first.pdf",
-        first_shap= path_rf_first + "mixed-RF-deltas-re_timepoint-first-accepted_SHAP.svg",
+        first = path_rf_first + "mixed-RF-deltas-first.pdf",
+        first_shap= path_rf_first + "mixed-RF-deltas-"
+                                    "first-accepted-SHAP.svg",
         first_boruta= path_rf_first + "mixed-RF-"
-                      "deltas-re_timepoint-first-boruta-accepted-features.svg",
-        first_log = path_rf_first + "mixed-RF-deltas-"
-                    "re_timepoint-first-log.txt",
+                      "deltas-first-boruta-accepted-features.svg",
+        first_log = path_rf_first + "mixed-RF-deltas-first-log.txt",
 
-        previous = path_rf_previous + "mixed-RF-deltas-"
-                   "re_timepoint-previous.pdf",
-        previous_shap= path_rf_previous + "mixed-RF-deltas-"
-                       "re_timepoint-previous-accepted_SHAP.svg",
-        previous_boruta = path_rf_previous + "mixed-RF-deltas-"
-                          "re_timepoint-previous-boruta-accepted-features.svg",
-        previous_log= path_rf_previous + "mixed-RF-deltas-"
-                      "re_timepoint-previous-log.txt",
+        previous = path_rf_previous + "mixed-RF-deltas-previous.pdf",
+        previous_shap= path_rf_previous + "mixed-RF-deltas-previous-"
+                                          "accepted-SHAP.svg",
+        previous_boruta = path_rf_previous + "mixed-RF-deltas-previous-"
+                                             "boruta-accepted-features.svg",
+        previous_log= path_rf_previous + "mixed-RF-deltas-previous-log.txt",
 
-        pairwise = path_rf_pairwise + "mixed-RF-deltas-"
-                   "re_timepoint-pairwise.pdf",
-        pairwise_shap= path_rf_pairwise + "mixed-RF-deltas-"
-                       "re_timepoint-pairwise-accepted_SHAP.svg",
-        pairwise_boruta = path_rf_pairwise + "mixed-RF-deltas-"
-                          "re_timepoint-pairwise-boruta-accepted-features.svg",
-        pairwise_log = path_rf_pairwise + "mixed-RF-deltas-"
-                      "re_timepoint-pairwise-log.txt",
+        pairwise = path_rf_pairwise + "mixed-RF-deltas-pairwise.pdf",
+        pairwise_shap= path_rf_pairwise + "mixed-RF-deltas-pairwise-"
+                                          "accepted-SHAP.svg",
+        pairwise_boruta = path_rf_pairwise + "mixed-RF-deltas-pairwise-"
+                                             "boruta-accepted-features.svg",
+        pairwise_log = path_rf_pairwise + "mixed-RF-deltas-pairwise-log.txt",
 
         dag_plot = "scripts/dag.svg",
     output:
