@@ -4,17 +4,18 @@ import os
 from subprocess import Popen, PIPE
 import time
 
-import pandas as pd
 from biom import load_table
 
 # TODO fix this: prefix + process + dataset as folder
 
 scnic_out_folder = snakemake.config["out"] + \
                    snakemake.config["path_dim_scnic"] + \
-                   snakemake.config["scnic_ds_name"] + "/"
+                   snakemake.params["dataset_name"][0] + "/"
 biom_name = snakemake.input["in_file"]
 sample_id = snakemake.config["sample_id"]
 
+_method = str(snakemake.params["method"])
+_min_r = str(snakemake.params["min_r"])
 
 def makeSafeDir(directory):
     if not os.path.exists(directory):
@@ -23,7 +24,7 @@ def makeSafeDir(directory):
 
 def within(out_folder, biom_file_name):
     process = Popen(["SCNIC_analysis.py", "within", "-i", biom_file_name,
-                     "-o", out_folder + "within_output/", "-m", "spearman"],
+                    "-o", out_folder + "within_output/", "-m", _method],
                     stdout=PIPE, stderr=PIPE)
     process.communicate()
 
@@ -32,7 +33,7 @@ def within(out_folder, biom_file_name):
 def modules(out_folder, biom_file_name):
     process = Popen(["SCNIC_analysis.py", "modules", "-i", out_folder +
                      "within_output/correls.txt", "-o", out_folder +
-                     "modules_output/", "--min_r", "0.45", "--table",
+                     "modules_output/", "--min_r", _min_r, "--table",
                      biom_file_name], stdout=PIPE, stderr=PIPE)
     process.communicate()
 
@@ -49,21 +50,13 @@ def main(scnic_folder, biom_file_name):
     biom_table = load_table(scnic_folder + "modules_output/collapsed.biom")
     biom_table = biom_table.transpose()
     df_scnic = biom_table.to_dataframe().rename_axis(sample_id)
-    df_scnic.to_csv(scnic_folder + "SCNIC_modules_for_workflow.txt", sep="\t")
+    df_scnic.to_csv(scnic_folder + "SCNIC-dim-reduction-for-workflow.txt",
+                    sep="\t")
 
 start_time = time.time()
 main(scnic_folder=scnic_out_folder, biom_file_name=biom_name)
 print("--- %s seconds ---" % (time.time() - start_time))
 print((time.time() - start_time)/60)
-
-
-
-
-
-
-
-
-
 
 
 

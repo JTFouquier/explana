@@ -85,7 +85,9 @@ include_graphics(snakemake@input[['original']])
 
 ***
 
-`r include_graphics(snakemake@input[['original_shap']])`
+```{r}
+include_graphics(snakemake@input[['original_shap']])
+```
 
 ***
 
@@ -93,7 +95,10 @@ include_graphics(snakemake@input[['original']])
 
 ***
 
-`r include_graphics(snakemake@input[['original_boruta']])`
+```{r}
+include_graphics(snakemake@input[['original_boruta']])
+```
+
 
 
 
@@ -109,7 +114,7 @@ include_graphics(snakemake@input[['original']])
 
 ***
 
-```{r comment=""}
+```{r, max.height='100px', comment=""}
 cat(readLines(snakemake@input[['first_log']]), sep = '\n')
 ```
 ***
@@ -129,7 +134,9 @@ include_graphics(snakemake@input[['first']])
 
 ***
 
-`r include_graphics(snakemake@input[['first_shap']])`
+```{r}
+include_graphics(snakemake@input[['first_shap']])
+```
 
 ***
 
@@ -137,7 +144,9 @@ include_graphics(snakemake@input[['first']])
 
 ***
 
-`r include_graphics(snakemake@input[['first_boruta']])`
+```{r}
+include_graphics(snakemake@input[['first_boruta']])
+```
 
 
 

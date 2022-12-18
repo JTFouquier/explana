@@ -7,7 +7,7 @@ from functools import reduce
 output_folder = snakemake.config["out"] + snakemake.config["path_merged_data"]
 sample_id = snakemake.config["sample_id"]
 
-fp_list = snakemake.input["fp_list"]
+fp_list = snakemake.input["file_path_list"]
 
 
 # TODO metadata-pcas needs be clear as this can be done on other datasets

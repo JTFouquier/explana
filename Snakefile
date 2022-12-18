@@ -193,28 +193,29 @@ rule random_forest_original:
 rule render_report:
     input:
         original = rules.random_forest_original.output.out_file,
-        original_shap= path_rf_original + "MERF-original-accepted-SHAP.svg",
+        original_shap= path_rf_original + "MERF-original-accepted-SHAP-"
+                                          "summary-beeswarm.svg",
         original_boruta = path_rf_original + "MERF-original-boruta-"
                         "accepted-features.svg",
         original_log = path_rf_original + "MERF-original-log.txt",
 
         first = path_rf_first + "mixed-RF-deltas-first.pdf",
-        first_shap= path_rf_first + "mixed-RF-deltas-"
-                                    "first-accepted-SHAP.svg",
+        first_shap= path_rf_first + "mixed-RF-deltas-first-accepted-SHAP-"
+                                    "summary-beeswarm.svg",
         first_boruta= path_rf_first + "mixed-RF-"
                       "deltas-first-boruta-accepted-features.svg",
         first_log = path_rf_first + "mixed-RF-deltas-first-log.txt",
 
         previous = path_rf_previous + "mixed-RF-deltas-previous.pdf",
         previous_shap= path_rf_previous + "mixed-RF-deltas-previous-"
-                                          "accepted-SHAP.svg",
+                                          "accepted-SHAP-summary-beeswarm.svg",
         previous_boruta = path_rf_previous + "mixed-RF-deltas-previous-"
                                              "boruta-accepted-features.svg",
         previous_log= path_rf_previous + "mixed-RF-deltas-previous-log.txt",
 
         pairwise = path_rf_pairwise + "mixed-RF-deltas-pairwise.pdf",
         pairwise_shap= path_rf_pairwise + "mixed-RF-deltas-pairwise-"
-                                          "accepted-SHAP.svg",
+                                          "accepted-SHAP-summary-beeswarm.svg",
         pairwise_boruta = path_rf_pairwise + "mixed-RF-deltas-pairwise-"
                                              "boruta-accepted-features.svg",
         pairwise_log = path_rf_pairwise + "mixed-RF-deltas-pairwise-log.txt",

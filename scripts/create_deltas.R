@@ -19,7 +19,6 @@ dm_file = snakemake@params[["distance_matrix"]]
 dm = read.table(dm_file, fill=T)
 
 # TODO add option for looking at only subset of times
-#times_evaluated = snakemake@params[["times_evaluated"]]
 
 df = read.csv(in_file, sep = "\t", check.names = FALSE)
 
@@ -56,15 +55,20 @@ for (studyid in unique(df$StudyID)){
       ref.times = ref.times[ref.times != time]
     }
     for (rt in ref.times){
-      studyid.df <- df %>% filter((Timepoint == rt | Timepoint == time) & StudyID == studyid)
+      studyid.df <- df %>%
+        filter((Timepoint == rt | Timepoint == time) & StudyID == studyid)
       # skip if no samples for subject at time points of interest
       # also skip if reference time is larger than time (would be duplicates)
       if (nrow(studyid.df) < 2 || rt > time){ next }
-      dm_value = dist_subset(dm, c(paste0(studyid, ".", rt),
-                                 paste0(studyid, ".", time)))[1]
-      new.comparison.id = paste0(studyid, "_", rt, "_", time)
-      df.new = data.frame(StudyID.delta = new.comparison.id,
-                          Timepoint = paste0(rt, "_", time), # TODO needed?
+      ref_sample = studyid.df %>%
+        filter(StudyID == {{studyid}} & Timepoint == {{rt}})
+      current_sample = studyid.df %>%
+        filter(StudyID == {{studyid}} & Timepoint == {{time}})
+      comparison = paste0(studyid, "_", rt, "_", time)
+      dm_value = dist_subset(dm, c(ref_sample$SampleID,
+                                   current_sample$SampleID))[1]
+      df.new = data.frame(StudyID.delta = comparison,
+                          Timepoint = paste0(rt, "_", time),
                           StudyID = studyid,
                           dist_matrix = dm_value)
       delta.df = dplyr::bind_rows(df.new, delta.df)
@@ -75,16 +79,17 @@ for (studyid in unique(df$StudyID)){
         if (typeof(studyid.df[[var]]) != "character"){
           if (reference_time == "pairwise" && absolute_values == "yes"){
             # TODO convert to abs values at end? reduce computational time
-            delta.df[[var]][delta.df$StudyID.delta == new.comparison.id] = abs(new.value - old.value)
-            delta.df[[paste0(var,"_reference")]][delta.df$StudyID.delta == new.comparison.id] = old.value
+            delta.df[[var]][delta.df$StudyID.delta == comparison] = abs(new.value - old.value)
+            delta.df[[paste0(var,"_reference")]][delta.df$StudyID.delta == comparison] = old.value
           } else {
-            delta.df[[var]][delta.df$StudyID.delta == new.comparison.id] = new.value - old.value
-            delta.df[[paste0(var,"_reference")]][delta.df$StudyID.delta == new.comparison.id] = old.value
+            delta.df[[var]][delta.df$StudyID.delta == comparison] = new.value - old.value
+            delta.df[[paste0(var,"_reference")]][delta.df$StudyID.delta == comparison] = old.value
           }
         }
         if (typeof(studyid.df[[var]]) == "character" || var == "Timepoint"){
-          delta.df[[var]][delta.df$StudyID.delta == new.comparison.id] = paste0(old.value, "_", new.value)
-          delta.df[[paste0(var,"_reference")]][delta.df$StudyID.delta == new.comparison.id] = paste0(old.value)
+          delta.df[[var]][delta.df$StudyID.delta == comparison] =
+            paste0(old.value, "_", new.value)
+          delta.df[[paste0(var,"_reference")]][delta.df$StudyID.delta == comparison] = paste0(old.value)
         }
         else{ next }
       }
@@ -92,8 +97,9 @@ for (studyid in unique(df$StudyID)){
   }
 }
 
-delta.df <- delta.df %>% arrange(StudyID.delta, Timepoint)
-names(delta.df)[names(delta.df) == "StudyID.delta"] <- sample_id
+delta.df <- delta.df %>%
+  arrange(StudyID, Timepoint) %>%
+  select(!StudyID.delta)
 
 write.table(delta.df, out_file, row.names = FALSE, sep = "\t")
 

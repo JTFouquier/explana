@@ -44,12 +44,11 @@ Features/Considerations for development
 # https://www.sciencedirect.com/science/article/pii/S1532046418301758
 
 """
-
 n_estimators = int(snakemake.config["n_estimators"])
 borutaSHAP_trials = int(snakemake.config["borutaSHAP_trials"])
 borutaSHAP_percentile = int(snakemake.config["borutaSHAP_percentile"])
 
-df_deltas = snakemake.input["in_file"]
+df_input = snakemake.input["in_file"]
 pdf_report = snakemake.output["out_file"]
 
 fe_or_me = snakemake.params["random_forest_type"]
@@ -120,9 +119,11 @@ def train_rf_model(x, y, rf_regressor):
     return rf_regressor, training_stats_plot
 
 
-def graphic_handling(plt, plot_file_name, width=_width, height=_height):
+def graphic_handling(plt, plot_file_name, p_title, width=_width, height=_height):
     plot_file_name_list.append(plot_file_name)
-    plt.tight_layout()
+    # plt.tight_layout()
+    plt.title(p_title, fontdict={"fontsize": 18})
+    plt.tick_params(axis="both", labelsize=7)
     p = plt.gcf()
     p.set_size_inches(width, height)
     plt.close()
@@ -132,41 +133,49 @@ def graphic_handling(plt, plot_file_name, width=_width, height=_height):
 def shap_plots(shap_values, x, boruta_accepted, boruta_accepted_tentative,
                feature_importance):
 
-    index_list = list(feature_importance[feature_importance[
+    # get indexes from Boruta for accepted and accepted+tentative features
+    index_list_accepted = list(feature_importance[feature_importance[
         "col_name"].isin(boruta_accepted)].index)
-    # Do not sort because it's using BorutaShap rankings
-    shap.summary_plot(shap_values=shap_values[:, index_list],
-                      features=x.iloc[:, index_list], show=False,
-                      plot_size=(_width, _height), sort=False)
-    plt.title("Accepted important features from BorutaShap displayed "
-              "with SHAP Summary Plot", fontdict={'fontsize': _font_title})
-    graphic_handling(plt, "-accepted-SHAP")
-    shap.summary_plot(shap_values=shap_values[:, index_list],
-                      features=x.iloc[:, index_list], show=False,
-                      plot_size=(_width, _height), sort=False, plot_type="bar")
-    plt.title("Accepted important features from BorutaShap displayed "
-              "with SHAP Summary Plot Bar", fontdict={'fontsize': _font_title})
-    graphic_handling(plt, "-accepted-SHAP-bar")
-
-    index_list = list(feature_importance[feature_importance[
+    index_list_accepted_tentative = list(feature_importance[feature_importance[
         "col_name"].isin(boruta_accepted_tentative)].index)
-    shap.summary_plot(shap_values=shap_values[:, index_list],
-                      features=x.iloc[:, index_list], show=False,
-                      plot_size=(_width, _height), sort=False)
-    plt.title("Accepted and tentative important features from BorutaShap "
-              "displayed using SHAP values",
-              fontdict={'fontsize': _font_title})
-    graphic_handling(plt, "-accepted-tentative-SHAP-summary")
+
+    def my_shap_summary_plots(feature_index_list, shap_values, x,
+                              accepted_flag):
+        if accepted_flag:
+            title_name_bee = "Accepted important features displayed with " \
+                             "SHAP beeswarm plot"
+            title_name_bar = "Accepted important features displayed with " \
+                             "SHAP bar plot"
+            file_name_bee = "-accepted-SHAP-summary-beeswarm"
+            file_name_bar = "-accepted-SHAP-summary-bar"
+        if not accepted_flag:
+            title_name_bee = "Accepted and tentative important features " \
+                             "displayed with SHAP beeswarm plot"
+            title_name_bar = "Accepted and tentative important features " \
+                             "displayed with SHAP bar plot"
+            file_name_bee = "-accepted-and-tentative-SHAP-summary-beeswarm"
+            file_name_bar = "-accepted-and-tentative-SHAP-summary-bar"
+        shap.summary_plot(shap_values=shap_values[:, feature_index_list],
+                          features=x.iloc[:, feature_index_list], show=False,
+                          plot_size=(_width, _height), sort=False)
+        graphic_handling(plt, file_name_bee, title_name_bee)
+        shap.summary_plot(shap_values=shap_values[:, feature_index_list],
+                          features=x.iloc[:, feature_index_list], show=False,
+                          plot_size=(_width, _height), sort=False,
+                          plot_type="bar")
+        graphic_handling(plt, file_name_bar, title_name_bar)
+
+    my_shap_summary_plots(index_list_accepted, shap_values, x, True)
+    my_shap_summary_plots(index_list_accepted_tentative, shap_values, x, False)
 
     col_count = 1
     # TODO make either accepted or accepted and tentative
     for col in boruta_accepted:
         shap.dependence_plot(col, shap_values, x, show=False, x_jitter=0.03)
-        plt.title("Dependence plot for accepted features from "
-                  "BorutaShap \ndisplayed with SHAP values (with interaction)",
-                  fontdict={'fontsize': _font_title})
+        p_title = "Dependence plot for accepted features from BorutaShap \n" \
+                  "displayed with SHAP values (with interaction)"
         graphic_handling(plt, "-dependence-plot-interaction-" +
-                         str(col_count) + str(col))
+                         str(col_count) + str(col), p_title)
 
 
 def run_shap(trained_forest_model, x):
@@ -201,15 +210,16 @@ def run_boruta_shap(forest, x, y):
     for feature_group in ['all', 'accepted', 'tentative', 'rejected']:
         boruta_dict[feature_group] = \
             _boruta_shap_plot(feature_selector, which_features=feature_group,
-                              figsize=(_width, _height), X_size=12)
+                              figsize=(_width, _height), X_size=8)
         graphic_handling(plt, "-boruta-" + feature_group + "-features",
+                         "Boruta " + feature_group + " features",
                          width=_width, height=_height)
     return boruta_dict
 
 
 def main(df_input, out_file, random_forest_type, random_effect, sample_id,
          response_var, delta_flag, join_flag):
-    df = pd.read_csv(df_input, sep="\t")
+    df = pd.read_csv(df_input, sep="\t", na_filter=False)
 
     numeric_column_list = list(df._get_numeric_data().columns)
     column_list = list(df.columns)
@@ -227,8 +237,9 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_id,
                              response_var=response_var, delta_flag=delta_flag,
                              join_flag=join_flag)
 
-    rf_regressor = RandomForestRegressor(n_jobs=-2, n_estimators=n_estimators,
-                                         oob_score=True, max_features='auto')
+    # TODO play around with this value (important for feature selection
+    rf_regressor = RandomForestRegressor(n_jobs=-1, n_estimators=n_estimators,
+                                         oob_score=True, max_features=0.90)
 
     def run_mixed_effects_random_forest(x, z, clusters, y, model):
         mrf = MERF(max_iterations=iterations, fixed_effects_model=model)
@@ -265,7 +276,7 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_id,
     # rerun SHAP
     rerun = "True"
     if rerun == "True":
-        x = x.drop(boruta_dict['rejected'], axis=1) # TODO tentative?
+        x = x.drop(boruta_dict['rejected'], axis=1)  # TODO tentative?
         z = np.ones((len(x), 1))
         forest, mrf = run_mixed_effects_random_forest(x, z, clusters,
                                                       y, rf_regressor)
@@ -307,6 +318,6 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_id,
     _build_result_pdf(out_file, out_file_prefix, plot_list, plot_file_name_list)
 
 
-main(df_input=df_deltas, out_file=pdf_report, random_forest_type=fe_or_me,
+main(df_input=df_input, out_file=pdf_report, random_forest_type=fe_or_me,
      random_effect=random_effect, sample_id=sample_id,
      response_var=response_var, delta_flag=delta_flag, join_flag=join_flag)
