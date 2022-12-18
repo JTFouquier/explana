@@ -1,40 +1,74 @@
 
-### Constants for Demo
-### ### ### ### ### ### ### ###
-response_var: "HDL"
+# CONFIG FILE WITH EXAMPLE
+# Example includes merging three datasets
+# This prevents users from having to type a long command and plan their
+# analysis better
+##############################################################################
+
+# There MUST be a columns StudyID, SampleID, and Timepoint
+##############################################################################
 random_effect: "StudyID"
 sample_id: "SampleID"
 
-constrain_cols: '[]'
-
-drop_rows: '{"SexualClassification": "Women"}'
-constrain_rows: '{"Diet": "Agrarian"}'
-
-# MERF arguments
-iterations: "6"
-n_estimators: "200"
-
-# BorutaSHAP arguments
-borutaSHAP_trials: "20"
-borutaSHAP_percentile: "98"
-
-# rule make_delta_datasets
-distance_matrix: "data/hdl-test/distance-matrix-hdl.tsv"
-
-
+# Analysis details
+# TODO there are issues with keeping html output in same folder... fix later
+##############################################################################
 out: "random-forest/TEST/HDL-Demo/"
 report_name: "HDL-Demo.html"
 
-#https://codebeautify.org/jsonviewer
+response_var: "HDL"
+drop_rows: "c('SexualClassification'='Women')"
+constrain_rows: "c('Diet'='Agrarian')"
+drop_cols: "c('Inflammation', 'TotalCholesterol', 'PCA', 'HOMAIR')"
+constrain_cols: "c()"
 
-# SCNIC param dict must have certain params
+# Mixed-effects Random Forest arguments
+##############################################################################
+#iterations: "20"
+#n_estimators: "200"
+
+iterations: "5"
+n_estimators: "50"
+
+# BorutaSHAP arguments
+##############################################################################
+borutaSHAP_trials: "20"
+borutaSHAP_percentile: "98"
+
+# When creating deltas, are there distance matrices to include?
+##############################################################################
+
+distance_matrix: "data/hdl-test/distance-matrix-hdl.tsv"
+
+# PCA parameter lists
+##############################################################################
+# For all datasets you wish to perform PCA on, all vars must be included and
+# name of this string is referenced in 'pca_groups_list'
+# pca_name (string), feature_list (c() vector), and cum_var_thres (select dims
+# that explain at least a certain percent variance
+# Suggest naming PCA something like PCA_metabolic to improve interpretation
+
+metadata_pca_list: "list(list(pca_name='PCA_metabolic',feature_list=
+c('Triglycerides','LDL','Leptin','Adiponectin','Insulin','Glucose'),
+cum_var_thres=70),list(pca_name='PCA_bacteria_test',feature_list=
+c('Bact','Prev'),cum_var_thres=70))"
+
+# All datasets used for analysis are included with the option to perform
+# dimensionality reduction on them individually
+# suggest naming each dataset clearly to improve interpretation (i.e. elisa,
+# cytof, 'asvs', etc.)
+# METHODS are: 'pca', 'scnic' or 'None'
+#https://codebeautify.org/jsonviewer
+##############################################################################
 
 dataset_json: '{
   "datasets": {
     "metadata": {
-      "file_path": "data/hdl-test/real-data-no-asvs-shuffled.txt",
+      "file_path": "data/hdl-test/real-data-no-asvs.txt",
       "dim_method": "pca",
-      "param_dict": {}
+      "param_dict": {
+        "pca_groups_list": "metadata_pca_list"
+      }
     },
     "asvs": {
       "file_path": "data/hdl-test/real-feature-table.biom",
@@ -51,52 +85,3 @@ dataset_json: '{
     }
   }
 }'
-
-
-#dataset_json: '{
-#  "datasets": {
-#    "metadata": {
-#      "file_path": "data/hdl-test/real-data-no-asvs.txt",
-#      "dim_method": "pca",
-#      "param_dict": {}
-#    },
-#    "fake": {
-#      "file_path": "data/hdl-test/fake-demographics.txt",
-#      "dim_method": "None",
-#      "param_dict": {}
-#    }
-#  }
-#}'
-
-# Demo3
-drop_cols: '["Inflammation", "TotalCholesterol", "PCA", "HOMAIR"]'
-
-
-
-
-
-
-
-
-#
-## Demo3
-#out: "random-forest/TEST/HDL-Demo4/"
-#report_name: "HDL-Demo4.html"
-
-
-
-
-
-
-
-
-
-# MOVE TO RF as a flag.
-#rule visualize_datasets
-
-
-##### Random Forest Arguments #####
-#rule random_forest_deltas
-#rule random_forest_original
-
-

@@ -75,7 +75,7 @@ cat(readLines(snakemake@input[['original_log']]), sep = '\n')
 
 ***
 
-```{r, out.width = "100%", out.height = 600}
+```{r, out.width = 1100, out.height = 800}
 include_graphics(snakemake@input[['original']])
 ```
 
@@ -124,7 +124,7 @@ cat(readLines(snakemake@input[['first_log']]), sep = '\n')
 ***
 
 
-```{r, out.width = "100%", out.height = 600}
+```{r, out.width = 1100, out.height = 800}
 include_graphics(snakemake@input[['first']])
 ```
 
@@ -169,7 +169,7 @@ cat(readLines(snakemake@input[['previous_log']]), sep = '\n')
 ***
 
 
-```{r, out.width = "100%", out.height = 600}
+```{r, out.width = 1100, out.height = 800}
 include_graphics(snakemake@input[['previous']])
 ```
 
@@ -210,7 +210,7 @@ cat(readLines(snakemake@input[['pairwise_log']]), sep = '\n')
 
 ***
 
-```{r, out.width = "100%", out.height = 600}
+```{r, out.width = 1100, out.height = 800}
 include_graphics(snakemake@input[['pairwise']])
 ```
 
@@ -230,22 +230,7 @@ include_graphics(snakemake@input[['pairwise']])
 
 `r include_graphics(snakemake@input[['pairwise_boruta']])`
 
-***
 
-
-
-
-
-
-
-
-
-
-
-## Directed acyclic graph (DAG) showing workflow
-`r include_graphics(snakemake@input[['dag_plot']])`
-
-RF iters used TODO:
 `r snakemake@params[['iters']]`
 
 ```{r}

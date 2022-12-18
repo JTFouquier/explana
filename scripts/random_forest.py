@@ -61,7 +61,6 @@ iterations = int(snakemake.config["iterations"])
 # set graphics dimensions
 _width = 14
 _height = 8
-_font_title = 14
 
 # TODO review this
 join_flag = True
@@ -82,7 +81,6 @@ class Logger(object):
 
     def flush(self):
         pass
-
 
 sys.stdout = Logger()
 
@@ -121,7 +119,6 @@ def train_rf_model(x, y, rf_regressor):
 
 def graphic_handling(plt, plot_file_name, p_title, width=_width, height=_height):
     plot_file_name_list.append(plot_file_name)
-    # plt.tight_layout()
     plt.title(p_title, fontdict={"fontsize": 18})
     plt.tick_params(axis="both", labelsize=7)
     p = plt.gcf()

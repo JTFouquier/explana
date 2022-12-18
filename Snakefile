@@ -58,6 +58,10 @@ def get_pca_in_file(wildcards):
     in_file = dataset_json["datasets"][wildcards.pca_ds_name]["file_path"]
     return in_file
 
+def get_pca_groups_list(wildcards):
+    pca_groups_list = dataset_json["datasets"][wildcards.pca_ds_name]["param_dict"]["pca_groups_list"]
+    return pca_groups_list
+
 def get_scnic_in_file(wildcards):
     in_file = dataset_json["datasets"][wildcards.scnic_ds_name]["file_path"]
     return in_file
@@ -79,13 +83,7 @@ rule dim_reduction_pca:
                                                     "for-workflow.txt"
     params:
         dataset_name = expand("{pca_ds_name}", pca_ds_name=config["pca_ds_list"]),
-        pca_groups_list = "list(list("
-                          "pca_name='PCA1',"
-                          "feature_list=c('Triglycerides', 'LDL', 'Leptin', "
-                          "'Adiponectin', 'Insulin', 'Glucose'),"
-                          "cum_var_thres=70), list(pca_name='PCA2',"
-                          "feature_list=c('Bact', 'Prev'), "
-                          "cum_var_thres=70))"
+        pca_groups_list = get_pca_groups_list
     script:
         "scripts/dim_reduction_pca.R"
 
@@ -110,7 +108,7 @@ rule integrate_datasets:
     output:
         out_file = path_merged_data + "final-merged-dfs.txt"
     script:
-        "scripts/merge_datasets.py"
+        "scripts/integrate_datasets.R"
 
 
 rule make_delta_datasets:
@@ -219,8 +217,6 @@ rule render_report:
         pairwise_boruta = path_rf_pairwise + "mixed-RF-deltas-pairwise-"
                                              "boruta-accepted-features.svg",
         pairwise_log = path_rf_pairwise + "mixed-RF-deltas-pairwise-log.txt",
-
-        dag_plot = "scripts/dag.svg",
     output:
         md_doc=config["report_name"],
     params:

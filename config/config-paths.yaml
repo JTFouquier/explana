@@ -1,6 +1,9 @@
 
 # paths (relocate to path config file away from users)
 
+# USERS DO NOT MODIFY
+# Create paths for consistent output from workflow
+###############################################################################
 
 path_dim_pca: "01-DIM-PCA/"
 path_dim_scnic: "01-DIM-SCNIC/"
