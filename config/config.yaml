@@ -1,11 +1,14 @@
 
 # CONFIG FILE WITH EXAMPLE
-# Example includes merging three datasets
-# This prevents users from having to type a long command and plan their
-# analysis better
 ##############################################################################
 
-# There MUST be a columns StudyID, SampleID, and Timepoint
+# Example: merging three datasets to identify features that relate to HDL
+# Distances between samples are also included when creating delta datasets
+# Config file prevents users from having to type a long command and they can
+# plan analysis better
+##############################################################################
+
+# REQUIRED COLUMNS: StudyID (random effect), SampleID, & Timepoint
 ##############################################################################
 random_effect: "StudyID"
 sample_id: "SampleID"
@@ -16,19 +19,24 @@ sample_id: "SampleID"
 out: "random-forest/TEST/HDL-Demo/"
 report_name: "HDL-Demo.html"
 
-response_var: "HDL"
+response_var: "HDL" # Variable you are trying to explain
 drop_rows: "c('SexualClassification'='Women')"
 constrain_rows: "c('Diet'='Agrarian')"
 drop_cols: "c('Inflammation', 'TotalCholesterol', 'PCA', 'HOMAIR')"
 constrain_cols: "c()"
 
-# Mixed-effects Random Forest arguments
-##############################################################################
-#iterations: "20"
-#n_estimators: "200"
+# make interactive output of dataframes for interpretation (TRUE or FALSE)
+build_datatable: "TRUE"
 
-iterations: "5"
-n_estimators: "50"
+# Mixed-effects Random Forest (MERF) arguments
+##############################################################################
+# For analysis
+iterations: "20"
+n_estimators: "300"
+
+# For testing (doing too few even for testing may cause failure)
+#iterations: "5"
+#n_estimators: "50"
 
 # BorutaSHAP arguments
 ##############################################################################
@@ -37,16 +45,16 @@ borutaSHAP_percentile: "98"
 
 # When creating deltas, are there distance matrices to include?
 ##############################################################################
-
-distance_matrix: "data/hdl-test/distance-matrix-hdl.tsv"
+distance_matrices: "list(unweighted_unifrac_dm='data/hdl-test/distance-matrix-\
+hdl.tsv',weighted_unifrac_dm='data/hdl-test/distance-matrix-hdl.tsv',\
+bray_curtis_dm='data/hdl-test/distance-matrix-hdl.tsv')"
 
 # PCA parameter lists
 ##############################################################################
-# For all datasets you wish to perform PCA on, all vars must be included and
-# name of this string is referenced in 'pca_groups_list'
-# pca_name (string), feature_list (c() vector), and cum_var_thres (select dims
-# that explain at least a certain percent variance
-# Suggest naming PCA something like PCA_metabolic to improve interpretation
+# For all datasets you wish to perform PCA on, you must provide a list of lists
+# Must include: pca_name (string), feature_list (c() vector),
+# cum_var_thres (select dims that explain at least a certain percent variance
+# Suggest naming PCA something like PCA_metabolic for interpretation
 
 metadata_pca_list: "list(list(pca_name='PCA_metabolic',feature_list=
 c('Triglycerides','LDL','Leptin','Adiponectin','Insulin','Glucose'),

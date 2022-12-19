@@ -7,10 +7,11 @@ library(tidyverse)
 library(dplyr)
 library(colorspace)
 
-in_file = snakemake@input[["in_file"]]
-out_file = snakemake@output[["out_file"]]
+# in_file = snakemake@input[["in_file"]]
+# out_file = snakemake@output[["out_file"]]
+# pretty_print = snakemake@config[["pretty_print"]]
 
-build_datatable <- function(df, output_file_name) {
+build_datatable_viz <- function(df, output_file_name) {
 
   df = read.csv(df, sep = "\t", check.names = FALSE)
   # TODO remove reference (change this earlier)
@@ -53,8 +54,8 @@ build_datatable <- function(df, output_file_name) {
   for (i in colnames(df.num)) {
     x = x %>%
       formatStyle(i,
-        # background = styleColorBar(range(df.num[, i]), colors_num[[col_num]]),
-        background = styleColorBar(c(0,1), colors_num[[col_num]]),
+        background = styleColorBar(range(df.num[, i]), colors_num[[col_num]]),
+        # background = styleColorBar(c(0,1), colors_num[[col_num]]),
         backgroundSize = '98% 88%',
         backgroundRepeat = 'no-repeat',
         backgroundPosition = 'center')

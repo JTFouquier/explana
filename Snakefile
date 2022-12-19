@@ -107,6 +107,8 @@ rule integrate_datasets:
         file_path_list = config["file_path_list_for_merge"],
     output:
         out_file = path_merged_data + "final-merged-dfs.txt"
+    params:
+        build_datatable = config["build_datatable"]
     script:
         "scripts/integrate_datasets.R"
 
@@ -120,21 +122,19 @@ rule make_delta_datasets:
     params:
         reference_time = "{reference}",
         absolute_values = "no",
-        build_visualizer = False, # TODO have this be optional default true
-        distance_matrix = config["distance_matrix"]
+        build_datatable = config["build_datatable"], # TODO have this be optional default true
+        distance_matrices = config["distance_matrices"]
     script:
         "scripts/create_deltas.R"
 
 
-rule visualize_datasets:
-    input:
-        in_file = config["out"] + "04-SELECTED-FEATURES-{reference}/"
-                                  "deltas-{reference}.txt"
-    output:
-        out_file = config["out"] + "04-SELECTED-FEATURES-{reference}/"
-                                   "vizualizer-{reference}.html"
-    script:
-        "scripts/viz-datatable.R"
+# rule visualize_datasets:
+#     input:
+#         in_file = config["out"] + "04-SELECTED-FEATURES-{reference}/deltas-{reference}.txt"
+#     output:
+#         out_file = config["out"] + "04-SELECTED-FEATURES-{reference}/vizualizer-{reference}.html"
+#     script:
+#         "scripts/viz-datatable.R"
 
 
 # Python in a complicated environment

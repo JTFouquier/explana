@@ -5,29 +5,30 @@ library(qiime2R)
 library(usedist)
 source("scripts/viz-datatable.R")
 
+# access data from Snakemake's Snakefile rules and user's config.yaml
 in_file = snakemake@input[["in_file"]]
 out_file = snakemake@output[["out_file"]]
-output_dir = snakemake@config[["out"]]
+output_folder = snakemake@config[["out"]]
 sample_id = snakemake@config[["sample_id"]]
 
 reference_time = snakemake@params[["reference_time"]]
 absolute_values = snakemake@params[["absolute_values"]]
-build_visualizer = snakemake@params[["build_visualizer"]]
+build_datatable = snakemake@params[["build_datatable"]]
 
-# TODO allow a list of dms
-dm_file = snakemake@params[["distance_matrix"]]
-dm = read.table(dm_file, fill=T)
+# get name of distance matrix in params for rule, then
+distance_matrices = eval(parse(text = snakemake@params[["distance_matrices"]]))
+distance_matrices <- lapply(distance_matrices, read.table, fill=T)
 
-# TODO add option for looking at only subset of times
+if (length(distance_matrices) > 0){
+  dm_flag = TRUE
+}
 
 df = read.csv(in_file, sep = "\t", check.names = FALSE)
 
 df$Timepoint = factor(df$Timepoint, ordered = TRUE)
 df$StudyID.delta = NULL
 # get all variables/features, except ones used for script
-#vars <- colnames(df %>% select(!c(Timepoint, StudyID)))
 vars <- colnames(df %>% select(!StudyID))
-
 times = unique(df$Timepoint)
 
 delta.df = data.frame(StudyID.delta = character())
@@ -39,7 +40,6 @@ delta.df = data.frame(StudyID.delta = character())
 #dm <- read_qza(unweighted.unifrac.file)
 #dm = dm$data
 
-# TODO allow multiple distance matrix files to be added via function
 
 for (studyid in unique(df$StudyID)){
   for (time in times) {
@@ -65,14 +65,27 @@ for (studyid in unique(df$StudyID)){
       current_sample = studyid.df %>%
         filter(StudyID == {{studyid}} & Timepoint == {{time}})
       comparison = paste0(studyid, "_", rt, "_", time)
-      dm_value = dist_subset(dm, c(ref_sample$SampleID,
-                                   current_sample$SampleID))[1]
-      df.new = data.frame(StudyID.delta = comparison,
-                          Timepoint = paste0(rt, "_", time),
-                          StudyID = studyid,
-                          dist_matrix = dm_value)
-      delta.df = dplyr::bind_rows(df.new, delta.df)
-
+      # Create new dataframe for each comparison
+      df.new.comparison = data.frame(StudyID.delta = comparison,
+                                     Timepoint = paste0(rt, "_", time),
+                                     StudyID = studyid)
+      # add all distances (comparisons between sample timepoints); NA if none
+      # from list of distance matrix files
+      if (dm_flag){
+        for (i in names(distance_matrices)){
+          result = tryCatch({
+            result = dist_subset(distance_matrices[[i]], c(ref_sample$SampleID,
+                                 current_sample$SampleID))[1]
+          }, error = function(err){
+            result = NA
+          }, finally = function(){
+            return(result)
+          })
+        df.new.comparison = df.new.comparison %>%
+          mutate({{i}} := result)
+        }
+      }
+      delta.df = dplyr::bind_rows(df.new.comparison, delta.df)
       for (var in vars) {
         new.value = studyid.df[[var]][studyid.df$Timepoint == time]
         old.value = studyid.df[[var]][studyid.df$Timepoint == rt]
@@ -105,11 +118,11 @@ write.table(delta.df, out_file, row.names = FALSE, sep = "\t")
 
 # TODO optional create visualizer
 # TODO change this to either df or load the dataframe
-if (build_visualizer == TRUE){
-  input_file_name = paste0(output_dir, "04-SELECTED-FEATURES-", reference_time,
+if (build_datatable %in% c("TRUE", "True")){
+  input_file_name = paste0(output_folder, "04-SELECTED-FEATURES-", reference_time,
                            "/deltas-", reference_time , ".txt")
-  output_file_name = paste0(output_dir, "04-SELECTED-FEATURES-",
+  output_file_name = paste0(output_folder, "04-SELECTED-FEATURES-",
                             reference_time, "/vizualizer-", reference_time,
                             ".html")
-  build_datatable(input_file_name, output_file_name)
+  build_datatable_viz(input_file_name, output_file_name)
 }

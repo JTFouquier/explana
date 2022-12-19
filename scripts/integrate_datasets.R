@@ -1,10 +1,12 @@
 
 
 library(tidyverse)
+source("scripts/viz-datatable.R")
 
 output_folder = paste0(snakemake@config[["out"]], snakemake@config[["path_merged_data"]])
 sample_id = snakemake@config[["sample_id"]]
 file_path_list = snakemake@input[["file_path_list"]]
+build_datatable = snakemake@params[["build_datatable"]]
 
 drop_rows = eval(parse(text=snakemake@config[["drop_rows"]]))
 constrain_rows = eval(parse(text=snakemake@config[["constrain_rows"]]))
@@ -54,3 +56,11 @@ filter_dataframe = function(){
 
 
 filter_dataframe()
+
+# TODO optional create visualizer
+# TODO change this to either df or load the dataframe
+if (build_datatable %in% c("TRUE", "True")){
+  input_file_name = paste0(output_folder, "final-merged-dfs.txt")
+  output_file_name = paste0(output_folder, "vizualizer-merged-dfs.html")
+  build_datatable_viz(input_file_name, output_file_name)
+}
