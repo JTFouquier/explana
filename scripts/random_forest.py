@@ -11,7 +11,7 @@ from sklearn.inspection import plot_partial_dependence
 from merf.merf import MERF
 from merf.viz import plot_merf_training_stats
 from BorutaShap import BorutaShap
-
+# from boruta_shap_mine import BorutaShap
 from sklearn.ensemble import RandomForestRegressor
 
 # TODO switch to OneHotEncoder
@@ -52,7 +52,7 @@ df_input = snakemake.input["in_file"]
 pdf_report = snakemake.output["out_file"]
 
 fe_or_me = snakemake.params["random_forest_type"]
-random_effect = snakemake.params["random_effect"]
+clusters = snakemake.params["random_effect"]
 sample_id = snakemake.config["sample_id"]
 response_var = snakemake.config["response_var"]
 delta_flag = snakemake.params["delta_flag"]
@@ -85,25 +85,32 @@ class Logger(object):
 sys.stdout = Logger()
 
 
-def setup_df_do_encoding(df, random_effect, vars_to_encode, response_var,
-                         delta_flag, join_flag):
-    df, dummy_dict = _dummy_var_creation(vars_to_encode, df, join_flag)
-    drop = [sample_id] + \
-           [random_effect] + vars_to_encode + [response_var]
-    df_encoded_cols_dropped = df.drop(drop, axis=1)
+def setup_df_do_encoding(df, clusters, response_var,
+                         delta_flag, join_flag, sample_id):
 
-    feature_list = df_encoded_cols_dropped.columns
+    numeric_column_list = df._get_numeric_data().columns.values
+    categoric_columns = [i for i in list(df.columns) if
+                         i not in numeric_column_list]
+
+    # exclude clusters and sample_id
+    vars_to_encode = [i for i in categoric_columns if i not in [clusters,
+                                                                sample_id]]
+
+    df, dummy_dict = _dummy_var_creation(vars_to_encode, df, join_flag)
+    drop = [sample_id] + [clusters] + vars_to_encode + [response_var]
+    df_encoded_cols = df.drop(drop, axis=1)
+
+    feature_list = df_encoded_cols.columns
     feature_list = [x for x in feature_list if "_reference" not in x]
-    feature_list = [x for x in feature_list if random_effect not in x]
+    # feature_list = [x for x in feature_list if clusters not in x]
     x = df[feature_list]  # Raw analysis and ALL (new, remove ref)
-    final_input_features = x.columns
-    df_final_input_features = pd.DataFrame(final_input_features,
+    df_final_input_features = pd.DataFrame(x.columns,
                                            columns=['InputFeatures'])
     df_final_input_features.to_csv(out_file_prefix + "-input-features.txt",
                                    index=False, sep="\t")
 
     z = np.ones((len(x), 1))
-    clusters = df["StudyID"]
+    clusters = df[clusters]
     y = df[response_var]
     return x, z, clusters, y, feature_list, dummy_dict
 
@@ -201,41 +208,26 @@ def run_boruta_shap(forest, x, y):
 
     feature_selector.fit(X=x, y=y, n_trials=borutaSHAP_trials,
                          train_or_test="train", sample=False, verbose=False)
-    boruta_dict = {'accepted': [], 'tentative': [],
-                   'rejected': [], 'all': []}
-
     for feature_group in ['all', 'accepted', 'tentative', 'rejected']:
-        boruta_dict[feature_group] = \
-            _boruta_shap_plot(feature_selector, which_features=feature_group,
-                              figsize=(_width, _height), X_size=8)
+        _boruta_shap_plot(feature_selector, which_features=feature_group,
+                          figsize=(_width, _height), X_size=8)
         graphic_handling(plt, "-boruta-" + feature_group + "-features",
                          "Boruta " + feature_group + " features",
                          width=_width, height=_height)
-    return boruta_dict
+    return feature_selector
 
 
-def main(df_input, out_file, random_forest_type, random_effect, sample_id,
+def main(df_input, out_file, random_forest_type, clusters, sample_id,
          response_var, delta_flag, join_flag):
     df = pd.read_csv(df_input, sep="\t", na_filter=False)
 
-    numeric_column_list = list(df._get_numeric_data().columns)
-    column_list = list(df.columns)
-    categoric_columns = [i for i in column_list if
-                         i not in numeric_column_list]
-
-    # exclude random effect cols and sample_id
-    # TODO do I want this in model? Fixed vs random effects?
-    to_drop = [random_effect, sample_id]
-    encode_this_list = [i for i in categoric_columns if i not in to_drop]
-
     x, z, clusters, y, feature_list, dummy_dict = \
-        setup_df_do_encoding(df=df, random_effect=random_effect,
-                             vars_to_encode=encode_this_list,
+        setup_df_do_encoding(df=df, clusters=clusters,
                              response_var=response_var, delta_flag=delta_flag,
-                             join_flag=join_flag)
+                             join_flag=join_flag, sample_id=sample_id)
 
-    # TODO play around with this value (important for feature selection
-    rf_regressor = RandomForestRegressor(n_jobs=-1, n_estimators=n_estimators,
+    rf_regressor = RandomForestRegressor(n_jobs=-1,
+                                         n_estimators=n_estimators,
                                          oob_score=True, max_features=0.90)
 
     def run_mixed_effects_random_forest(x, z, clusters, y, model):
@@ -261,10 +253,7 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_id,
         mrf, training_stats_plot = train_rf_model(x, y)
 
     # BorutaSHAP to select features
-    boruta_dict = run_boruta_shap(forest, x, y)
-    boruta_accepted = boruta_dict['accepted']
-    boruta_accepted_tentative = \
-        boruta_dict['accepted'] + boruta_dict['tentative']
+    feature_selector = run_boruta_shap(forest, x, y)
 
     # SHAP to explain/detail features' values' effects on response variable
     # With rerunning SHAP on only important features (i.e. adding all
@@ -273,17 +262,17 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_id,
     # rerun SHAP
     rerun = "True"
     if rerun == "True":
-        x = x.drop(boruta_dict['rejected'], axis=1)  # TODO tentative?
+        x = x.drop(feature_selector.rejected, axis=1)
         z = np.ones((len(x), 1))
         forest, mrf = run_mixed_effects_random_forest(x, z, clusters,
                                                       y, rf_regressor)
-
     else:
         print("SHAP plots visualized using all input features")
 
     shap_imp, shap_values = run_shap(forest, x)
-    shap_plots(shap_values, x, boruta_accepted,
-               boruta_accepted_tentative, shap_imp)
+    shap_plots(shap_values, x, feature_selector.accepted,
+               feature_selector.accepted + feature_selector.tentative,
+               shap_imp)
 
     shap_imp.to_csv(out_file_prefix + "SHAP-feature-imp.txt",
                     sep='\t', mode='a')
@@ -291,7 +280,7 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_id,
     # find prefix for encoded values "ENC_Location_is_1_3" decoded is Location
     # TODO find key words that can't be in column names (_is_, ENC_, etc)
     decoded_top_features_list = []
-    for i in boruta_accepted:
+    for i in feature_selector.accepted:
         i_for_dict = i.split("_is_")[0] + "_is"  # TODO important word features
         try:
             decoded = dummy_dict[i_for_dict]
@@ -299,13 +288,13 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_id,
             decoded = i
         decoded_top_features_list.append(''.join(decoded))
 
-    df_boruta = pd.DataFrame({'important.features': boruta_accepted,
+    df_boruta = pd.DataFrame({'important.features': feature_selector.accepted,
                               'decoded.features': decoded_top_features_list})
     df_boruta.to_csv(out_file_prefix + "-boruta-important.txt", index=False,
                      sep="\t")
     print("\nRanking of top BorutaSHAP Features (max 20 displayed)\n")
     print(df_boruta.head(20))
-    plot_partial_dependence(forest, x, features=boruta_accepted)
+    plot_partial_dependence(forest, x, features=feature_selector.accepted)
     plot_some_partial_dependence = plt.gcf()
     plot_some_partial_dependence.set_size_inches(_width * 1.4, _height * 1.4)
     plot_list.append(plot_some_partial_dependence)
@@ -316,5 +305,5 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_id,
 
 
 main(df_input=df_input, out_file=pdf_report, random_forest_type=fe_or_me,
-     random_effect=random_effect, sample_id=sample_id,
+     clusters=clusters, sample_id=sample_id,
      response_var=response_var, delta_flag=delta_flag, join_flag=join_flag)
