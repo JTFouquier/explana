@@ -31,12 +31,12 @@ build_datatable: "TRUE"
 # Mixed-effects Random Forest (MERF) arguments
 ##############################################################################
 # For analysis
-iterations: "20"
-n_estimators: "300"
+#iterations: "20"
+#n_estimators: "300"
 
 # For testing (doing too few even for testing may cause failure)
-#iterations: "5"
-#n_estimators: "50"
+iterations: "5"
+n_estimators: "50"
 
 # BorutaSHAP arguments
 ##############################################################################

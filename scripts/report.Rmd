@@ -1,5 +1,5 @@
 ---
-title: "Feature Selection Workflow Final Report"
+title: "Feature Selection Workflow Report"
 date: "`r Sys.Date()`"
 params:
    rmd: "report.Rmd"
@@ -231,7 +231,7 @@ include_graphics(snakemake@input[['pairwise']])
 `r include_graphics(snakemake@input[['pairwise_boruta']])`
 
 
-`r snakemake@params[['iters']]`
+`r snakemake@config[['iterations']]`
 
 ```{r}
 # read in a table example

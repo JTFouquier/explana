@@ -1,4 +1,5 @@
 import json
+import os
 
 
 configfile: "config/config.yaml"
@@ -51,8 +52,7 @@ rule all:
         previous=path_rf_previous +
                  "mixed-RF-deltas-previous.pdf",
         pairwise=path_rf_pairwise +
-                 "mixed-RF-deltas-pairwise.pdf",
-
+                 "mixed-RF-deltas-pairwise.pdf"
 
 def get_pca_in_file(wildcards):
     in_file = dataset_json["datasets"][wildcards.pca_ds_name]["file_path"]
@@ -218,11 +218,7 @@ rule render_report:
                                              "boruta-accepted-features.svg",
         pairwise_log = path_rf_pairwise + "mixed-RF-deltas-pairwise-log.txt",
     output:
-        md_doc=config["report_name"],
-    params:
-        drop_cols= config["drop_cols"],
-        constrain_rows= config["constrain_rows"],
-        drop_rows= config["drop_rows"],
+        md_doc=config["report_name"]
     script:
         "scripts/report.Rmd"
 
