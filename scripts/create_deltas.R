@@ -19,6 +19,7 @@ build_datatable = snakemake@params[["build_datatable"]]
 distance_matrices = eval(parse(text = snakemake@params[["distance_matrices"]]))
 distance_matrices <- lapply(distance_matrices, read.table, fill=T)
 
+dm_flag = FALSE
 if (length(distance_matrices) > 0){
   dm_flag = TRUE
 }
