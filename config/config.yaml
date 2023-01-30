@@ -9,6 +9,8 @@
 ##############################################################################
 
 # REQUIRED COLUMNS: StudyID (random effect), SampleID, & Timepoint
+# Variable names must be EXACTLY as listed here for now (i.e. you must fix
+# your column names)
 ##############################################################################
 random_effect: "StudyID"
 sample_id: "SampleID"
@@ -22,6 +24,7 @@ report_name: "HDL-Demo.html"
 response_var: "HDL" # Variable you are trying to explain
 drop_rows: "c('SexualClassification'='Women')"
 constrain_rows: "c('Diet'='Agrarian')"
+# Can only use one of the below variables (drop_cols or constrain_cols)
 drop_cols: "c('Inflammation', 'TotalCholesterol', 'PCA', 'HOMAIR')"
 constrain_cols: "c()"
 
@@ -44,6 +47,7 @@ borutaSHAP_trials: "20"
 borutaSHAP_percentile: "98"
 
 # When creating deltas, are there distance matrices to include?
+# Leave distance_matrices empty if not in use
 ##############################################################################
 distance_matrices: "list(unweighted_unifrac_dm='data/hdl-test/distance-matrix-\
 hdl.tsv',weighted_unifrac_dm='data/hdl-test/distance-matrix-hdl.tsv',\

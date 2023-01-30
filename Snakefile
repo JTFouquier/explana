@@ -1,8 +1,10 @@
 import json
 import os
 
-
+# first configfile is the only thing you should change in snakefile;
+# (note: data from both 'configfile' .yamls are added to the config)
 configfile: "config/config.yaml"
+# Do not modify paths or bad things will happen. :) 
 configfile: "config/config-paths.yaml"
 
 # TODO add outputs concatenated with final output file

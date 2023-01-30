@@ -14,11 +14,28 @@ Next, predictors are ranked by their Shapley values (importance/contribution) wi
 
 This data-driven workflow will reduce bias by allowing thorough evaluation of predictor variables and how they relate to a response variable in different longitudinal study designs. While developed for longitudinal projects, via implementation of delta datasets, this workflow can be used for cross-sectional studies. Finally, this method can be broadly used in any field through proper formatting of input files, although microbiome specific data was prioritized. 
 
-#### Software: 
+## Software installation
 
-I'm new to Snakemake! Please follow their tutorials. I set it up really quickly to get things going and have not explored best practices, nor is this project ready to install or clone. 
+#### Start with a Snakemake installation into a new Conda environment then install other software into this environment; I plan to make install easier!
+https://snakemake.readthedocs.io/en/stable/getting_started/installation.html
 
-Run using practice data:
+#### Mixed effects Random Forests
+https://pypi.org/project/merf/ (https://github.com/manifoldai/merf)
 
-`snakemake --cores 6`
+#### SCNIC
+https://github.com/shafferm/SCNIC (with fastspar and parallel)
+
+#### BorutaSHAP
+https://pypi.org/project/BorutaShap/
+
+
+## Reading
+- https://towardsdatascience.com/boruta-shap-an-amazing-tool-for-feature-selection-every-data-scientist-should-know-33a5f01285c0
+- https://github.com/Ekeany/Boruta-Shap
+- https://shap.readthedocs.io/en/latest/
+- https://christophm.github.io/interpretable-ml-book/shap.html
+
+## Run using practice data
+
+`snakemake --cores 6; snakemake render_report --cores 6; open HDL-Demo.html`
  
