@@ -4,7 +4,7 @@ import os
 # first configfile is the only thing you should change in snakefile;
 # (note: data from both 'configfile' .yamls are added to the config)
 configfile: "config/config.yaml"
-# Do not modify paths or bad things will happen. :) 
+# Do not modify paths or bad things will happen. :)
 configfile: "config/config-paths.yaml"
 
 # TODO add outputs concatenated with final output file
@@ -21,11 +21,15 @@ path_merged_data = config["out"] + config["path_merged_data"]
 
 def dim_reduction():
     dataset_json = json.loads(config["dataset_json"])
-    file_path_list_for_merge = []
+    file_path_list = []
+    ds_param_dict_list = []
     pca_ds_list = []
     scnic_ds_list = []
+
     for ds_name in dataset_json["datasets"]:
         dim_method = dataset_json["datasets"][ds_name]["dim_method"]
+        ds_param_dict_list.append(dataset_json["datasets"][ds_name]
+        ["ds_param_dict"]["df_mod"])
         if dim_method == "pca":
             f_out = path_dim_pca + ds_name + "/PCA-dim-reduction-" \
                                              "for-workflow.txt"
@@ -39,11 +43,14 @@ def dim_reduction():
         else:
             f_out = dataset_json["datasets"][ds_name]["file_path"]
 
-        file_path_list_for_merge.append(f_out)
+        file_path_list.append(f_out)
 
-    return file_path_list_for_merge, pca_ds_list, scnic_ds_list, dataset_json
+    return file_path_list, ds_param_dict_list, \
+           pca_ds_list, \
+           scnic_ds_list, dataset_json
 
-config["file_path_list_for_merge"], config["pca_ds_list"], \
+config["file_path_list"], config["ds_param_dict_list"], \
+config["pca_ds_list"], \
 config["scnic_ds_list"], dataset_json = dim_reduction()
 config["dataset_json"] = dataset_json
 
@@ -61,7 +68,7 @@ def get_pca_in_file(wildcards):
     return in_file
 
 def get_pca_groups_list(wildcards):
-    pca_groups_list = dataset_json["datasets"][wildcards.pca_ds_name]["param_dict"]["pca_groups_list"]
+    pca_groups_list = dataset_json["datasets"][wildcards.pca_ds_name]["dim_param_dict"]["pca_groups_list"]
     return pca_groups_list
 
 def get_scnic_in_file(wildcards):
@@ -69,14 +76,16 @@ def get_scnic_in_file(wildcards):
     return in_file
 
 def get_scnic_method(wildcards):
-    method = dataset_json["datasets"][wildcards.scnic_ds_name]["param_dict"]["method"]
+    method = dataset_json["datasets"][wildcards.scnic_ds_name]["dim_param_dict"]["method"]
     return method
 
 def get_scnic_min_r(wildcards):
-    min_r = dataset_json["datasets"][wildcards.scnic_ds_name]["param_dict"]["min_r"]
+    min_r = dataset_json["datasets"][wildcards.scnic_ds_name]["dim_param_dict"]["min_r"]
     return min_r
 
 
+# Perform dimensionality reduction using principal coordinates analysis (PCA)
+# Can perform PCA on as many variables as you would like using config file
 rule dim_reduction_pca:
     input:
         in_file = get_pca_in_file,
@@ -84,7 +93,8 @@ rule dim_reduction_pca:
         out_file = path_dim_pca + "{pca_ds_name}" + "/PCA-dim-reduction-"
                                                     "for-workflow.txt"
     params:
-        dataset_name = expand("{pca_ds_name}", pca_ds_name=config["pca_ds_list"]),
+        dataset_name = expand("{pca_ds_name}",
+            pca_ds_name=config["pca_ds_list"]),
         pca_groups_list = get_pca_groups_list
     script:
         "scripts/dim_reduction_pca.R"
@@ -97,24 +107,27 @@ rule dim_reduction_scnic:
         out_file =  path_dim_scnic + "{scnic_ds_name}" + "/SCNIC-dim-reduction"
                                                          "-for-workflow.txt"
     params:
-        dataset_name = expand("{scnic_ds_name}", scnic_ds_name=config["scnic_ds_list"]),
+        dataset_name = expand("{scnic_ds_name}",
+            scnic_ds_name=config["scnic_ds_list"]),
         method = get_scnic_method,
         min_r = get_scnic_min_r
     script:
         "scripts/dim_reduction_scnic.py"
 
-
+# After doing dimensinoality reductions and filters on individual datasets
 rule integrate_datasets:
     input:
-        file_path_list = config["file_path_list_for_merge"],
+        file_path_list = config["file_path_list"],
     output:
         out_file = path_merged_data + "final-merged-dfs.txt"
     params:
+        ds_param_dict_list = config["ds_param_dict_list"],
         build_datatable = config["build_datatable"]
     script:
         "scripts/integrate_datasets.R"
 
-
+# Create "delta datasets"; differences between samples from different
+# timepoints, within individual
 rule make_delta_datasets:
     input:
         in_file = path_merged_data + "final-merged-dfs.txt"

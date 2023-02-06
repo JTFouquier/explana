@@ -20,13 +20,7 @@ sample_id: "SampleID"
 ##############################################################################
 out: "random-forest/TEST/HDL-Demo/"
 report_name: "HDL-Demo.html"
-
 response_var: "HDL" # Variable you are trying to explain
-drop_rows: "c('SexualClassification'='Women')"
-constrain_rows: "c('Diet'='Agrarian')"
-# Can only use one of the below variables (drop_cols or constrain_cols)
-drop_cols: "c('Inflammation', 'TotalCholesterol', 'PCA', 'HOMAIR')"
-constrain_cols: "c()"
 
 # make interactive output of dataframes for interpretation (TRUE or FALSE)
 build_datatable: "TRUE"
@@ -73,27 +67,54 @@ c('Bact','Prev'),cum_var_thres=70))"
 #https://codebeautify.org/jsonviewer
 ##############################################################################
 
+
+# These 4 vars are applied to full dataset after merging. For modifications
+# on individual datasets, add lists to json below.
+##############################################################################
+drop_rows: "c('SexualClassification'='Women')"
+constrain_rows: "c('Diet'='Agrarian')"
+# Can only use one of the below variables (drop_cols or constrain_cols)
+drop_cols: "c()"
+constrain_cols: "c()"
+
+# These are R lists of actions to take on individual datasets
+# Must have a blank list if no dataset modifications are needed
+"df_mod_no_action": "list(drop_rows=c(), constrain_rows=c(), drop_cols=c(), 
+constrain_cols=c())"
+
+"df_mod_metadata": "list(drop_rows=c(''), constrain_rows=c(), drop_cols=c('Inflammation', 'TotalCholesterol', 'PCA', 'HOMAIR'), 
+constrain_cols=c())"
+
 dataset_json: '{
   "datasets": {
     "metadata": {
       "file_path": "data/hdl-test/real-data-no-asvs.txt",
+      "ds_param_dict": {
+        "df_mod": "df_mod_metadata"
+      },
       "dim_method": "pca",
-      "param_dict": {
+      "dim_param_dict": {
         "pca_groups_list": "metadata_pca_list"
       }
     },
     "asvs": {
       "file_path": "data/hdl-test/real-feature-table.biom",
+      "ds_param_dict": {
+        "df_mod": "df_mod_no_action"
+      },      
       "dim_method": "scnic",
-      "param_dict": {
+      "dim_param_dict": {
         "method": "spearman",
         "min_r": "0.35"
       }
     },
     "fake": {
       "file_path": "data/hdl-test/fake-demographics.txt",
+      "ds_param_dict": {
+        "df_mod": "df_mod_no_action"
+      },
       "dim_method": "None",
-      "param_dict": {}
+      "dim_param_dict": {}
     }
   }
 }'

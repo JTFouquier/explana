@@ -4,58 +4,109 @@ library(tidyverse)
 source("scripts/viz-datatable.R")
 
 output_folder = paste0(snakemake@config[["out"]], snakemake@config[["path_merged_data"]])
+
 sample_id = snakemake@config[["sample_id"]]
+
 file_path_list = snakemake@input[["file_path_list"]]
+
 build_datatable = snakemake@params[["build_datatable"]]
-
-drop_rows = eval(parse(text=snakemake@config[["drop_rows"]]))
-constrain_rows = eval(parse(text=snakemake@config[["constrain_rows"]]))
-drop_cols = eval(parse(text=snakemake@config[["drop_cols"]]))
-constrain_cols = eval(parse(text=snakemake@config[["constrain_cols"]]))
+ds_param_dict_list = snakemake@params[["ds_param_dict_list"]]
 
 
-filter_dataframe = function(){
+verify_inputs = function(constrain_cols, drop_cols){
     if (length(constrain_cols) > 0 & length(drop_cols) > 0){
-    print("Cannot have features (arguments) in 'drop_cols' and 'constrain_cols'
-    parameters")
+    # If both these fields exist the entire script fails; TODO make error
+    print("WORKFLOW WARNING: Cannot have features (arguments) in 'drop_cols'
+    and 'constrain_cols' parameters")
+    return(FALSE)
+  }
+  return(TRUE)
+}
+
+check_duplicate_colnames = function(df, df_file_name){
+  complete_column_list = list(colnames(df))
+  complete_column_list["SampleID"] = NULL
+  print("duplicated")
+  print(duplicated(complete_column_list))
+  print("all columns")
+  print(list(colnames(df)))
+  if (length(complete_column_list) != length(unique(complete_column_list))){
+    print(paste0("WORKFLOW WARNING: duplicate column names found in dataset ",
+                 df_file_name, " will affect analysis."))
+  }
+}
+
+filter_dataframe = function(df, df_mod_list, df_complete_flag){
+
+  # For complete/full/merged dataframe, get modification information from
+  # Config file. For individual datasets, get from json
+  if (df_complete_flag == TRUE) {
+    drop_rows = eval(parse(text=snakemake@config[["drop_rows"]]))
+    constrain_rows = eval(parse(text=snakemake@config[["constrain_rows"]]))
+    drop_cols = eval(parse(text=snakemake@config[["drop_cols"]]))
+    constrain_cols = eval(parse(text=snakemake@config[["constrain_cols"]]))
+  }
+  else if (df_complete_flag == FALSE) {
+    constrain_cols = df_mod_list[["constrain_cols"]]
+    drop_cols = df_mod_list[["drop_cols"]]
+    constrain_rows = df_mod_list[["constrain_rows"]]
+    drop_rows = df_mod_list[["drop_rows"]]
+  }
+  verify_flag = verify_inputs(constrain_cols = constrain_cols,
+                              drop_cols = drop_cols)
+  if(verify_flag == FALSE){
     return()
   }
 
-  unique_cols = list()
-  for (df_fp in file_path_list){
-      df = read.table(df_fp,sep="\t",header=T)
-      unique_cols = append(unique_cols, colnames(df))
-  }
-  unique_cols["SampleID"] = NULL
-  if (length(unique_cols) != length(unique(unique_cols))){
-    print("Warning, duplicate column names in datasets could affect analysis")
-  }
-
-  df_list <- lapply(file_path_list, read_tsv)
-  df_large = df_list %>% reduce(full_join, by='SampleID')
+  check_duplicate_colnames(df, df_file_name)
 
   if (length(constrain_cols) > 0){
-    df_large = df_large %>%
-      select(all_of(constrain_cols))
+    df = df %>% select(all_of(constrain_cols))
   }
   if (length(drop_cols) > 0){
-    df_large = df_large %>%
-      select(!all_of(drop_cols))
+    df = df %>% select(!all_of(drop_cols))
   }
-  for (i in names(drop_rows)){
-    df_large = df_large %>%
-        filter(.data[[{{i}}]] != drop_rows[[i]])
+  if (length(drop_rows) > 0){
+    for (i in names(drop_rows)){
+      df = df %>% filter(.data[[{{i}}]] != drop_rows[[i]])
+    }
   }
-  for (i in names(constrain_rows)){
-    df_large = df_large %>%
-        filter(.data[[{{i}}]] == constrain_rows[[i]])
+  if (length(constrain_rows) > 0){
+    for (i in names(constrain_rows)){
+      df = df %>% filter(.data[[{{i}}]] == constrain_rows[[i]])
+    }
   }
-  write_tsv(df_large, paste0(output_folder, "final-merged-dfs.txt"))
-  return()
+  return(df)
 }
 
 
-filter_dataframe()
+filter_dfs_merge_main = function(file_path_list, ds_param_dict_list){
+  if (length(file_path_list) != length(ds_param_dict_list)){
+    print(length(file_path_list))
+    print(length(ds_param_dict_list))
+    print(print(paste0("WORKFLOW WARNING: Dataset count does not equal
+    dataset parameter dictionary count")))
+  }
+  df_list = list()
+  for(i in 1:length(file_path_list)){
+    # For each dataset, get the parameter dict (drop, constrain, etc)
+    ds_param_dict = ds_param_dict_list[[i]]
+    df_mod_list = snakemake@config[[ds_param_dict]]
+    df_mod_list = eval(parse(text=df_mod_list))
+    df_complete_flag = FALSE
+    df = as.data.frame(read_tsv(file_path_list[[i]]))
+    df = filter_dataframe(df, df_mod_list, df_complete_flag)
+    df_list = append(df_list, list(df))
+  }
+  df_complete_flag = TRUE
+  df_complete = df_list %>% reduce(full_join, by="SampleID")
+  df_complete = filter_dataframe(df_complete, df_mod_list, df_complete_flag)
+
+  write_tsv(df_complete, paste0(output_folder, "final-merged-dfs.txt"))
+}
+
+
+filter_dfs_merge_main(file_path_list, ds_param_dict_list)
 
 # TODO optional create visualizer
 # TODO change this to either df or load the dataframe
