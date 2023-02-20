@@ -111,6 +111,7 @@ rule dim_reduction_scnic:
             scnic_ds_name=config["scnic_ds_list"]),
         method = get_scnic_method,
         min_r = get_scnic_min_r
+    conda: "conda_envs/scnic.yaml"
     script:
         "scripts/dim_reduction_scnic.py"
 
@@ -179,6 +180,7 @@ rule random_forest_deltas:
         response_var = config["response_var"],
         delta_flag = "{deltas}",  # raw or deltas
         iterations = config["iterations"],  # 20 is suggested, 10 for testing
+    conda: "conda_envs/merf.yaml"
     script:
         "scripts/random_forest.py"
 
@@ -195,6 +197,7 @@ rule random_forest_original:
         response_var = config["response_var"],
         delta_flag = "raw",
         iterations = config["iterations"],
+    conda: "conda_envs/merf.yaml"
     script:
         "scripts/random_forest.py"
 

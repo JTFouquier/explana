@@ -1,7 +1,7 @@
 
 library(dplyr)
 #devtools::install_github("jbisanz/qiime2R")
-library(qiime2R)
+# library(qiime2R)
 library(usedist)
 source("scripts/viz-datatable.R")
 
