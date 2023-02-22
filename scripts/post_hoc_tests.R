@@ -1,5 +1,6 @@
 
 
+
 #rm(list=ls()) # clear env
 
 library(dplyr)
@@ -12,19 +13,23 @@ library(sjmisc)
 library(sjlabelled)
 library(ggpubr)
 library(ggplot2)
+library(stringr)
 
-
+# TODO use dataset after drop for RF vs before
 deltas_first = snakemake@input[["deltas_first"]]
 deltas_previous = snakemake@input[["deltas_previous"]]
 deltas_pairwise = snakemake@input[["deltas_pairwise"]]
-df_raw = snakemake@input[["df_raw"]]
+df_original = snakemake@input[["df_original"]]
 
-fixed_effects_first = snakemake@input[["fixed_effects_first"]]
-fixed_effects_previous = snakemake@input[["fixed_effects_previous"]]
-fixed_effects_pairwise = snakemake@input[["fixed_effects_pairwise"]]
-fixed_effects_raw = snakemake@input[["fixed_effects_raw"]]
+important_features_first = snakemake@input[["fixed_effects_first"]]
+important_features_previous = snakemake@input[["fixed_effects_previous"]]
+important_features_pairwise = snakemake@input[["fixed_effects_pairwise"]]
+important_features_original = snakemake@input[["fixed_effects_original"]]
 
 out_file = snakemake@output[["out_file"]]
+
+output_folder = paste0(snakemake@config[["out"]],
+                       snakemake@config[["path_post_hoc"]])
 
 response_var = snakemake@params[["response_var"]]
 #absolute_values = snakemake@params[["absolute_values"]]
@@ -33,24 +38,50 @@ response_var = snakemake@params[["response_var"]]
 #exp_var = unlist(df[predictor]) res_var = unlist(df[response]) Timepoint = unlist(df["Timepoint"])
 
 # TODO if columns dropped, allow less tests
+# TODO get control/references vars for interactions
 response = response_var
 #response = 'IL6'
 random_effects_list = c("StudyID")
 interaction = "no"
-
 # TODO make log file containing LME errors and warnings
 
+dir.create(output_folder)
 
-css_list = list(css.table = '+border:3px solid black;',
-                css.caption = '+padding-top:1.2cm; padding-bottom:0.4cm',
-                css.thead = '+font-weight:bold; padding:0.2cm;')
+my_css = function(analysis_type, dataset_type){
+
+  # Outside border of table
+  border_color_list <- list('multivariate' = '+border: 18px solid #CAE1FF; margin-left: auto; margin-right: auto;',
+                            'univariate' = '+border: 18px solid #FFE1FF; margin-left: auto; margin-right: auto;')
+  border_css = border_color_list[[analysis_type]]
+
+  # Title banner color
+  banner_color = function(banner_color){
+    i = paste('+padding: 14px; background-color:', banner_color,
+              '; border-top: 36px solid white; font-style:normal; font-size: 18px; ')
+    return(i)
+  }
+  banner_color_list <- list('first' = banner_color('cornflowerblue'),
+                            'previous' = banner_color('lightgreen'),
+                            'pairwise' = banner_color('#AB82FF'),
+                            'original' = banner_color('#FFFACD'),
+                            'combined' = banner_color('#BABABA'))
+  banner_css = banner_color_list[[dataset_type]]
+
+  css_list = list(css.table = border_css,
+                  css.body = '+border: 10px solid; margin-left: auto; margin-right: auto; padding: 12px;',
+                  css.caption = banner_css,
+                  css.thead = '+font-weight:bold; font-style:normal; font-size: 15px; padding-top: 9px; padding-bottom: 9px; background-color: #F2F2F2;',
+                  css.summary = '+background-color: #F2F2F2;',
+                  css.depvarhead = '+color: black; padding:5px;',
+                  css.randomparts = '+font-weight:bold; text-align:left; padding-top:.8em; background-color: #F2F2F2;')
+  return(css_list)
+}
 
 lm_post_hoc <- function(df, response, fixed_effects_list, interaction){
   fixed_effects_formula = paste(fixed_effects_list, collapse = interaction)
 
   reduced_formula = as.formula(paste0(response, " ~ 1"))
   full_formula = as.formula(paste0(response, " ~ ", fixed_effects_formula))
-
   model_reduced = lm(reduced_formula, data = df)
   model_full = lm(full_formula, data = df)
   model_anova = anova(model_full, model_reduced)
@@ -61,27 +92,20 @@ lm_post_hoc <- function(df, response, fixed_effects_list, interaction){
 }
 
 
-lme_post_hoc <- function(df, response, fixed_effects_list, random_effects_list,
+lme_post_hoc <- function(df, response, important_features_list, random_effects_list,
                          interaction) {
-  print("fixed_effects_list")
-  print(fixed_effects_list)
-  fixed_effects_formula = paste(fixed_effects_list, collapse = interaction)
-  # linear mixed effects model (deltas)
-  random_effects_formula = paste0("(1|", random_effects_list, ")",
-                                   collapse = " + ")
-  print("fixed_effects_formula")
-  print(fixed_effects_formula)
-  print("random_effects_formula")
-  print(random_effects_formula)
-  reduced_formula = as.formula(paste0(response, " ~ 1", " + ",
-                                     random_effects_formula ))
 
-  full_formula = as.formula(paste0(response, " ~ ", fixed_effects_formula,
-                                  " + ", random_effects_formula))
-  print("reduced_formula")
-  print(reduced_formula)
-  print("full_formula")
-  print(full_formula)
+  important_features_formula = paste0("`", important_features_list, "`",
+                                      collapse = interaction)
+  random_effects_formula = paste0("(1|", random_effects_list, ")",
+                                  collapse = " + ")
+
+  reduced_formula = as.formula(paste0(response, " ~ 1", " + ",
+                                      random_effects_formula))
+
+  full_formula = as.formula(paste0(response, " ~ ", important_features_formula,
+                                   " + ", random_effects_formula))
+
   model_reduced = lmer(reduced_formula, data = df, REML=FALSE)
   model_full = lmer(full_formula, data = df, REML=FALSE)
   model_anova = anova(model_full, model_reduced)
@@ -99,152 +123,107 @@ if (interaction == "yes"){
 
 # ENC_PlotName_is_P3 TODO remove modifiers
 
-#my_tabular_model <- function()
-
-
-lme_complete <- function(delta_file, fixed_effects_file, reference_type){
-  html_number = 1
-  reference_order_list = list("first"="01", "previous"="02", "pairwise"="03",
-                              "raw" = "04")
+lme_complete <- function(delta_file, important_features_file, reference_type){
+  #interaction_terms = c("Timepoint")
+  html_number = 100
+  reference_order_list = list("original" = "01", "first"="02", "previous"="03",
+                              "pairwise"="04")
   reference_order = reference_order_list[[reference_type]]
-  df = read.csv(delta_file, sep = "\t")
+  df = read.csv(delta_file, sep = "\t", check.names = FALSE)
 
   # TODO this helps find linear relns. Keep categorical?
-  #df$Timepoint = factor(df$Timepoint, ordered = TRUE)
+  df$Timepoint = factor(df$Timepoint, ordered = TRUE)
 
-  fixed_effects_list = read.csv(fixed_effects_file, sep = "\t")
-  fixed_effects_list = unique(fixed_effects_list[["decoded.features"]])
+  important_features_list = read.csv(important_features_file, sep = "\t", check.names = FALSE)
+  important_features_list = unique(important_features_list[["decoded.features"]])
 
-  lme_model = lme_post_hoc(df, response, fixed_effects_list,
+  # Multivariate analysis (all important variables explain response)
+  css_list = my_css(analysis_type = 'multivariate', dataset_type = reference_type)
+  lme_model = lme_post_hoc(df, response, important_features_list,
                            random_effects_list, interaction)
-
-  # Multivariate analysis
-  tm = tab_model(lme_model,
-                 file = paste0(html_number, reference_order, "-post-hoc-lme-",
-                               reference_type, ".html"),
-                 title = paste0("Multivariate Longitudinal Analysis - ",
-                                reference_type, " as Reference"),
-                 dv.labels = paste0(response, " (", reference_type,
-                                    " as reference)"),
-                 CSS = css_list)
+  print(tab_model(lme_model,
+                  file = paste0(output_folder, reference_order, "-", html_number,
+                                "-multivariate-individual-", reference_type, ".html"),
+                  title = paste0("Multivariate Model - ", reference_type),
+                  dv.labels = paste0(response, " (", reference_type, ")"),
+                  CSS = css_list))
   html_number = html_number + 1
-  print(tm)
-
-  lme_model2 = lme_post_hoc(df, response, c(fixed_effects_list, "Diet", "Timepoint"),
-                            random_effects_list, " * ")
-
-  # Multivariate analysis
-  tm = tab_model(lme_model2,
-                 file = paste0(html_number, reference_order, "-post-hoc-lme-",
-                               reference_type, ".html"),
-                 title = paste0("Multivariate Longitudinal Analysis ",
-                                reference_type, " as Reference"),
-                 dv.labels = paste0(response, " (", reference_type,
-                                    " as reference)"),
-                 CSS = css_list)
-  html_number = html_number + 1
-  print(tm)
 
   # Univariate analysis
-  for (i in fixed_effects_list){
+  css_list = my_css(analysis_type = 'univariate', dataset_type = reference_type)
+  for (i in important_features_list){
     lme_i = lme_post_hoc(df, response, i, random_effects_list, interaction)
-    tm = tab_model(lme_i,
-                   file = paste0(html_number, reference_order,
-                                 "-post-hoc-lme-univariate-", reference_type,
-                                 '-', response, "-by-", i, ".html"),
-                   title = paste("Univariate Linear Mixed Effects Model - ",
-                                 reference_type, "as reference", response, "~", i),
-                   dv.labels = paste0(response, " (", reference_type,
-                                      " as reference)"),
-                   CSS = css_list)
+    print(tab_model(lme_i,
+                    file = paste0(output_folder, reference_order, "-", html_number,
+                                  "-univariate-", reference_type,
+                                  "-", response, "-by-", i, ".html"),
+                    title = paste("Univariate Model - ", reference_type,
+                                  response, "~", i),
+                    dv.labels = paste0(response, " (", reference_type, ")"),
+                    CSS = css_list))
     html_number = html_number + 1
-    print(tm)
   }
-
-  # Univariate with interaction *
-  for (i in fixed_effects_list){
-    interaction_terms = c("HIV", "Diet")
-    fixed_effects_list = unique(c(i, interaction_terms))
-    lme_i = lme_post_hoc(df, response, fixed_effects_list, random_effects_list, " * ")
-    tm = tab_model(lme_i,
-                   file = paste0(html_number, reference_order,
-                                 "-post-hoc-lme-univariate-", reference_type,
-                                 '-', response, "-by-", i, ".html"),
-                   title = paste("Univariate Linear Mixed Effects Model w/ INTERACTION - ",
-                                 reference_type, "as reference", response, "~", i),
-                   dv.labels = paste0(response, " (", reference_type,
-                                      " as reference)"),
-                   CSS = css_list)
-    html_number = html_number + 1
-    print(tm)
-  }
-  # TODO this is returned... new function needed
   return(lme_model)
 }
 
-rt = "first"
+
+# Do all statistics for each type of dataset
 lme_first = lme_complete(delta_file = deltas_first,
-                         fixed_effects_file = fixed_effects_first,
-                         reference_type = rt)
-
-rt = "previous"
+                         important_features_file = important_features_first,
+                         reference_type = "first")
 lme_previous = lme_complete(delta_file = deltas_previous,
-                            fixed_effects_file = fixed_effects_previous,
-                            reference_type = rt)
-
-rt = "pairwise"
+                            important_features_file = important_features_previous,
+                            reference_type = "previous")
 lme_pairwise = lme_complete(delta_file = deltas_pairwise,
-                            fixed_effects_file = fixed_effects_pairwise,
-                            reference_type = rt)
+                            important_features_file = important_features_pairwise,
+                            reference_type = "pairwise")
+lme_original = lme_complete(delta_file = df_original,
+                            important_features_file = important_features_original,
+                            reference_type = "original")
 
-
-# TODO for list of models, make custom labels
-######### after all RF are run
+# Combine delta results for simplified interpretation
 tab_model(list(lme_first, lme_previous, lme_pairwise),
           show.aic = TRUE,
           show.stat = TRUE,
-          title = "Multivariate Longitudinal Analysis - All Models (note: predictors were
-          not necessarily important for all models as indicated by blank cells)",
+          title = "Multivariate Analysis - Delta Dataset Models",
           string.stat = "Stat.",
           string.est = "Est.",
-          file = "01-post-hoc-combined-first-previous-pairwise.html",
+          file = paste0(output_folder, "01-multivariate-deltas.html"),
           dv.labels = c(paste(response, "(first)") ,
                         paste(response, "(previous)"),
                         paste(response, "(pairwise)")),
-          CSS = css_list
+          CSS = my_css('multivariate', 'combined')
 )
 
-#### IF RAW run this
-rt = "raw"
-lme_raw = lme_complete(delta_file = df_raw,
-                       fixed_effects_file = fixed_effects_raw,
-                       reference_type = rt)
+filenames_html_multivariate_combined <- sort(Sys.glob(file.path(output_folder, "*multivariate*deltas*.html")))
+filenames_html_multivariate_individual <- sort(Sys.glob(file.path(output_folder, "*multivariate*individual*.html")))
+filenames_html_univariate <- sort(Sys.glob(file.path(output_folder, "*univariate*.html")))
 
-tab_model(lme_raw,
-          file = "9-post-hoc-raw.html",
-          CSS = css_list
-)
+filenames_html_complete = c(filenames_html_multivariate_combined,
+                            filenames_html_multivariate_individual,
+                            filenames_html_univariate)
 
-# TODO temp dir
-filenames_html <- sort(Sys.glob("*.html"))
 html_combine(
-  combine = list(filenames_html),
+  combine = list(filenames_html_complete),
   out = out_file,
 )
 
+# html_folder_name = "all-models-html-files/"
+# dir.create(paste0(output_folder, html_folder_name))
+# for (f in filenames_html_complete){
+#   html_name = str_split(f, "/")
+#   html_name = html_name[length(html_name)]
+#   file.rename(f, paste0(output_folder, html_name))
+# }
 
-#filenames_html <- sort(Sys.glob("*.html"))
-#html_combine(
-#  combine = list(filenames_html),
-#  out = "test-COMBINED.html",
-#)
+
 
 
 
 # No longitudinal analysis, use lmes? TODO Yes, if random effects needed
-#tab_model(lm_raw, title = "Cross-sectional (raw data) Analysis")
+#tab_model(lm_original, title = "Cross-sectional (original data) Analysis")
 #
-#tab_model(lm_raw, title = 'Cross-sectional (raw data) Analysis',
+#tab_model(lm_original, title = 'Cross-sectional (original data) Analysis',
 #           CSS = list(css.table = 'border:2px solid red;',
 #                     css.summary = 'font-weight:bold;',
 #                     css.lasttablerow = 'border-bottom: 1px dotted blue;',
@@ -281,3 +260,8 @@ html_combine(
 # TODO add dots and borders in between StudyIDs?
 # figure out CSS for displaying interesting things in dfs
 # gradients? categorical, etc.
+
+# Example lme
+# model_reduced = lmer(HDL ~ 1 + (1|StudyID), data = df, REML=FALSE)
+# model_full = lmer(HDL ~ Timepoint + (1|StudyID), data = df, REML=FALSE)
+# print(summary(model_full))

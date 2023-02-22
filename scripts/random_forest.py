@@ -61,8 +61,8 @@ delta_flag = snakemake.params["delta_flag"]
 iterations = int(snakemake.config["iterations"])
 
 # set graphics dimensions
-_width = 14
-_height = 8
+_width = 11
+_height = 6
 
 # TODO review this
 join_flag = True
@@ -133,14 +133,11 @@ def graphic_handling(plt, plot_file_name, p_title, width=_width, height=_height)
     plot_list.append(p)
 
 
-def shap_plots(shap_values, x, boruta_accepted, boruta_accepted_tentative,
-               feature_importance):
+def shap_plots(shap_values, x, boruta_accepted, feature_importance):
 
     # get indexes from Boruta for accepted and accepted+tentative features
     index_list_accepted = list(feature_importance[feature_importance[
         "col_name"].isin(boruta_accepted)].index)
-    index_list_accepted_tentative = list(feature_importance[feature_importance[
-        "col_name"].isin(boruta_accepted_tentative)].index)
 
     def my_shap_summary_plots(feature_index_list, shap_values, x,
                               accepted_flag):
@@ -151,13 +148,6 @@ def shap_plots(shap_values, x, boruta_accepted, boruta_accepted_tentative,
                              "SHAP bar plot"
             file_name_bee = "-accepted-SHAP-summary-beeswarm"
             file_name_bar = "-accepted-SHAP-summary-bar"
-        if not accepted_flag:
-            title_name_bee = "Accepted and tentative important features " \
-                             "displayed with SHAP beeswarm plot"
-            title_name_bar = "Accepted and tentative important features " \
-                             "displayed with SHAP bar plot"
-            file_name_bee = "-accepted-and-tentative-SHAP-summary-beeswarm"
-            file_name_bar = "-accepted-and-tentative-SHAP-summary-bar"
         shap.summary_plot(shap_values=shap_values[:, feature_index_list],
                           features=x.iloc[:, feature_index_list], show=False,
                           plot_size=(_width, _height), sort=False)
@@ -169,9 +159,6 @@ def shap_plots(shap_values, x, boruta_accepted, boruta_accepted_tentative,
         graphic_handling(plt, file_name_bar, title_name_bar)
 
     my_shap_summary_plots(index_list_accepted, shap_values, x, True)
-    # Uncomment to print accepted and tentative features - not necessary
-    # my_shap_summary_plots(index_list_accepted_tentative, shap_values,
-    # x, False)
 
     col_count = 1
     # TODO make either accepted or accepted and tentative
@@ -212,9 +199,7 @@ def run_boruta_shap(forest, x, y):
     for feature_group in ['all', 'accepted', 'tentative', 'rejected']:
         boruta_dict = \
             _boruta_shap_plot(feature_selector, which_features=feature_group,
-                          figsize=(_width, _height), X_size=8)
-        # print(feature_group)
-        # print(boruta_dict)
+                              figsize=(_width, _height), X_size=8)
         graphic_handling(plt, "-boruta-" + feature_group + "-features",
                          "Boruta " + feature_group + " features",
                          width=_width, height=_height)
@@ -248,9 +233,6 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_id,
         RandomForestRegressor(n_jobs=-1, n_estimators=n_estimators,
                               oob_score=True, max_features=0.90)
     rf_param_dict = rf_regressor.get_params()
-    print("RF ESTIMATORS (TREES): ", rf_param_dict['n_estimators'])
-    # print("Random Forest Regressor parameters:\n" +
-    #       str(rf_regressor.get_params()))
 
 
     # TODO!!!!  if two timepoints original MERF deltas RF
@@ -297,7 +279,6 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_id,
 
     shap_imp, shap_values = run_shap(forest, x)
     shap_plots(shap_values, x, feature_selector.accepted,
-               feature_selector.accepted + feature_selector.tentative,
                shap_imp)
 
     shap_imp.to_csv(out_file_prefix + "SHAP-feature-imp.txt",

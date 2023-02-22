@@ -9,24 +9,26 @@ output:
 
 ```{r setup, include=FALSE}
 library(knitr)
+library(htmltools)
 knitr::opts_chunk$set(echo = FALSE,
                       eval = TRUE)
 ```
 ***
 
-# Summary:
+#
+
+<h1 style="background-color:lightgray; color: black; text-align: center; padding-top:30px; padding-bottom: 30px; padding-left: 20px;">Summary</h1>
 
 ***
 
-Values of the response variable are explained best with the important features selected using this workflow. Additional figures and files
-can be found in the output directory. Please ensure you understand the workflow and that the accuracy of the model is adequate for your purposes.
+Values of the response variable are explained best with the important features selected using this workflow.\
+
+Please ensure you understand the workflow and that the accuracy of the model is adequate for your purposes.
 When you are using all your data without prior
 hypotheses, you are performing *exploratory analysis* and should make this clear
-when discussing any results.
+when discussing any results.\
 
-***
-
-## Arguments:
+Additional figures and files can be found in the output directory.
 
 ***
 
@@ -37,17 +39,199 @@ constrain_rows = snakemake@config[['constrain_rows']]
 random_effect = snakemake@config[['random_effect']]
 drop_rows = snakemake@config[['drop_rows']]
 iterations = snakemake@config[["iterations"]]
+n_estimators = snakemake@config[["n_estimators"]]
+output_directory = snakemake@config[["out"]]
 
 cat(paste0("RESPONSE VARIABLE: ", response_var))
 cat(paste0("RANDOM EFFECT: ", random_effect))
 cat(paste0("FEATURES DROPPED: ", toString(drop_cols)))
 cat(paste0("VALUES DROPED ({feature: value}): ", toString(drop_rows)))
 cat(paste0("CONSTRAINED TO ROWS: ", toString(constrain_rows)))
+cat(paste0("OUTPUT DIRECTORY: ", toString(output_directory)))
+
+cat(paste0("This pipeline was used to identify important features predictive of ", response_var, " values.\nA random effect of ", random_effect, " was used to adjust for non-independence. There were ", n_estimators, " trees per Random Forest model. Mixed-effects software MERF was used with ", iterations, " iterations. (Include log file here)"))
 
 
-cat(paste0("This pipeline was used to identify important features predictive of ", response_var, " values. A random effect of ", random_effect, " was used to adjust for non-independence. Mixed-effects software MERF was used with ", iterations, " iterations. (Include log file here)"))
+```
+
+<br>
+<br>
+<br>
+<br>
+<br>
+</br>
+
+#
+
+***
+
+<h1 style="background-color:#FFFACD; color: black; text-align: center; padding-top:30px; padding-bottom: 30px; padding-left: 20px;">Original Dataset</h1>
+
+***
+
+## Results {.tabset}
+
+### Log and SHAP Summary Results
+
+```{r out.width = 1100, out.height = 600, comment=""}
+cat(readLines(snakemake@input[['original_log']]), sep = '\n')
+include_graphics(snakemake@input[['original_shap']])
+```
+
+### BorutaSHAP Important Features
+
+```{r out.width = 1100, out.height = 600, comment=""}
+include_graphics(snakemake@input[['original_boruta']])
+```
+
+### Results PDF
+
+```{r out.width = 1100, out.height = 600, comment=""}
+include_graphics(snakemake@input[['original']])
+```
+<br>
+<br>
+<br>
+<br>
+<br>
+</br>
+
+#
+***
+
+<h1 style="background-color:cornflowerblue; color: black; text-align: center; padding-top:30px; padding-bottom: 30px; padding-left: 20px;">First Delta Dataset</h1>
+
+***
+
+## Results {.tabset}
+
+### Log and SHAP Summary Results
+
+```{r out.width = 1100, out.height = 600, comment=""}
+cat(readLines(snakemake@input[['first_log']]), sep = '\n')
+include_graphics(snakemake@input[['first_shap']])
+```
+
+### BorutaSHAP Important Features
+
+```{r out.width = 1100, out.height = 600, comment=""}
+include_graphics(snakemake@input[['first_boruta']])
+```
+
+### Results PDF
+
+```{r out.width = 1100, out.height = 600, comment=""}
+include_graphics(snakemake@input[['first']])
+```
+<br>
+<br>
+<br>
+<br>
+<br>
+</br>
+
+#
+
+***
+
+<h1 style="background-color:lightgreen; color: black; text-align: center; padding-top:30px; padding-bottom: 30px; padding-left: 20px;">Previous Delta Dataset</h1>
+
+***
+
+## Results {.tabset}
+
+### Log and SHAP Summary Results
+
+```{r out.width = 1100, out.height = 600, comment=""}
+cat(readLines(snakemake@input[['previous_log']]), sep = '\n')
+include_graphics(snakemake@input[['previous_shap']])
+```
+
+### BorutaSHAP Important Features
+
+```{r out.width = 1100, out.height = 600, comment=""}
+include_graphics(snakemake@input[['previous_boruta']])
+```
+
+### Results PDF
+
+```{r out.width = 1100, out.height = 600, comment=""}
+include_graphics(snakemake@input[['previous']])
+```
+<br>
+<br>
+<br>
+<br>
+<br>
+</br>
+
+#
+
+***
+
+<h1 style="background-color:#AB82FF; color: black; text-align: center; padding-top:30px; padding-bottom: 30px; padding-left: 20px;">Pairwise Delta Dataset</h1>
+***
 
 
+## Results {.tabset}
+
+### Log and SHAP Summary Results
+
+```{r out.width = 1100, out.height = 600, comment=""}
+cat(readLines(snakemake@input[['pairwise_log']]), sep = '\n')
+include_graphics(snakemake@input[['pairwise_shap']])
+```
+
+### BorutaSHAP Important Features
+
+```{r out.width = 1100, out.height = 600, comment=""}
+include_graphics(snakemake@input[['pairwise_boruta']])
+```
+
+### Results PDF
+
+```{r out.width = 1100, out.height = 600, comment=""}
+include_graphics(snakemake@input[['pairwise']])
+```
+<br>
+<br>
+<br>
+<br>
+<br>
+</br>
+
+#
+
+***
+
+#
+
+<h1 style="background-color:lightgray; color: black; text-align: center; padding-top:30px; padding-bottom: 30px; padding-left: 20px;">Post-hoc tests</h1>
+
+# Results {.tabset}
+
+***
+
+## Description
+
+Linear models or linear mixed effects models were used for post hoc testing to determine if a linear relationship exists between selected feature and response variable.
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+<br>
+
+## Results
+
+```{r out.width = 1100, out.height = 600, comment=""}
+htmltools::includeHTML(snakemake@input[['post_hoc']])
 ```
 
 ***
@@ -55,183 +239,6 @@ cat(paste0("This pipeline was used to identify important features predictive of 
 See the [Github repository](https://github.com/JTFouquier/snakemake-MERF "Still a work in progress!! :) ") for more information.
 
 ***
-
-# Original Data
-
-***
-
-## Original Data: Log File
-
-***
-
-
-```{r comment=""}
-cat(readLines(snakemake@input[['original_log']]), sep = '\n')
-```
-
-***
-
-## Original Data: Overview of Results
-
-***
-
-```{r, out.width = 1100, out.height = 800}
-include_graphics(snakemake@input[['original']])
-```
-
-***
-
-## Original Data: SHAP summary
-
-***
-
-```{r}
-include_graphics(snakemake@input[['original_shap']])
-```
-
-***
-
-## Original Data: BorutaSHAP
-
-***
-
-```{r}
-include_graphics(snakemake@input[['original_boruta']])
-```
-
-
-
-
-
-***
-
-# First Delta Dataset
-
-
-***
-
-## First Delta Dataset: Log File
-
-***
-
-```{r, max.height='100px', comment=""}
-cat(readLines(snakemake@input[['first_log']]), sep = '\n')
-```
-***
-
-## First Delta Dataset: Overview of Results
-
-***
-
-
-```{r, out.width = 1100, out.height = 800}
-include_graphics(snakemake@input[['first']])
-```
-
-***
-
-## First Delta Dataset: SHAP summary
-
-***
-
-```{r}
-include_graphics(snakemake@input[['first_shap']])
-```
-
-***
-
-## First Delta Dataset: BorutaSHAP
-
-***
-
-```{r}
-include_graphics(snakemake@input[['first_boruta']])
-```
-
-
-
-
-***
-
-# Previous Delta Dataset
-
-***
-
-## Previous Delta Dataset: Log File
-
-***
-
-```{r comment=""}
-cat(readLines(snakemake@input[['previous_log']]), sep = '\n')
-```
-## Previous Delta Dataset: Overview of Results
-
-***
-
-
-```{r, out.width = 1100, out.height = 800}
-include_graphics(snakemake@input[['previous']])
-```
-
-***
-
-## Previous Delta Dataset: SHAP summary
-
-***
-
-`r include_graphics(snakemake@input[['previous_shap']])`
-
-***
-
-## Previous Delta Dataset: BorutaSHAP
-
-***
-
-`r include_graphics(snakemake@input[['previous_boruta']])`
-
-
-
-***
-
-# Pairwise Delta Dataset
-
-***
-
-## Pairwise Delta Dataset: Log File
-
-***
-
-```{r comment=""}
-cat(readLines(snakemake@input[['pairwise_log']]), sep = '\n')
-```
-***
-
-## Pairwise Delta Dataset: Overview of Results
-
-***
-
-```{r, out.width = 1100, out.height = 800}
-include_graphics(snakemake@input[['pairwise']])
-```
-
-***
-
-## Pairwise Delta Dataset: SHAP summary
-
-***
-
-`r include_graphics(snakemake@input[['pairwise_shap']])`
-
-***
-
-## Pairwise Delta Dataset: BorutaSHAP
-
-***
-
-`r include_graphics(snakemake@input[['pairwise_boruta']])`
-
-
-`r snakemake@config[['iterations']]`
 
 ```{r}
 # read in a table example

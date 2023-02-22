@@ -15,4 +15,5 @@ path_rf_first: "04-SELECTED-FEATURES-first/"
 path_rf_previous: "04-SELECTED-FEATURES-previous/"
 path_rf_pairwise: "04-SELECTED-FEATURES-pairwise/"
 
+path_post_hoc: "05-POST-HOC-TESTS/"
 

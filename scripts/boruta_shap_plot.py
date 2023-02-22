@@ -71,7 +71,7 @@ def _make_box_plot(self, data, X_rotation, X_size, y_scale, figsize,
     return ordered_list
 
 
-def _boruta_shap_plot(self, X_rotation=90, X_size=10, figsize=(14, 6),
+def _boruta_shap_plot(self, X_rotation=90, X_size=12, figsize=(14, 6),
                       y_scale='log', which_features='all'):
     """
     creates a boxplot of the feature importances

@@ -18,6 +18,7 @@ path_dim_scnic = config["out"] + config["path_dim_scnic"]
 
 path_merged_data = config["out"] + config["path_merged_data"]
 
+path_post_hoc = config["out"] + config["path_post_hoc"]
 
 def dim_reduction():
     dataset_json = json.loads(config["dataset_json"])
@@ -205,6 +206,24 @@ rule random_forest_original:
 # TODO program if statements here and make report reflect missing data
 # TODO consider if statements with all rule
 # TODO idea make four new render reports
+# TODO consider making some of these parameters
+rule run_post_hoc_stats:
+    input:
+        deltas_first = path_rf_first + "deltas-first.txt",
+        deltas_previous = path_rf_previous + "deltas-previous.txt",
+        deltas_pairwise = path_rf_pairwise + "deltas-pairwise.txt",
+        df_original = path_merged_data + "final-merged-dfs.txt",
+        fixed_effects_first = path_rf_first + "mixed-RF-deltas-first-boruta-important.txt",
+        fixed_effects_previous = path_rf_previous + "mixed-RF-deltas-previous-boruta-important.txt",
+        fixed_effects_pairwise = path_rf_pairwise + "mixed-RF-deltas-pairwise-boruta-important.txt",
+        fixed_effects_original = path_rf_original + "MERF-original-boruta-important.txt"
+    output:
+        out_file = path_post_hoc + "post-hoc-analysis.html"
+    params:
+        response_var = "HDL"
+    script:
+        "scripts/post_hoc_tests.R"
+
 
 rule render_report:
     input:
@@ -235,30 +254,9 @@ rule render_report:
         pairwise_boruta = path_rf_pairwise + "mixed-RF-deltas-pairwise-"
                                              "boruta-accepted-features.svg",
         pairwise_log = path_rf_pairwise + "mixed-RF-deltas-pairwise-log.txt",
+        post_hoc = path_post_hoc + "post-hoc-analysis.html"
     output:
         md_doc=config["report_name"]
     script:
         "scripts/report.Rmd"
 
-    # TODO needs work
-# rule run_post_hoc_stats:
-#     pass
-#     input:
-#         deltas_first = "random-forest/TEST/HDL/04-feature-selection-HDL-"
-#                        "agrarian-no-women-first/deltas-first.txt",
-#         deltas_previous = "random-forest/TEST/HDL/04-feature-selection-HDL-"
-#                           "agrarian-no-women-previous/deltas-previous.txt",
-#         deltas_pairwise = "random-forest/TEST/HDL/04-feature-selection-HDL-"
-#                           "agrarian-no-women-pairwise/deltas-pairwise.txt",
-#         df_raw = "random-forest/TEST/HDL/02-data-integration/"
-#                  "final-merged-dfs.txt",
-#         fixed_effects_first = "random-forest/ptests/real-HDLAgrarian-no-women-no-asvs-first/mixed-RF-deltas-re_timepoint-first-top-features.txt",
-#         fixed_effects_previous = "random-forest/ptests/real-HDLAgrarian-no-women-no-asvs-previous/mixed-RF-deltas-re_timepoint-previous-top-features.txt",
-#         fixed_effects_pairwise = "random-forest/ptests/real-HDLAgrarian-no-women-no-asvs-pairwise/mixed-RF-deltas-re_timepoint-pairwise-top-features.txt",
-#         fixed_effects_raw = "random-forest/ptests/real-HDLAgrarian-no-women-no-asvs-raw/MERF-iter-20-mixed-raw-top-features.txt"
-#     output:
-#         out_file = "random-forest/post-hoc-analysis-real-HDLAgrarian-no-women-no-asvs.html"
-#     params:
-#         response_var = "HDL"
-#     script:
-#         "scripts/post_hoc_tests.R"
