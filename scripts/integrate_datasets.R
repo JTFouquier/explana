@@ -26,10 +26,6 @@ verify_inputs = function(constrain_cols, drop_cols){
 check_duplicate_colnames = function(df, df_file_name){
   complete_column_list = list(colnames(df))
   complete_column_list["SampleID"] = NULL
-  print("duplicated")
-  print(duplicated(complete_column_list))
-  print("all columns")
-  print(list(colnames(df)))
   if (length(complete_column_list) != length(unique(complete_column_list))){
     print(paste0("WORKFLOW WARNING: duplicate column names found in dataset ",
                  df_file_name, " will affect analysis."))

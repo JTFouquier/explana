@@ -8,6 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
+import re
 from sklearn.inspection import plot_partial_dependence
 
 from merf.merf import MERF
@@ -88,39 +89,45 @@ sys.stdout = Logger()
 
 
 def setup_df_do_encoding(df, random_effect, response_var,
-                         delta_flag, join_flag, sample_id):
+                         delta_flag, join_flag, sample_id,
+                         fe_model_needed):
 
     numeric_column_list = df._get_numeric_data().columns.values
     categoric_columns = [i for i in list(df.columns) if
                          i not in numeric_column_list]
-    # exclude random_effect and sample_id
-    vars_to_encode = \
-        [i for i in categoric_columns if i not in [random_effect, sample_id]]
 
-    df_dummy, dummy_dict = _dummy_var_creation(vars_to_encode, df, join_flag)
+    # whether or not fixed effects or mixed effects model is needed
+    if not fe_model_needed:
+        drop_list = [random_effect, sample_id]
+    if fe_model_needed:
+        drop_list = [sample_id]
+
+    vars_to_encode = [i for i in categoric_columns if i not in drop_list]
+    df_dummy = _dummy_var_creation(vars_to_encode, df, join_flag)
     # remove vars before encoding, random effect, response, sample ID
-    df_encoded = df_dummy.drop([sample_id] + [random_effect] + vars_to_encode
-                               + [response_var], axis=1)
+    df_encoded = df_dummy.drop(drop_list + vars_to_encode + [response_var], axis=1)
     feature_list = [x for x in df_encoded.columns if "_reference" not in x]
+
     x = df_dummy[feature_list]  # Raw analysis and ALL (new, remove ref)
+    z = np.ones((len(x), 1))
+    c = df_dummy[random_effect]
+    y = df_dummy[response_var]
+
     df_final_input_features = pd.DataFrame(x.columns,
                                            columns=['InputFeatures'])
     df_final_input_features.to_csv(out_file_prefix + "-input-features.txt",
                                    index=False, sep="\t")
 
-    z = np.ones((len(x), 1))
-    c = df_dummy[random_effect]
-    y = df_dummy[response_var]
-    return x, z, c, y, feature_list, dummy_dict
+    return x, z, c, y, feature_list
 
 
 def train_rf_model(x, y, rf_regressor):
-    rf_regressor.fit(x, y)
+    forest = rf_regressor.fit(x, y)
     plt.plot([1, 2, 3, 4])
     plt.ylabel('place holder plot')
     training_stats_plot = plt.gcf()
     plt.close()
-    return rf_regressor, training_stats_plot
+    return forest, training_stats_plot
 
 
 def graphic_handling(plt, plot_file_name, p_title, width=_width, height=_height):
@@ -135,7 +142,7 @@ def graphic_handling(plt, plot_file_name, p_title, width=_width, height=_height)
 
 def shap_plots(shap_values, x, boruta_accepted, feature_importance):
 
-    # get indexes from Boruta for accepted and accepted+tentative features
+    # get indexes from Boruta for accepted and accepted
     index_list_accepted = list(feature_importance[feature_importance[
         "col_name"].isin(boruta_accepted)].index)
 
@@ -220,66 +227,60 @@ def run_mixed_effects_random_forest(x, z, c, y, model, step):
               "features only for visualization/interpretation): " + oob + "%")
     return forest, mrf
 
+
 def main(df_input, out_file, random_forest_type, random_effect, sample_id,
          response_var, delta_flag, join_flag):
     df = pd.read_csv(df_input, sep="\t", na_filter=False)
 
-    x, z, c, y, feature_list, dummy_dict = \
+    if len(np.unique(df[random_effect])) != len(df[random_effect]):
+        fe_model_needed = False
+    else:
+        fe_model_needed = True
+
+    x, z, c, y, feature_list = \
         setup_df_do_encoding(df=df, random_effect=random_effect,
                              response_var=response_var, delta_flag=delta_flag,
-                             join_flag=join_flag, sample_id=sample_id)
+                             join_flag=join_flag, sample_id=sample_id,
+                             fe_model_needed=fe_model_needed)
 
+    # Set up RF regressor for both fixed or mixed models
     rf_regressor = \
         RandomForestRegressor(n_jobs=-1, n_estimators=n_estimators,
                               oob_score=True, max_features=0.90)
     rf_param_dict = rf_regressor.get_params()
 
-
-    # TODO!!!!  if two timepoints original MERF deltas RF
-    if random_forest_type == "mixed":
+    # Run either mixed effects or fixed effects RF models
+    if not fe_model_needed:
         forest, mrf = \
             run_mixed_effects_random_forest(x=x, z=z, c=c, y=y,
                                             model=rf_regressor,
                                             step="full_forest")
-
         plot_merf_training_stats(mrf, 12)  # TODO fix
         plt.tight_layout()
         training_stats_plot = plt.gcf()
         plt.close()
 
-    else:
-        # TODO
-        mrf, training_stats_plot = train_rf_model(x, y)
+    elif fe_model_needed:
+        forest, training_stats_plot = train_rf_model(x, y, rf_regressor)
 
     # BorutaSHAP to select features
     feature_selector = run_boruta_shap(forest, x, y)
-    # print("feature shap values")
-    # print(feature_selector.shap_values)
-    # print("feature accepted")
-    # print(feature_selector.accepted)
-    # print("feature accepted columns")
-    # print(feature_selector.accepted_columns)
-    # SHAP to explain/detail features' values' effects on response variable
-    # With rerunning SHAP on only important features (i.e. adding all
-    # unimportant features causes unrealistic plots and poor interpretation)
 
     # refit forest after excluding rejected features prior to visualizing data
     # Essentially if data is visualized in SHAP plots with all the rejected
     # features, they're very hard to interpret (flooded with meaningless info)
-    refit = "True"
-    if refit == "True":
-        # z, c, and y are the same as before
-        x = x.drop(feature_selector.rejected, axis=1)
-        forest, mrf = \
-            run_mixed_effects_random_forest(x=x, z=z, c=c, y=y,
-                                            model=rf_regressor,
-                                            step="shap_rerun")
-    else:
-        print("SHAP plots visualized using all input features")
+    # z, c, and y are the same as before
+    x = x.drop(feature_selector.rejected, axis=1)
+
+    if not fe_model_needed:
+        forest, mrf = run_mixed_effects_random_forest(x=x, z=z, c=c, y=y,
+                                                      model=rf_regressor,
+                                                      step="shap_rerun")
+    elif fe_model_needed:
+        forest, _ = train_rf_model(x, y, rf_regressor)
 
     shap_imp, shap_values = run_shap(forest, x)
-    shap_plots(shap_values, x, feature_selector.accepted,
-               shap_imp)
+    shap_plots(shap_values, x, feature_selector.accepted, shap_imp)
 
     shap_imp.to_csv(out_file_prefix + "SHAP-feature-imp.txt",
                     sep='\t', mode='a')
@@ -287,30 +288,36 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_id,
     # find prefix for encoded values "ENC_Location_is_1_3" decoded is Location
     # TODO find key words that can't be in column names (_is_, ENC_, etc)
     decoded_top_features_list = []
-    for i in feature_selector.accepted:
-        # print("feature in accepted")
-        # print(i)
-        i_for_dict = i.split("_is_")[0] + "_is"  # TODO important word features
+    shap_imp_score_list = []
+    # get original column name if feature was encoded; else use feature name
+    for feature_name in feature_selector.accepted:
         try:
-            decoded = dummy_dict[i_for_dict]
-        except KeyError:
-            decoded = i
+            r = re.search('ENC_(.*)_is_', feature_name)
+            decoded = r.group(1)
+        except AttributeError:
+            decoded = feature_name
+
         decoded_top_features_list.append(''.join(decoded))
+        shap_imp_score = shap_imp.loc[shap_imp['col_name'] == feature_name,
+                                      'feature_importance_vals']
+        shap_imp_score_list.append(shap_imp_score.iloc[0])
 
     df_boruta = pd.DataFrame({'important.features': feature_selector.accepted,
-                              'decoded.features': decoded_top_features_list})
+                              'decoded.features': decoded_top_features_list,
+                              'feature_importance_vals': shap_imp_score_list})
+    df_boruta = df_boruta.sort_values(by=['feature_importance_vals'],
+                                      ascending=False)
     df_boruta.to_csv(out_file_prefix + "-boruta-important.txt", index=False,
                      sep="\t")
     print("\nBorutaSHAP features")
-    print("Total input features: " +
-          str(len(feature_selector.all_columns)))
+    print("Total input features: " + str(len(feature_selector.all_columns)))
     print("Accepted: " + str(len(feature_selector.accepted)))
     print("Tentative: " + str(len(feature_selector.tentative)))
     print("Accepted and Tentative: " + str(len(feature_selector.accepted) +
-                                         len(feature_selector.tentative)))
+                                           len(feature_selector.tentative)))
     print("Rejected: " + str(len(feature_selector.rejected)))
     print("\nTop BorutaSHAP Accepted Features (max 30 displayed)\n")
-    print(df_boruta.head(30))
+    print(df_boruta.to_string(max_rows=30, index=False))
     plot_partial_dependence(forest, x, features=feature_selector.accepted)
     plot_some_partial_dependence = plt.gcf()
     plot_some_partial_dependence.set_size_inches(_width * 1.4, _height * 1.4)
