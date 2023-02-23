@@ -25,7 +25,7 @@ verify_inputs = function(constrain_cols, drop_cols){
 
 check_duplicate_colnames = function(df, df_file_name){
   complete_column_list = list(colnames(df))
-  complete_column_list["SampleID"] = NULL
+  complete_column_list[sample_id] = NULL
   if (length(complete_column_list) != length(unique(complete_column_list))){
     print(paste0("WORKFLOW WARNING: duplicate column names found in dataset ",
                  df_file_name, " will affect analysis."))
@@ -76,7 +76,7 @@ filter_dataframe = function(df, df_mod_list, df_complete_flag){
 }
 
 
-filter_dfs_merge_main = function(file_path_list, ds_param_dict_list){
+main = function(file_path_list, ds_param_dict_list){
   if (length(file_path_list) != length(ds_param_dict_list)){
     print(length(file_path_list))
     print(length(ds_param_dict_list))
@@ -95,14 +95,14 @@ filter_dfs_merge_main = function(file_path_list, ds_param_dict_list){
     df_list = append(df_list, list(df))
   }
   df_complete_flag = TRUE
-  df_complete = df_list %>% reduce(full_join, by="SampleID")
+  df_complete = df_list %>% reduce(full_join, by=sample_id)
   df_complete = filter_dataframe(df_complete, df_mod_list, df_complete_flag)
 
   write_tsv(df_complete, paste0(output_folder, "final-merged-dfs.txt"))
 }
 
 
-filter_dfs_merge_main(file_path_list, ds_param_dict_list)
+main(file_path_list, ds_param_dict_list)
 
 # TODO optional create visualizer
 # TODO change this to either df or load the dataframe

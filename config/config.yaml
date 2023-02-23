@@ -14,6 +14,7 @@
 ##############################################################################
 random_effect: "StudyID"
 sample_id: "SampleID"
+timepoint: "Timepoint"
 
 # Analysis details
 # TODO there are issues with keeping html output in same folder... fix later
@@ -32,7 +33,7 @@ build_datatable: "TRUE"
 #n_estimators: "300"
 
 # For testing (doing too few even for testing may cause failure)
-iterations: "5"
+iterations: "2"
 n_estimators: "50"
 
 # BorutaSHAP arguments
