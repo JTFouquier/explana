@@ -54,13 +54,10 @@ borutaSHAP_percentile = int(snakemake.config["borutaSHAP_percentile"])
 df_input = snakemake.input["in_file"]
 pdf_report = snakemake.output["out_file"]
 
-fe_or_me = snakemake.params["random_forest_type"]
 random_effect = snakemake.params["random_effect"]
 sample_id = snakemake.config["sample_id"]
 response_var = snakemake.config["response_var"]
-delta_flag = snakemake.params["delta_flag"]
 iterations = int(snakemake.config["iterations"])
-
 # set graphics dimensions
 _width = 11
 _height = 6
@@ -88,8 +85,7 @@ class Logger(object):
 sys.stdout = Logger()
 
 
-def setup_df_do_encoding(df, random_effect, response_var,
-                         delta_flag, join_flag, sample_id,
+def setup_df_do_encoding(df, random_effect, response_var, join_flag, sample_id,
                          fe_model_needed):
 
     numeric_column_list = df._get_numeric_data().columns.values
@@ -228,18 +224,20 @@ def run_mixed_effects_random_forest(x, z, c, y, model, step):
     return forest, mrf
 
 
-def main(df_input, out_file, random_forest_type, random_effect, sample_id,
-         response_var, delta_flag, join_flag):
+def main(df_input, out_file, random_effect, sample_id, response_var,
+         join_flag):
     df = pd.read_csv(df_input, sep="\t", na_filter=False)
 
     if len(np.unique(df[random_effect])) != len(df[random_effect]):
         fe_model_needed = False
+        print("MODEL TYPE: Mixed Effects Random Forest (MERF) Regressor ")
     else:
+        print("MODEL TYPE: Random Forest (RF) Regressor")
         fe_model_needed = True
 
     x, z, c, y, feature_list = \
         setup_df_do_encoding(df=df, random_effect=random_effect,
-                             response_var=response_var, delta_flag=delta_flag,
+                             response_var=response_var,
                              join_flag=join_flag, sample_id=sample_id,
                              fe_model_needed=fe_model_needed)
 
@@ -328,6 +326,5 @@ def main(df_input, out_file, random_forest_type, random_effect, sample_id,
     _build_result_pdf(out_file, out_file_prefix, plot_list, plot_file_name_list)
 
 
-main(df_input=df_input, out_file=pdf_report, random_forest_type=fe_or_me,
-     random_effect=random_effect, sample_id=sample_id,
-     response_var=response_var, delta_flag=delta_flag, join_flag=join_flag)
+main(df_input=df_input, out_file=pdf_report, random_effect=random_effect,
+     sample_id=sample_id, response_var=response_var, join_flag=join_flag)
