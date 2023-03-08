@@ -9,6 +9,7 @@ library(sjlabelled)
 library(ggpubr)
 library(ggplot2)
 library(stringr)
+library(pdftools)
 
 # TODO use dataset after drop for RF vs before
 deltas_first = snakemake@input[["deltas_first"]]
@@ -200,45 +201,54 @@ html_combine(
   out = out_file,
 )
 
-# my_try_catch <- function(x){
-#     tryCatch(
-#         {
-#         y = x * 2
-#         return(y)
-#         },
-#         # ... but if an error occurs, tell me what happened:
-#         error=function(error_message) {
-#             message("This is my custom message.")
-#             message("And below is the error message from R:")
-#             message(error_message)
-#             return(NA)
-#         }
-#     )
-# }
+update_pdf_list = function(pdf_list, file_to_add){
+  if (file.exists(file_to_add)){
+    pdf_list = c(pdf_list, file_to_add)
+  }
+ return(pdf_list)
+}
+
+
+pdf_list = c()
+
+out_file = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_original"]], "POST-HOC-VIZ-numeric.pdf")
+out_file_categorical = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_original"]], "POST-HOC-VIZ-categoric.pdf")
+
+df = df_original
+important_features = important_features_original
+gg_info = "Original"
+source("scripts/post_hoc_visualizations.R")
+pdf_list = update_pdf_list(pdf_list, out_file)
+pdf_list = update_pdf_list(pdf_list, out_file_categorical)
 
 out_file = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_first"]], "POST-HOC-VIZ-numeric.pdf")
 out_file_categorical = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_first"]], "POST-HOC-VIZ-categoric.pdf")
 df = deltas_first
 important_features = important_features_first
+gg_info = "First"
 source("scripts/post_hoc_visualizations.R")
+pdf_list = update_pdf_list(pdf_list, out_file)
+pdf_list = update_pdf_list(pdf_list, out_file_categorical)
 
 out_file = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_previous"]], "POST-HOC-VIZ-numeric.pdf")
 out_file_categorical = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_previous"]], "POST-HOC-VIZ-categoric.pdf")
 df = deltas_previous
 important_features = important_features_previous
+gg_info = "Previous"
 source("scripts/post_hoc_visualizations.R")
+pdf_list = update_pdf_list(pdf_list, out_file)
+pdf_list = update_pdf_list(pdf_list, out_file_categorical)
 
 out_file = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_pairwise"]], "POST-HOC-VIZ-numeric.pdf")
 out_file_categorical = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_pairwise"]], "POST-HOC-VIZ-categoric.pdf")
 df = deltas_pairwise
 important_features = important_features_pairwise
+gg_info = "Pairwise"
 source("scripts/post_hoc_visualizations.R")
+pdf_list = update_pdf_list(pdf_list, out_file)
+pdf_list = update_pdf_list(pdf_list, out_file_categorical)
 
-out_file = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_original"]], "POST-HOC-VIZ-numeric.pdf")
-out_file_categorical = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_original"]], "POST-HOC-VIZ-categoric.pdf")
-df = df_original
-important_features = important_features_original
-source("scripts/post_hoc_visualizations.R")
+pdf_combine(pdf_list, output=paste0(snakemake@config[["out"]], "post-hoc-combined.pdf"))
 
 
 # html_folder_name = "all-models-html-files/"
@@ -248,7 +258,6 @@ source("scripts/post_hoc_visualizations.R")
 #   html_name = html_name[length(html_name)]
 #   file.rename(f, paste0(output_folder, html_name))
 # }
-
 
 
 

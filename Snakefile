@@ -230,7 +230,9 @@ rule render_report:
         pairwise_boruta = path_rf_pairwise +
                           "pairwise-boruta-accepted-features.svg",
         pairwise_log = path_rf_pairwise + "pairwise-log.txt",
-        post_hoc = path_post_hoc + "post-hoc-analysis.html"
+
+        post_hoc = path_post_hoc + "post-hoc-analysis.html",
+        post_hoc_viz = config["out"] + "post-hoc-combined.pdf"
     output:
         md_doc=config["report_name"]
     script:

@@ -1,3 +1,7 @@
+Copyright 2023 Regents of the University of Colorado. All rights reserved.
+
+Authored by Jennifer Therese Fouquier
+
 ## Feature selection in longitudinal microbiome studies
 
 This is an **in-progress** workflow for identification of important predictors that relate to response variables in longitudinal (and cross-sectional) microbiome studies 

@@ -10,6 +10,8 @@ output:
 ```{r setup, include=FALSE}
 library(knitr)
 library(htmltools)
+library(tidyverse)
+library(Hmisc)
 knitr::opts_chunk$set(echo = FALSE,
                       eval = TRUE)
 ```
@@ -32,7 +34,7 @@ Additional figures and files can be found in the output directory.
 
 ***
 
-```{r comment=""}
+```{r comment="", echo = FALSE}
 response_var = snakemake@config[["response_var"]]
 drop_cols = snakemake@config[['drop_cols']]
 constrain_rows = snakemake@config[['constrain_rows']]
@@ -233,6 +235,13 @@ Linear models or linear mixed effects models were used for post hoc testing to d
 ```{r out.width = 1100, out.height = 600, comment=""}
 htmltools::includeHTML(snakemake@input[['post_hoc']])
 ```
+
+## Graphs
+
+```{r out.width = 1100, out.height = 600, comment=""}
+include_graphics(snakemake@input[['post_hoc_viz']])
+```
+
 
 ***
 
