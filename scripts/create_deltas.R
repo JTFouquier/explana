@@ -190,7 +190,7 @@ main = function(){
   # TODO change this to either df or load the dataframe
   if (build_datatable %in% c("TRUE", "True")){
     input_file_name = paste0(output_folder, "04-SELECTED-FEATURES-", reference_time,
-                             "/deltas-", reference_time , ".txt")
+                             "/", reference_time , ".txt")
     output_file_name = paste0(output_folder, "04-SELECTED-FEATURES-",
                               reference_time, "/vizualizer-", reference_time,
                               ".html")

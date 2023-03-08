@@ -8,8 +8,6 @@
 path_dim_pca: "01-DIM-PCA/"
 path_dim_scnic: "01-DIM-SCNIC/"
 
-path_merged_data: "02-MERGED-DATA/"
-
 path_rf_original: "04-SELECTED-FEATURES-original/"
 path_rf_first: "04-SELECTED-FEATURES-first/"
 path_rf_previous: "04-SELECTED-FEATURES-previous/"

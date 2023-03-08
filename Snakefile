@@ -16,8 +16,6 @@ path_rf_pairwise = config["out"] + config["path_rf_pairwise"]
 path_dim_pca = config["out"] + config["path_dim_pca"]
 path_dim_scnic = config["out"] + config["path_dim_scnic"]
 
-path_merged_data = config["out"] + config["path_merged_data"]
-
 path_post_hoc = config["out"] + config["path_post_hoc"]
 
 def dim_reduction():
@@ -58,9 +56,9 @@ config["dataset_json"] = dataset_json
 rule all:
     input:
         original=path_rf_original + "original.pdf",
-        first=path_rf_first + "deltas-first.pdf",
-        previous=path_rf_previous + "deltas-previous.pdf",
-        pairwise=path_rf_pairwise + "deltas-pairwise.pdf"
+        first=path_rf_first + "first.pdf",
+        previous=path_rf_previous + "previous.pdf",
+        pairwise=path_rf_pairwise + "pairwise.pdf"
 
 def get_pca_in_file(wildcards):
     in_file = dataset_json["datasets"][wildcards.pca_ds_name]["file_path"]
@@ -119,7 +117,7 @@ rule integrate_datasets:
     input:
         file_path_list = config["file_path_list"],
     output:
-        out_file = path_merged_data + "final-merged-dfs.txt"
+        out_file = path_rf_original + "original.txt"
     params:
         ds_param_dict_list = config["ds_param_dict_list"],
         build_datatable = config["build_datatable"]
@@ -130,10 +128,10 @@ rule integrate_datasets:
 # timepoints, within individual
 rule make_delta_datasets:
     input:
-        in_file = path_merged_data + "final-merged-dfs.txt"
+        in_file = path_rf_original + "original.txt"
     output:
         out_file = config["out"] + "04-SELECTED-FEATURES-{reference}/"
-                                   "deltas-{reference}.txt"
+                                   "{reference}.txt"
     params:
         reference_time = "{reference}",
         absolute_values = "no",
@@ -164,33 +162,18 @@ rule make_delta_datasets:
 # I wanted my file names to reflect the arguments
 
 # TODO check constrain, and wildcards (not a good use)
-rule random_forest_deltas:
+rule random_forest:
     input:
         in_file = config["out"] +
-                  "04-SELECTED-FEATURES-{reference}/deltas-{reference}.txt"
+                  "04-SELECTED-FEATURES-{reference}/{reference}.txt"
     output:
         out_file = config["out"] +
-                   "04-SELECTED-FEATURES-{reference}/deltas-{reference}.pdf"
+                   "04-SELECTED-FEATURES-{reference}/{reference}.pdf"
     params:
         random_effect = config["random_effect"],
         sample_id = config["sample_id"],
         response_var = config["response_var"],
         iterations = config["iterations"],  # 20 is suggested, 10 for testing
-    conda: "conda_envs/merf.yaml"
-    script:
-        "scripts/random_forest.py"
-
-
-rule random_forest_original:
-    input:
-        in_file = path_merged_data + "final-merged-dfs.txt"
-    output:
-        out_file = path_rf_original + "original.pdf"
-    params:
-        random_effect = config["random_effect"],
-        sample_id = config["sample_id"],
-        response_var = config["response_var"],
-        iterations = config["iterations"],
     conda: "conda_envs/merf.yaml"
     script:
         "scripts/random_forest.py"
@@ -202,54 +185,53 @@ rule random_forest_original:
 # TODO consider making some of these parameters
 rule run_post_hoc_stats:
     input:
-        deltas_first = path_rf_first + "deltas-first.txt",
-        deltas_previous = path_rf_previous + "deltas-previous.txt",
-        deltas_pairwise = path_rf_pairwise + "deltas-pairwise.txt",
-        df_original = path_merged_data + "final-merged-dfs.txt",
-        fixed_effects_first = path_rf_first + "deltas-first-boruta-important.txt",
-        fixed_effects_previous = path_rf_previous + "deltas-previous-boruta-important.txt",
-        fixed_effects_pairwise = path_rf_pairwise + "deltas-pairwise-boruta-important.txt",
+        deltas_first = path_rf_first + "first.txt",
+        deltas_previous = path_rf_previous + "previous.txt",
+        deltas_pairwise = path_rf_pairwise + "pairwise.txt",
+        df_original = path_rf_original + "original.txt",
+        fixed_effects_first = path_rf_first + "first-boruta-important.txt",
+        fixed_effects_previous = path_rf_previous + "previous-boruta-important.txt",
+        fixed_effects_pairwise = path_rf_pairwise + "pairwise-boruta-important.txt",
         fixed_effects_original = path_rf_original + "original-boruta-important.txt"
     output:
         out_file = path_post_hoc + "post-hoc-analysis.html"
     params:
-        response_var = "HDL"
+        response_var = config["response_var"],
     script:
         "scripts/post_hoc_tests.R"
 
 
 rule render_report:
     input:
-        original = rules.random_forest_original.output.out_file,
+        original = path_rf_original + "original.pdf",
         original_shap= path_rf_original +
                        "original-accepted-SHAP-summary-beeswarm.svg",
         original_boruta = path_rf_original +
                           "original-boruta-accepted-features.svg",
         original_log = path_rf_original + "original-log.txt",
 
-        first = path_rf_first + "deltas-first.pdf",
+        first = path_rf_first + "first.pdf",
         first_shap= path_rf_first +
-                    "deltas-first-accepted-SHAP-summary-beeswarm.svg",
+                    "first-accepted-SHAP-summary-beeswarm.svg",
         first_boruta= path_rf_first +
-                      "deltas-first-boruta-accepted-features.svg",
-        first_log = path_rf_first + "deltas-first-log.txt",
+                      "first-boruta-accepted-features.svg",
+        first_log = path_rf_first + "first-log.txt",
 
-        previous = path_rf_previous + "deltas-previous.pdf",
+        previous = path_rf_previous + "previous.pdf",
         previous_shap= path_rf_previous +
-                       "deltas-previous-accepted-SHAP-summary-beeswarm.svg",
+                       "previous-accepted-SHAP-summary-beeswarm.svg",
         previous_boruta = path_rf_previous +
-                          "deltas-previous-boruta-accepted-features.svg",
-        previous_log= path_rf_previous + "deltas-previous-log.txt",
+                          "previous-boruta-accepted-features.svg",
+        previous_log= path_rf_previous + "previous-log.txt",
 
-        pairwise = path_rf_pairwise + "deltas-pairwise.pdf",
+        pairwise = path_rf_pairwise + "pairwise.pdf",
         pairwise_shap= path_rf_pairwise +
-                       "deltas-pairwise-accepted-SHAP-summary-beeswarm.svg",
+                       "pairwise-accepted-SHAP-summary-beeswarm.svg",
         pairwise_boruta = path_rf_pairwise +
-                          "deltas-pairwise-boruta-accepted-features.svg",
-        pairwise_log = path_rf_pairwise + "deltas-pairwise-log.txt",
+                          "pairwise-boruta-accepted-features.svg",
+        pairwise_log = path_rf_pairwise + "pairwise-log.txt",
         post_hoc = path_post_hoc + "post-hoc-analysis.html"
     output:
         md_doc=config["report_name"]
     script:
         "scripts/report.Rmd"
-

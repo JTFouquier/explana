@@ -1,8 +1,3 @@
-
-
-
-#rm(list=ls()) # clear env
-
 library(dplyr)
 library(R3port)
 library(usedist)
@@ -31,7 +26,9 @@ out_file = snakemake@output[["out_file"]]
 output_folder = paste0(snakemake@config[["out"]],
                        snakemake@config[["path_post_hoc"]])
 
-response_var = snakemake@params[["response_var"]]
+response = snakemake@config[["response_var"]]
+random_effect = snakemake@config[["random_effect"]]
+
 #absolute_values = snakemake@params[["absolute_values"]]
 
 # notes
@@ -39,9 +36,6 @@ response_var = snakemake@params[["response_var"]]
 
 # TODO if columns dropped, allow less tests
 # TODO get control/references vars for interactions
-response = response_var
-#response = 'IL6'
-random_effects_list = c("StudyID")
 interaction = "no"
 # TODO make log file containing LME errors and warnings
 
@@ -92,12 +86,12 @@ lm_post_hoc <- function(df, response, fixed_effects_list, interaction){
 }
 
 
-lme_post_hoc <- function(df, response, important_features_list, random_effects_list,
+lme_post_hoc <- function(df, response, important_features_list, random_effect,
                          interaction) {
 
   important_features_formula = paste0("`", important_features_list, "`",
                                       collapse = interaction)
-  random_effects_formula = paste0("(1|", random_effects_list, ")",
+  random_effects_formula = paste0("(1|", random_effect, ")",
                                   collapse = " + ")
 
   reduced_formula = as.formula(paste0(response, " ~ 1", " + ",
@@ -121,10 +115,8 @@ if (interaction == "yes"){
   stop("Interaction type incorrect")
 }
 
-# ENC_PlotName_is_P3 TODO remove modifiers
 
 lme_complete <- function(delta_file, important_features_file, reference_type){
-  #interaction_terms = c("Timepoint")
   html_number = 100
   reference_order_list = list("original" = "01", "first"="02", "previous"="03",
                               "pairwise"="04")
@@ -140,7 +132,7 @@ lme_complete <- function(delta_file, important_features_file, reference_type){
   # Multivariate analysis (all important variables explain response)
   css_list = my_css(analysis_type = 'multivariate', dataset_type = reference_type)
   lme_model = lme_post_hoc(df, response, important_features_list,
-                           random_effects_list, interaction)
+                           random_effect, interaction)
   print(tab_model(lme_model,
                   file = paste0(output_folder, reference_order, "-", html_number,
                                 "-multivariate-individual-", reference_type, ".html"),
@@ -152,7 +144,7 @@ lme_complete <- function(delta_file, important_features_file, reference_type){
   # Univariate analysis
   css_list = my_css(analysis_type = 'univariate', dataset_type = reference_type)
   for (i in important_features_list){
-    lme_i = lme_post_hoc(df, response, i, random_effects_list, interaction)
+    lme_i = lme_post_hoc(df, response, i, random_effect, interaction)
     print(tab_model(lme_i,
                     file = paste0(output_folder, reference_order, "-", html_number,
                                   "-univariate-", reference_type,
@@ -207,6 +199,47 @@ html_combine(
   combine = list(filenames_html_complete),
   out = out_file,
 )
+
+# my_try_catch <- function(x){
+#     tryCatch(
+#         {
+#         y = x * 2
+#         return(y)
+#         },
+#         # ... but if an error occurs, tell me what happened:
+#         error=function(error_message) {
+#             message("This is my custom message.")
+#             message("And below is the error message from R:")
+#             message(error_message)
+#             return(NA)
+#         }
+#     )
+# }
+
+out_file = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_first"]], "POST-HOC-VIZ-numeric.pdf")
+out_file_categorical = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_first"]], "POST-HOC-VIZ-categoric.pdf")
+df = deltas_first
+important_features = important_features_first
+source("scripts/post_hoc_visualizations.R")
+
+out_file = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_previous"]], "POST-HOC-VIZ-numeric.pdf")
+out_file_categorical = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_previous"]], "POST-HOC-VIZ-categoric.pdf")
+df = deltas_previous
+important_features = important_features_previous
+source("scripts/post_hoc_visualizations.R")
+
+out_file = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_pairwise"]], "POST-HOC-VIZ-numeric.pdf")
+out_file_categorical = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_pairwise"]], "POST-HOC-VIZ-categoric.pdf")
+df = deltas_pairwise
+important_features = important_features_pairwise
+source("scripts/post_hoc_visualizations.R")
+
+out_file = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_original"]], "POST-HOC-VIZ-numeric.pdf")
+out_file_categorical = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_original"]], "POST-HOC-VIZ-categoric.pdf")
+df = df_original
+important_features = important_features_original
+source("scripts/post_hoc_visualizations.R")
+
 
 # html_folder_name = "all-models-html-files/"
 # dir.create(paste0(output_folder, html_folder_name))

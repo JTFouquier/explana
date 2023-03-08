@@ -3,7 +3,7 @@
 library(tidyverse)
 source("scripts/viz-datatable.R")
 
-output_folder = paste0(snakemake@config[["out"]], snakemake@config[["path_merged_data"]])
+output_folder = paste0(snakemake@config[["out"]], snakemake@config[["path_rf_original"]])
 
 sample_id = snakemake@config[["sample_id"]]
 
@@ -98,7 +98,7 @@ main = function(file_path_list, ds_param_dict_list){
   df_complete = df_list %>% reduce(full_join, by=sample_id)
   df_complete = filter_dataframe(df_complete, df_mod_list, df_complete_flag)
 
-  write_tsv(df_complete, paste0(output_folder, "final-merged-dfs.txt"))
+  write_tsv(df_complete, paste0(output_folder, "original.txt"))
 }
 
 
@@ -107,7 +107,7 @@ main(file_path_list, ds_param_dict_list)
 # TODO optional create visualizer
 # TODO change this to either df or load the dataframe
 if (build_datatable %in% c("TRUE", "True")){
-  input_file_name = paste0(output_folder, "final-merged-dfs.txt")
+  input_file_name = paste0(output_folder, "original.txt")
   output_file_name = paste0(output_folder, "vizualizer-merged-dfs.html")
   build_datatable_viz(input_file_name, output_file_name)
 }
