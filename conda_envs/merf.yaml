@@ -25,7 +25,7 @@ dependencies:
   - libedit=3.1.20191231
   - libev=4.33
   - libffi=3.4.2
-  - libgfortran=5.0.0
+  - libgfortran
   - libgfortran5=11.3.0
   - libiconv=1.17
   - liblapack=3.9.0
