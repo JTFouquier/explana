@@ -1,0 +1,4 @@
+name: r_env
+channels:
+  - conda-forge
+prefix: /Users/jenniferfouquier/mambaforge/envs/r_env

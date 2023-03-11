@@ -18,8 +18,9 @@ timepoint: "Timepoint"
 
 # Analysis details
 # TODO there are issues with keeping html output in same folder... fix later
+# HDL-Demo.html output is in Snakefile Dir (run code from this directory)
 ##############################################################################
-out: "random-forest/TEST/HDL-Demo/"
+out: "workflow-results/HDL-Demo/"
 report_name: "HDL-Demo.html"
 response_var: "HDL" # Variable you are trying to explain
 

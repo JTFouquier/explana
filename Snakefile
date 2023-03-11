@@ -92,7 +92,8 @@ rule dim_reduction_pca:
     params:
         dataset_name = expand("{pca_ds_name}",
             pca_ds_name=config["pca_ds_list"]),
-        pca_groups_list = get_pca_groups_list
+        pca_groups_list = get_pca_groups_list,
+    conda: "conda_envs/r_env.yaml",
     script:
         "scripts/dim_reduction_pca.R"
 
@@ -108,7 +109,7 @@ rule dim_reduction_scnic:
             scnic_ds_name=config["scnic_ds_list"]),
         method = get_scnic_method,
         min_r = get_scnic_min_r
-    conda: "conda_envs/scnic.yaml"
+    conda: "conda_envs/scnic.yaml",
     script:
         "scripts/dim_reduction_scnic.py"
 
@@ -120,7 +121,8 @@ rule integrate_datasets:
         out_file = path_rf_original + "original.txt"
     params:
         ds_param_dict_list = config["ds_param_dict_list"],
-        build_datatable = config["build_datatable"]
+        build_datatable = config["build_datatable"],
+    conda: "conda_envs/r_env.yaml",
     script:
         "scripts/integrate_datasets.R"
 
@@ -136,7 +138,8 @@ rule make_delta_datasets:
         reference_time = "{reference}",
         absolute_values = "no",
         build_datatable = config["build_datatable"], # TODO have this be optional default true
-        distance_matrices = config["distance_matrices"]
+        distance_matrices = config["distance_matrices"],
+    conda: "conda_envs/r_env.yaml",
     script:
         "scripts/create_deltas.R"
 
@@ -197,6 +200,7 @@ rule run_post_hoc_stats:
         out_file = path_post_hoc + "post-hoc-analysis.html"
     params:
         response_var = config["response_var"],
+    conda: "conda_envs/r_env.yaml",
     script:
         "scripts/post_hoc_tests.R"
 
@@ -234,6 +238,7 @@ rule render_report:
         post_hoc = path_post_hoc + "post-hoc-analysis.html",
         post_hoc_viz = config["out"] + "post-hoc-combined.pdf"
     output:
-        md_doc=config["report_name"]
+        md_doc=config["report_name"],
+    conda: "conda_envs/r_env.yaml",
     script:
         "scripts/report.Rmd"
