@@ -6,6 +6,18 @@ library(ggplot2)
 library(rstatix)
 library(vars)
 
+package_list <- c("tidyverse", "MASS", "ape", "purrr", "ggplot2",
+"rstatix", "vars")
+
+for (p in package_list) {
+  if (!require(p)) {
+    install.packages(p)
+    library(p)
+  } else {
+    library(p)
+  }
+}
+
 
 color_list <- list("First" = "cornflowerblue",
                    "Previous" = "lightgreen",

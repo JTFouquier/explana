@@ -7,13 +7,15 @@ rm(list=ls())
 
 library("tidyverse")
 
-total_subjects = 24
+total_subjects = 80
 out_file = "data/simulated-scripted-TEST.txt"
 
   # add random features
-low = 50
-med = 100
-high = 200
+#low = 50
+#med = 100
+#high = 200
+### 1_2 (1) 1_3 (2)
+## 1_2 (1) 2_3 (1)
 
 
 # Some are placeholders here, but modified later
@@ -49,6 +51,8 @@ for (i in 2:total_subjects){
 }
 
 subjects = unique(df$StudyID)
+
+df$SampleID = paste0(df$StudyID, ".", df$Timepoint)
 overweight_subjects = subjects[1:(length(subjects)/2)]
 healthy_subjects = subjects[!subjects %in% overweight_subjects]
 
@@ -84,6 +88,8 @@ df = df %>%
   mutate(HealthyLifestyle = case_when(StudyID %in% odd_subjects ~ "Yes",
                                       StudyID %in% even_subjects ~ "No"))
 
+# Add some no effects to both diets only if their lifestyle is unhealthy
+# Demonstrates more categorical vars
 df = df %>%
   mutate(Adhered = case_when(
       HealthyLifestyle == "No" & Timepoint == 2 & Diet == "Keto" ~ "No",
@@ -98,30 +104,38 @@ df = df %>%
     Diet == "Keto" & Timepoint == 3 ~ 0.4,
     Diet == "Western" ~ 0.0))
 
-s1 = subjects[seq(1,length(subjects),5)]
-s2 = subjects[!(subjects %in% s1)]
+# every x subject in first list then remaining in other list
+med_affected = subjects[seq(1, length(subjects), 4)]
+med_unaffected = subjects[!(subjects %in% med_affected)]
 
-s1_few = s1[seq(1,length(s1),5)]
-s1_most = s1[!(s1 %in% s1_few)]
+med_affected_few = med_affected[seq(1, length(med_affected), 4)]
+med_affected_most = med_affected[!(med_affected %in% med_affected_few)]
 
 df = df %>%
   mutate(Medicine = case_when(
-      StudyID %in% s2 & (Timepoint == 1 | Timepoint == 2) ~ "G",
-      StudyID %in% s2 & Timepoint == 3 ~ "F",
-      StudyID %in% s1_few & Timepoint == 1 ~ "F",
-      StudyID %in% s1_few & Timepoint == 2 ~ "P",
-      StudyID %in% s1_few & Timepoint == 3 ~ "G",
-      StudyID %in% s1_most & Timepoint == 1 ~ "P",
-      StudyID %in% s1_most & Timepoint == 2 ~ "F",
-      StudyID %in% s1_most & Timepoint == 3 ~ "G"
+      #StudyID %in% med_unaffected & (Timepoint == 1 | Timepoint == 2) ~ "G",
+      #StudyID %in% med_unaffected & Timepoint == 3 ~ "P",
+      StudyID %in% med_affected_few & Timepoint == 1 ~ "G", ### F A G
+      StudyID %in% med_affected_few & Timepoint == 2 ~ "A",
+      StudyID %in% med_affected_few & Timepoint == 3 ~ "F",
+      #StudyID %in% med_affected_most & Timepoint == 1 ~ "P",
+      StudyID %in% med_affected_most & Timepoint == 2 ~ "F", ###
+      StudyID %in% med_affected_most & Timepoint == 3 ~ "G" ###
 ))
+
+
+meds = c("G", "A", "F")
+r = length(df$Medicine[df$StudyID %in% med_unaffected])
+df$Medicine[df$StudyID %in% med_unaffected] = sample(meds, r, replace = TRUE)
+r = length(df$Medicine[df$StudyID %in% med_affected_most & Timepoint == 1])
+df$Medicine[df$StudyID %in% med_affected_most & Timepoint == 1] = sample(meds, r, replace = TRUE)
 
 # ADD EFFECTS
 for (i in subjects){
   df_subject_1_2 = subset(df, StudyID == i & !Timepoint == 3)
   df_subject_3 = subset(df, StudyID == i & Timepoint == 3)
   if ("F" %in% df_subject_1_2$Medicine & "G" %in% df_subject_3$Medicine){
-    df$Medicine_effect[df$Timepoint==3 & df$StudyID==i] = 7
+    df$Medicine_effect[df$Timepoint==3 & df$StudyID==i] = 10
   }
 }
 
@@ -139,6 +153,7 @@ df$Diet_effect[df$Timepoint == 3 & df$Diet == "Western"] = -6
 df = df %>%
   mutate(Inflammation = Inflammation_original + rowSums(.[grep("_effect", names(.))]))
 
+write.table(df, "data/simulated-scripted-TEST-effects.txt", row.names = FALSE, sep = "\t")
 # remove effect columns and original inflammation
 df = df %>%
   select(-ends_with("_effect")) %>%
@@ -177,7 +192,7 @@ addFeatures <- function(df, response_var, file_prefix, low, med, hi){
   # shuffle response
   shuffled_response = sample(df[[response_var]])
 
-  # TODO this is repetitive
+  # TODO this is repetitive (make list starting with 0)
   df = writeFiles(file_prefix, df, low, 0, response_var,
                   shuffled_response)
   df = writeFiles(file_prefix, df, med, low, response_var, shuffled_response)
@@ -186,7 +201,7 @@ addFeatures <- function(df, response_var, file_prefix, low, med, hi){
 }
 
 addFeatures("data/simulated-scripted-TEST.txt", "Inflammation",
-            "data/simulated-scripted-TEST-", 50, 100, 200)
+            "data/simulated-scripted-TEST-", 10, 100, 1000)
 
 
 

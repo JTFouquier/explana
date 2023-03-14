@@ -1,5 +1,16 @@
-library(dplyr)
+# library(dplyr)
 source("scripts/viz-datatable.R")
+
+package_list <- c("dplyr")
+
+for (p in package_list) {
+  if (!require(p)) {
+    install.packages(p)
+    library(p)
+  } else {
+     library(p)
+  }
+}
 
 output_folder <- paste0(snakemake@config[["out"]],
 snakemake@config[["path_rf_original"]])

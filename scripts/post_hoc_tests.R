@@ -1,15 +1,27 @@
-library(dplyr)
-library(R3port)
-library(usedist)
-library(lmerTest)
-library(lme4)
-library(sjPlot)
-library(sjmisc)
-library(sjlabelled)
-library(ggpubr)
-library(ggplot2)
-library(stringr)
-library(pdftools)
+# library(dplyr)
+# library(R3port)
+# library(usedist)
+# library(lmerTest)
+# library(lme4)
+# library(sjPlot)
+# library(sjmisc)
+# library(sjlabelled)
+# library(ggpubr)
+# library(ggplot2)
+# library(stringr)
+# library(pdftools)
+
+package_list <- c("dplyr", "R3port", "usedist", "lmerTest", "lme4",
+"sjPlot", "sjmisc", "sjlabelled", "ggpubr", "ggplot2", "stringr", "pdftools")
+
+for (p in package_list) {
+  if (!require(p)) {
+    install.packages(p)
+    library(p)
+  } else {
+    library(p)
+  }
+}
 
 source("scripts/post_hoc_visualizations.R")
 
