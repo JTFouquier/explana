@@ -14,9 +14,10 @@ Then, navigate to directory with the "Snakefile" and work from there.
 
 - - -
 
-### Create Conda environment to run workflow
+### Create Conda environment to run workflow using Mamba
 
-> `conda env create -f conda_envs/environment.yaml`
+> `mamba env create -f conda_envs/environment.yaml -n feature-selection-workflow`
+> `conda activate feature-selection-workflow`
 
 - - -
 

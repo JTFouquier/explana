@@ -1,5 +1,3 @@
-
-
 # Script that assists with performing dimensionality reduction via
 # principal component analysis (PCA) on sets of user specified input variables
 
@@ -8,37 +6,44 @@
 #
 # var1 var2 var3 might get converted to dim1 and dim2;
 # Overall, a dimensionality reduction from 3 to 2 variables
+package_list <- c("factoextra", "MASS", "dplyr")
+package_list <- package_list[!(package_list %in%
+installed.packages()[, "Package"])]
+if (length(package_list) > 0) {
+  install.packages(package_list)
+}
 
 library(factoextra)
 library(MASS)
 library(dplyr)
 
 dataset_json <- snakemake@config[["dataset_json"]]
-in_file = dataset_json[["datasets"]][[snakemake@params[["dataset_name"]]]][["file_path"]]
+in_file <- dataset_json[["datasets"]][[snakemake@params[["dataset_name"]]]][["file_path"]]
 
-out_file = snakemake@output[["out_file"]]
-sample_id = snakemake@config[["sample_id"]]
+out_file <- snakemake@output[["out_file"]]
+sample_id <- snakemake@config[["sample_id"]]
 
 # Need to get the name of the user declared 'pca_groups_list' using method
 # from Snakefile, then get the actual data object from config file.
-pca_groups_list_name = snakemake@params[["pca_groups_list"]]
-pca_groups_list = snakemake@config[[pca_groups_list_name]]
+pca_groups_list_name <- snakemake@params[["pca_groups_list"]]
+pca_groups_list <- snakemake@config[[pca_groups_list_name]]
 
 # TODO sort out good folder names and locations
-final_output_folder = paste0(snakemake@config[["out"]],
-                             snakemake@config[["path_dim_pca"]],
-                             snakemake@params[["dataset_name"]], "/")
+final_output_folder <- paste0(snakemake@config[["out"]],
+                              snakemake@config[["path_dim_pca"]],
+                              snakemake@params[["dataset_name"]], "/")
 
 
 write_table_special <- function(df, folder_name, file_name) {
   outf <- paste0(folder_name, file_name) # TODO
-  write.table(df, out_file, row.names=FALSE, sep = "\t")
+  write.table(df, out_file, row.names = FALSE, sep = "\t")
 }
 inf <- paste0(in_file)
-df <- read.table(inf, header=TRUE, sep="\t", strip.white=FALSE)
+df <- read.table(inf, header = TRUE, sep = "\t", strip.white = FALSE)
+
 
 # verify none of the PCA folders exist before doing analysis
-check_for_directories <- function(folder_list){
+check_for_directories <- function(folder_list) {
   for (i in folder_list){
     if (file.exists(i)) {
       break
@@ -52,15 +57,15 @@ check_for_directories <- function(folder_list){
 perform_pca <- function(pca_list, df, final_output_folder) {
 
   # get items from each list describing how to perform pca
-  pca_name = pca_list$pca_name
-  output_folder = paste0(final_output_folder, pca_name, "/")
-  feature_list = pca_list$feature_list
-  cum_var_thres = pca_list$cum_var_thres
+  pca_name <- pca_list$pca_name
+  output_folder <- paste0(final_output_folder, pca_name, "/")
+  feature_list <- pca_list$feature_list
+  cum_var_thres <- pca_list$cum_var_thres
 
   pca.df <- df %>% select(all_of(feature_list))
   # Scale PCA plot
   # TODO prcomp. this brings up need to allow user adjustments to functions
-  pca.scaled <- prcomp(pca.df, scale=TRUE)
+  pca.scaled <- prcomp(pca.df, scale = TRUE)
 
   eig.val <- get_eigenvalue(pca.scaled)
   eig.val # data frame with all info on eigen values and variance of axes
@@ -81,61 +86,61 @@ perform_pca <- function(pca_list, df, final_output_folder) {
 
   # repetitive but not worth time
   # TODO fix these files
-  write_table_special(ind.coord, output_folder, file_name="ind.coord.txt")
-  write_table_special(ind.contrib, output_folder, file_name="ind.contrib.txt")
-  write_table_special(ind.cos2, output_folder, file_name="ind.cos2.txt")
+  write_table_special(ind.coord, output_folder, file_name = "ind.coord.txt")
+  write_table_special(ind.contrib, output_folder, file_name = "ind.contrib.txt")
+  write_table_special(ind.cos2, output_folder, file_name = "ind.cos2.txt")
 
   # TODO rownames, need to change this to "variables" for output
   # TODO verify why cors are the same
-  write_table_special(var.coord, output_folder, file_name="var.coord.txt")
-  write_table_special(var.cor, output_folder, file_name="var.cor.txt")
-  write_table_special(var.contrib, output_folder, file_name="var.contrib.txt")
-  write_table_special(var.cos2, output_folder, file_name="var.cos2.txt")
+  write_table_special(var.coord, output_folder, file_name = "var.coord.txt")
+  write_table_special(var.cor, output_folder, file_name = "var.cor.txt")
+  write_table_special(var.contrib, output_folder, file_name = "var.contrib.txt")
+  write_table_special(var.cos2, output_folder, file_name = "var.cos2.txt")
 
   # TODO loop through write_table_special
   # for (i in list(var.c))
 
   # Get pcs that are over a threshold
-  bool_important = eig.val$cumulative.variance.percent < cum_var_thres
-  pcs_over_threshold = sum(bool_important, na.rm = TRUE) + 1
-  pc_name_list = rownames(eig.val)[1:pcs_over_threshold]
+  bool_important <- eig.val$cumulative.variance.percent < cum_var_thres
+  pcs_over_threshold <- sum(bool_important, na.rm = TRUE) + 1
+  pc_name_list <- rownames(eig.val)[1:pcs_over_threshold]
 
   # number of items to show on scree plot
   # TODO verify what amount of items is too much to show... don't want all if
   # people are reducing all their data
-  if (pcs_over_threshold >= 100){
-    pcs_to_display = 100
+  if (pcs_over_threshold >= 100) {
+    pcs_to_display <- 100
   } else {
-    pcs_to_display = pcs_over_threshold}
+    pcs_to_display <- pcs_over_threshold }
 
   # Plot the eigenvalues (scree plot) top dimensions
-  p = fviz_eig(pca.scaled, main = "Scaled Scree Plot", choice = "variance",
+  p <- fviz_eig(pca.scaled, main = "Scaled Scree Plot", choice = "variance",
          addlabels = TRUE,
          ncp=pcs_to_display)
   ggsave(p, file = paste0(output_folder, "scaled-scree-plot-top-pcs.pdf"),
-         width = 14, height = 8, device='pdf')
+         width = 14, height = 8, device = 'pdf')
 
   # Plot the eigenvalues (scree plot) all dimensions
-  p = fviz_eig(pca.scaled, main = "Scaled Scree Plot", choice = "variance",
+  p <- fviz_eig(pca.scaled, main = "Scaled Scree Plot", choice = "variance",
                addlabels = TRUE)
   ggsave(p, file = paste0(output_folder, "scaled-scree-plot-all.pdf"),
-         width = 14, height = 8, device='pdf')
+         width = 14, height = 8, device = 'pdf')
 
-  p = fviz_pca_var(pca.scaled,
+  p <- fviz_pca_var(pca.scaled,
          geom.ind = "text", # type of graph ("point", "arrow", "text")
          col.var = "contrib", # color by contributions to the PC
          gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), # gradient colors
          repel = TRUE #avoid text overlapping
   )
   ggsave(p, file = paste0(output_folder, "variables-pca.pdf"),
-         width = 14, height = 8, device='pdf')
+         width = 14, height = 8, device = 'pdf')
 
   # Replace original vars (remove) and add pcs
   for (pc in pc_name_list){
-    pc_new_name = paste0(pca_name, "_", pc)
+    pc_new_name <- paste0(pca_name, "_", pc)
     df[[pc_new_name]] <- ind.coord[[pc]]
   }
-  df = df %>% select(-all_of(feature_list))
+  df <- df %>% select(-all_of(feature_list))
 
   # # FOR REPORT
   #
@@ -147,30 +152,28 @@ perform_pca <- function(pca_list, df, final_output_folder) {
   return(df)
 }
 
-all_pca_lists = pca_groups_list
-all_pca_lists = eval(parse(text=all_pca_lists))
-output_folder_list = character()
+all_pca_lists <- pca_groups_list
+all_pca_lists <- eval(parse(text = all_pca_lists))
+output_folder_list <- character()
 # create the folders first, so that time isn't wasted processing PCAs
 for (pca_info in all_pca_lists) {
   # print(paste0("pca_info", pca_info))
-
-  output_folder_from_group = paste0(final_output_folder, pca_info$pca_name)
-  output_folder_list = c(output_folder_list, output_folder_from_group)
+  output_folder_from_group <- paste0(final_output_folder, pca_info$pca_name)
+  output_folder_list <- c(output_folder_list, output_folder_from_group)
 }
 
 # add main output folder to list
-output_folder_list = c(output_folder_list, final_output_folder)
+output_folder_list <- c(output_folder_list, final_output_folder)
 # see if PCA directories exist already and if not, make them
 check_for_directories(output_folder_list)
 
 # TODO check for unique items
 for (pca_info in all_pca_lists) {
-  df = perform_pca(pca_list=pca_info, df=df,
-                   final_output_folder=final_output_folder)
+  df <- perform_pca(pca_list = pca_info, df = df,
+                   final_output_folder = final_output_folder)
 }
 
 # TODO write final file only after all pcs have been included loop
 # df$HDL = sample(df$HDL)
 write_table_special(df, folder_name = final_output_folder,
                     file_name = "final-pca-dim-reduction.txt")
-
