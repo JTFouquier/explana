@@ -2,12 +2,9 @@
 #devtools::install_github("jbisanz/qiime2R")
 # library(qiime2R)
 
+source("scripts/install.R")
 package_list <- c("dplyr", "usedist", "utils")
-package_list <- package_list[!(package_list %in%
-installed.packages()[, "Package"])]
-if (length(package_list) > 0) {
-  install.packages(package_list)
-}
+install_r_packages(package_list = package_list)
 
 library(dplyr)
 library(usedist)

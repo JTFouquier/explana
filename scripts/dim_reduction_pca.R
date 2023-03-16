@@ -6,12 +6,9 @@
 #
 # var1 var2 var3 might get converted to dim1 and dim2;
 # Overall, a dimensionality reduction from 3 to 2 variables
+source("scripts/install.R")
 package_list <- c("factoextra", "MASS", "dplyr")
-package_list <- package_list[!(package_list %in%
-installed.packages()[, "Package"])]
-if (length(package_list) > 0) {
-  install.packages(package_list)
-}
+install_r_packages(package_list = package_list)
 
 library(factoextra)
 library(MASS)

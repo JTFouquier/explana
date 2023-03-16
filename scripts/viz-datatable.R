@@ -1,14 +1,7 @@
-# in_file = snakemake@input[["in_file"]]
-# out_file = snakemake@output[["out_file"]]
-# pretty_print = snakemake@config[["pretty_print"]]
-
+source("scripts/install.R")
 package_list <- c("sjPlot", "sjmisc", "sjlabelled", "DT",
 "tidyverse", "dplyr", "colorspace")
-package_list <- package_list[!(package_list %in%
-installed.packages()[, "Package"])]
-if (length(package_list) > 0) {
-  install.packages(package_list)
-}
+install_r_packages(package_list = package_list)
 
 library(sjPlot)
 library(sjmisc)

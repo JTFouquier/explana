@@ -1,11 +1,7 @@
+source("scripts/install.R")
 package_list <- c("dplyr", "R3port", "usedist", "lmerTest", "lme4",
 "sjPlot", "sjmisc", "sjlabelled", "ggpubr", "ggplot2", "stringr", "pdftools")
-
-package_list <- package_list[!(package_list %in%
-installed.packages()[, "Package"])]
-if (length(package_list) > 0) {
-  install.packages(package_list)
-}
+install_r_packages(package_list = package_list)
 
 library(dplyr)
 library(R3port)

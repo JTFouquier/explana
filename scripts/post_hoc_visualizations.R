@@ -1,12 +1,7 @@
+source("scripts/install.R")
 package_list <- c("tidyverse", "MASS", "ape", "purrr", "ggplot2",
 "rstatix", "vars")
-
-package_list <- package_list[!(package_list %in%
-installed.packages()[, "Package"])]
-if (length(package_list) > 0) {
-  install.packages(package_list)
-}
-
+install_r_packages(package_list = package_list)
 library(tidyverse)
 library(MASS)
 library(ape)
