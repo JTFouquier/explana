@@ -4,11 +4,11 @@ Authored by Jennifer Therese Fouquier
 
 # Install
 
-This project is under active development. Thank you for reporting any issues.
+This project is under active development. Thank you for reporting any issues!
 
 ### Install source code
 
-> git clone git@github.com:JTFouquier/snakemake-MERF.git
+> `git clone git@github.com:JTFouquier/snakemake-MERF.git`
 
 Then, navigate to directory with the "Snakefile" and work from there.
 
@@ -16,7 +16,10 @@ Then, navigate to directory with the "Snakefile" and work from there.
 
 ### Create Conda environment to run workflow using Mamba
 
+You must be inside the directory with the "Snakefile" to create the new "feature-selection-workflow" environment and run your analyses. You will also need to install Mambaforge [(download Mambaforge here)](https://github.com/conda-forge/miniforge#mambaforge)
+
 > `mamba env create -f conda_envs/environment.yaml -n feature-selection-workflow`
+
 > `conda activate feature-selection-workflow`
 
 - - -
@@ -31,6 +34,10 @@ First, run:
 
 This creates "workflow-results/HDL-Demo/" folder in the directory. Remove folder to retest, but if workflow partially runs, you can rerun command above and Snakemake will pick up where it left off.
 
+To remove the results and try the demo again:
+
+> `rm -r workflow-results/HDL-Demo/`
+
 Next, run these commands:
 
 > `snakemake run_post_hoc_stats --cores 4`
@@ -39,11 +46,15 @@ Next, run these commands:
 
 > `open HDL-Demo.html`
 
-Later I want the .html report in the output folder but having path issues.
+Later I want the .html report in the output folder but I'm having path issues so the "HDL-Demo.html" output is in the main directory.
 
 You can run everything together with one line, as follows, if your environment is working:
 
 > `snakemake --cores 4 --use-conda; snakemake run_post_hoc_stats --cores 4; snakemake render_report --cores 4; open HDL-Demo.html`
+
+And again, remove the results to retest:
+
+> `rm -r workflow-results/HDL-Demo/`
 
 - - -
 
