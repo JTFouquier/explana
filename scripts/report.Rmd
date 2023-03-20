@@ -8,6 +8,9 @@ output:
 ---
 
 ```{r setup, include=FALSE}
+source("scripts/install.R")
+package_list <- c("knitr", "htmltools", "tidyverse", "Hmisc")
+install_r_packages(package_list = package_list)
 library(knitr)
 library(htmltools)
 library(tidyverse)
