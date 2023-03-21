@@ -78,18 +78,18 @@ post_hoc_viz <- function(df, important_features, gg_info, df_path) {
     paste0(snakemake@config[["out"]], df_path, "post-hoc-visualizations.pdf")
 
   df <- read.csv(df, sep = "\t", check.names = FALSE)
-  # TODO fix timepoint
-  df$Timepoint <- as.factor(df$Timepoint)
+  df[[paste0(timepoint)]] <- factor(df[[paste0(timepoint)]])
 
   important_features <- read.csv(important_features, sep = "\t")
   important_features <- unique(important_features$decoded.features)
 
   # These are not part of the facets -- just needed for display, etc
-  cols_for_graph <- c(random_effect, response, "Timepoint")
+  cols_for_graph <- c(random_effect, response, timepoint)
   important_columns <- c(cols_for_graph, important_features)
   facet_cols <- 2 # TODO fix hardcoding here
 
-  # get dataframes with important vars and either numeric or categoric predictors and convert to long
+  # get dataframes with important vars and either numeric or
+  # categoric predictors and convert to long
   df_col_selection <- df[important_features]
 
   df_categorical <- df_col_selection %>% select(where(negate(is.numeric)))

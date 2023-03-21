@@ -37,7 +37,7 @@ output_folder <- paste0(snakemake@config[["out"]],
 
 response <- snakemake@config[["response_var"]]
 random_effect <- snakemake@config[["random_effect"]]
-timepoint <- snakemake@config[["Timepoint"]]
+timepoint <- snakemake@config[["timepoint"]]
 
 #absolute_values <- snakemake@params[["absolute_values"]]
 
@@ -136,9 +136,8 @@ lme_complete <- function(df_file, important_features_file, reference_type) {
                                "previous" = "03", "pairwise" = "04")
   reference_order <- reference_order_list[[reference_type]]
   df <- read.csv(df_file, sep = "\t", check.names = FALSE)
-
   # TODO this helps find linear relns. Keep categorical?
-  df$Timepoint <- factor(df$Timepoint, ordered = TRUE)
+  df[[paste0(timepoint)]] <- factor(df[[paste0(timepoint)]], ordered = TRUE)
 
   important_features_list <-
   read.csv(important_features_file, sep = "\t", check.names = FALSE)
