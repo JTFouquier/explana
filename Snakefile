@@ -55,10 +55,10 @@ config["dataset_json"] = dataset_json
 
 rule all:
     input:
-        original=path_rf_original + "original.pdf",
-        first=path_rf_first + "first.pdf",
-        previous=path_rf_previous + "previous.pdf",
-        pairwise=path_rf_pairwise + "pairwise.pdf"
+        original = path_rf_original + "original.pdf",
+        first = path_rf_first + "first.pdf",
+        previous = path_rf_previous + "previous.pdf",
+        pairwise = path_rf_pairwise + "pairwise.pdf"
 
 def get_pca_in_file(wildcards):
     in_file = dataset_json["datasets"][wildcards.pca_ds_name]["file_path"]
@@ -204,39 +204,15 @@ rule run_post_hoc_stats:
     script:
         "scripts/post_hoc_tests.R"
 
-
+# Only require log files because then report will always render
 rule render_report:
     input:
-        original = path_rf_original + "original.pdf",
-        original_shap= path_rf_original +
-                       "original-accepted-SHAP-summary-beeswarm.svg",
-        original_boruta = path_rf_original +
-                          "original-boruta-accepted-features.svg",
         original_log = path_rf_original + "original-log.txt",
-
-        first = path_rf_first + "first.pdf",
-        first_shap= path_rf_first +
-                    "first-accepted-SHAP-summary-beeswarm.svg",
-        first_boruta= path_rf_first +
-                      "first-boruta-accepted-features.svg",
         first_log = path_rf_first + "first-log.txt",
-
-        previous = path_rf_previous + "previous.pdf",
-        previous_shap= path_rf_previous +
-                       "previous-accepted-SHAP-summary-beeswarm.svg",
-        previous_boruta = path_rf_previous +
-                          "previous-boruta-accepted-features.svg",
         previous_log= path_rf_previous + "previous-log.txt",
-
-        pairwise = path_rf_pairwise + "pairwise.pdf",
-        pairwise_shap= path_rf_pairwise +
-                       "pairwise-accepted-SHAP-summary-beeswarm.svg",
-        pairwise_boruta = path_rf_pairwise +
-                          "pairwise-boruta-accepted-features.svg",
         pairwise_log = path_rf_pairwise + "pairwise-log.txt",
-
-        post_hoc = path_post_hoc + "post-hoc-analysis.html",
-        post_hoc_viz = config["out"] + "post-hoc-combined.pdf"
+        # post_hoc = path_post_hoc + "post-hoc-analysis.html",
+        # post_hoc_viz = config["out"] + "post-hoc-combined.pdf"
     output:
         md_doc=config["report_name"],
     conda: "conda_envs/r_env.yaml",

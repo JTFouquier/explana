@@ -8,9 +8,8 @@
 # plan analysis better
 ##############################################################################
 
-# REQUIRED COLUMNS: StudyID (random effect), SampleID, & Timepoint
-# Variable names must be EXACTLY as listed here for now (i.e. you must fix
-# your column names)
+# REQUIRED COLUMNS
+# For now html output must be in the 
 ##############################################################################
 random_effect: "StudyID"
 sample_id: "SampleID"
@@ -25,7 +24,7 @@ report_name: "HDL-Demo.html"
 response_var: "HDL" # Variable you are trying to explain
 
 # make interactive output of dataframes for interpretation (TRUE or FALSE)
-build_datatable: "FALSE"
+build_datatable: "TRUE"
 
 # Mixed-effects Random Forest (MERF) arguments
 ##############################################################################
@@ -34,13 +33,16 @@ build_datatable: "FALSE"
 #n_estimators: "300"
 
 # For testing (doing too few even for testing may cause failure)
-iterations: "2"
+iterations: "10"
 n_estimators: "50"
 
-# BorutaSHAP arguments
-##############################################################################
 borutaSHAP_trials: "20"
-borutaSHAP_percentile: "98"
+borutaSHAP_percentile: "97"
+
+analysis_notes: "Men on an Agrarian diet intervention for testing only.
+Includes simulated data for testing purposes"
+# make interactive output of dataframes for interpretation (TRUE or FALSE)
+enc_percent_threshold: "0"
 
 # When creating deltas, are there distance matrices to include?
 # Leave distance_matrices empty if not in use

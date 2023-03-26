@@ -1,5 +1,5 @@
 ---
-title: "Feature Selection Workflow Report"
+title: "Feature Selection Report"
 date: "`r Sys.Date()`"
 params:
    rmd: "report.Rmd"
@@ -17,6 +17,7 @@ library(tidyverse)
 library(Hmisc)
 knitr::opts_chunk$set(echo = FALSE,
                       eval = TRUE)
+source("scripts/feature-heatmaps.R")
 ```
 ***
 
@@ -24,47 +25,119 @@ knitr::opts_chunk$set(echo = FALSE,
 
 <h1 style="background-color:lightgray; color: black; text-align: center; padding-top:30px; padding-bottom: 30px; padding-left: 20px;">Summary</h1>
 
-***
-
-Values of the response variable are explained best with the important features selected using this workflow.\
-
-Please ensure you understand the workflow and that the accuracy of the model is adequate for your purposes.
-When you are using all your data without prior
-hypotheses, you are performing *exploratory analysis* and should make this clear
-when discussing any results.\
-
-Additional figures and files can be found in the output directory.
-
-***
-
 ```{r comment="", echo = FALSE}
-response_var = snakemake@config[["response_var"]]
-drop_cols = snakemake@config[['drop_cols']]
-constrain_rows = snakemake@config[['constrain_rows']]
-random_effect = snakemake@config[['random_effect']]
-drop_rows = snakemake@config[['drop_rows']]
-iterations = snakemake@config[["iterations"]]
-n_estimators = snakemake@config[["n_estimators"]]
-output_directory = snakemake@config[["out"]]
 
-cat(paste0("RESPONSE VARIABLE: ", response_var))
-cat(paste0("RANDOM EFFECT: ", random_effect))
-cat(paste0("FEATURES DROPPED: ", toString(drop_cols)))
-cat(paste0("VALUES DROPED ({feature: value}): ", toString(drop_rows)))
-cat(paste0("CONSTRAINED TO ROWS: ", toString(constrain_rows)))
-cat(paste0("OUTPUT DIRECTORY: ", toString(output_directory)))
+response_var <- snakemake@config[["response_var"]]
+drop_cols <- snakemake@config[["drop_cols"]]
+constrain_rows <- snakemake@config[["constrain_rows"]]
+random_effect <- snakemake@config[["random_effect"]]
+drop_rows <- snakemake@config[["drop_rows"]]
+iterations <- snakemake@config[["iterations"]]
+n_estimators <- snakemake@config[["n_estimators"]]
+enc_percent_threshold <- snakemake@config[["enc_percent_threshold"]]
 
-cat(paste0("This pipeline was used to identify important features predictive of ", response_var, " values.\nA random effect of ", random_effect, " was used to adjust for non-independence. There were ", n_estimators, " trees per Random Forest model. Mixed-effects software MERF was used with ", iterations, " iterations. (Include log file here)"))
+out_path <- snakemake@config[["out"]]
+original_path <- paste0(out_path, snakemake@config[["path_rf_original"]])
+first_path <- paste0(out_path, snakemake@config[["path_rf_first"]])
+previous_path <- paste0(out_path, snakemake@config[["path_rf_previous"]])
+pairwise_path <- paste0(out_path, snakemake@config[["path_rf_pairwise"]])
 
-
+wd <- paste0(getwd(), "/")
+wd_analysis <- paste0(wd, out_path)
+wd_original <- paste0(wd, original_path)
+wd_first <- paste0(wd, first_path)
+wd_previous <- paste0(wd, previous_path)
+wd_pairwise <- paste0(wd, pairwise_path)
 ```
 
-<br>
-<br>
-<br>
-<br>
-<br>
-</br>
+***
+
+#### Inputs and Analysis Arguments
+
+**Response variable:** `r response_var`
+
+**Random effect:** `r random_effect`
+
+**Features dropped:** `r toString(drop_cols)`
+
+**Values dropped (feature & value):** `r toString(drop_rows)`
+
+**Constrained to rows:** `r toString(constrain_rows)`
+
+**Analysis notes:** `r toString(snakemake@config[["analysis_notes"]])`
+
+***
+
+#### Summary of methods
+
+This workflow (name needed!) was used to identify important features 
+predictive of the response variable, **``r response_var``**.
+
+A random effect of **``r random_effect``** was used to adjust for 
+non-independence (repeated measurements) as needed. There were 
+**``r n_estimators` trees`** used per Random Forest model. If mixed 
+effects Random Forests were needed, **``r iterations` iterations`** 
+were performed. Categorical variables were encoded (expand) and 
+low occurring values were removed if found in less than 
+**``r enc_percent_threshold`%`** of samples. 
+
+Values of the response variable, **``r response_var``**, are 
+explained best with the important features selected using this 
+workflow.
+
+Please ensure you understand the workflow and that the accuracy 
+of the model is adequate for your purposes. When you are using 
+all your data without prior hypotheses, you are performing 
+*exploratory analysis* and should make this clear
+when discussing results.
+
+Additional figures and files can be found in output directory.
+
+***
+
+#### Directory Links
+
+[⇨ Full Analysis Directory](file://`r wd_analysis`){target="_blank"}
+
+[⇨ Original Dataset    |  ](file://`r wd_original`){target="_blank"}
+[⇨ First Delta Dataset    |  ](file://`r wd_first`){target="_blank"}
+[⇨ Previous Delta Dataset    |  ](file://`r wd_previous`){target="_blank"}
+[⇨ Pairwise Delta Dataset](file://`r wd_pairwise`){target="_blank"}
+
+***
+
+```{r include = FALSE }
+
+plot_pattern_display <- function(path_name, pattern, grep_arg) {
+  files <- list.files(path = path_name, pattern = pattern)
+  my_plots <- grep(grep_arg, files, value = TRUE)
+
+  # get files with pattern and grep argument
+  for (f in my_plots) {
+      cat("\n\n")
+      cat(paste0("![](", path_name, f, ")"), "\n")
+  }
+}
+
+# create the plot to show which datasets important features
+# were occurring in (done now after building all models)
+make_feature_heatmaps(out_path)
+```
+
+#
+
+### Important Feature Occurences by Dataset
+
+This workflow is designed to assist with understanding 
+original feature values, as well as changes in feature 
+values, when compared to various reference points. 
+Certain features may carry varying degrees of importance 
+across different datasets and this workflow helps 
+identify these discrepancies.
+
+```{r out.width = 1100, out.height = 700, comment=""}
+include_graphics(paste0(out_path, "important-feature-occurrences.svg"))
+```
 
 #
 
@@ -78,132 +151,137 @@ cat(paste0("This pipeline was used to identify important features predictive of 
 
 ### Log and SHAP Summary Results
 
-```{r out.width = 1100, out.height = 600, comment=""}
-cat(readLines(snakemake@input[['original_log']]), sep = '\n')
-include_graphics(snakemake@input[['original_shap']])
+[⇨ Open Original Dataset Directory](file://`r wd_original`){target="_blank"}
+
+```{r comment=""}
+cat(readLines(snakemake@input[["original_log"]]), sep = "\n")
+```
+
+
+```{r results="asis", comment=""}
+plot_pattern_display(path_name = original_path, pattern = ".svg",
+                     grep_arg = "SHAP-summary-beeswarm")
 ```
 
 ### BorutaSHAP Important Features
 
-```{r out.width = 1100, out.height = 600, comment=""}
-include_graphics(snakemake@input[['original_boruta']])
+```{r results="asis", comment=""}
+plot_pattern_display(path_name = original_path, pattern = ".svg",
+                     grep_arg = "boruta-accepted")
 ```
 
 ### Results PDF
 
+[⇨ Open PDF in new window](file://`r wd_original`original.pdf){target="_blank"}
+
 ```{r out.width = 1100, out.height = 600, comment=""}
-include_graphics(snakemake@input[['original']])
+include_graphics(paste0(original_path, "original.pdf"))
 ```
-<br>
-<br>
-<br>
-<br>
-<br>
-</br>
 
 #
 ***
 
 <h1 style="background-color:cornflowerblue; color: black; text-align: center; padding-top:30px; padding-bottom: 30px; padding-left: 20px;">First Delta Dataset</h1>
 
-***
-
 ## Results {.tabset}
 
 ### Log and SHAP Summary Results
 
+[⇨ Open First Delta Dataset Directory](file://`r wd_first`){target="_blank"}
+
 ```{r out.width = 1100, out.height = 600, comment=""}
-cat(readLines(snakemake@input[['first_log']]), sep = '\n')
-include_graphics(snakemake@input[['first_shap']])
+cat(readLines(snakemake@input[["first_log"]]), sep = "\n")
+```
+
+```{r results="asis", comment=""}
+plot_pattern_display(path_name = first_path, pattern = ".svg",
+                     grep_arg = "SHAP-summary-beeswarm")
 ```
 
 ### BorutaSHAP Important Features
 
-```{r out.width = 1100, out.height = 600, comment=""}
-include_graphics(snakemake@input[['first_boruta']])
+```{r results="asis", comment=""}
+plot_pattern_display(path_name = first_path, pattern = ".svg",
+                     grep_arg = "boruta-accepted")
 ```
 
 ### Results PDF
 
+[⇨ Open PDF in new window](file://`r wd_first`first.pdf){target="_blank"}
+
 ```{r out.width = 1100, out.height = 600, comment=""}
-include_graphics(snakemake@input[['first']])
+include_graphics(paste0(first_path, "first.pdf"))
 ```
-<br>
-<br>
-<br>
-<br>
-<br>
-</br>
 
 #
-
 ***
 
 <h1 style="background-color:lightgreen; color: black; text-align: center; padding-top:30px; padding-bottom: 30px; padding-left: 20px;">Previous Delta Dataset</h1>
 
-***
-
 ## Results {.tabset}
 
 ### Log and SHAP Summary Results
 
+[⇨ Open Previous Delta Dataset Directory](file://`r wd_previous`){target="_blank"}
+
 ```{r out.width = 1100, out.height = 600, comment=""}
-cat(readLines(snakemake@input[['previous_log']]), sep = '\n')
-include_graphics(snakemake@input[['previous_shap']])
+cat(readLines(snakemake@input[["previous_log"]]), sep = "\n")
+```
+
+```{r results="asis", comment=""}
+plot_pattern_display(path_name = previous_path, pattern = ".svg",
+                     grep_arg = "SHAP-summary-beeswarm")
 ```
 
 ### BorutaSHAP Important Features
 
-```{r out.width = 1100, out.height = 600, comment=""}
-include_graphics(snakemake@input[['previous_boruta']])
+```{r results="asis", comment=""}
+plot_pattern_display(path_name = previous_path, pattern = ".svg",
+                     grep_arg = "boruta-accepted")
 ```
 
 ### Results PDF
 
+[⇨ Open PDF in new window](file://`r wd_previous`previous.pdf){target="_blank"}
+
 ```{r out.width = 1100, out.height = 600, comment=""}
-include_graphics(snakemake@input[['previous']])
+include_graphics(paste0(previous_path, "previous.pdf"))
 ```
-<br>
-<br>
-<br>
-<br>
-<br>
-</br>
 
 #
-
 ***
 
 <h1 style="background-color:#AB82FF; color: black; text-align: center; padding-top:30px; padding-bottom: 30px; padding-left: 20px;">Pairwise Delta Dataset</h1>
-***
-
 
 ## Results {.tabset}
 
 ### Log and SHAP Summary Results
 
+[⇨ Open Pairwise Delta Dataset Directory](file://`r wd_pairwise`){target="_blank"}
+
 ```{r out.width = 1100, out.height = 600, comment=""}
-cat(readLines(snakemake@input[['pairwise_log']]), sep = '\n')
-include_graphics(snakemake@input[['pairwise_shap']])
+cat(readLines(snakemake@input[["pairwise_log"]]), sep = "\n")
+```
+
+```{r results="asis", comment=""}
+plot_pattern_display(path_name = pairwise_path, pattern = ".svg",
+                     grep_arg = "SHAP-summary-beeswarm")
 ```
 
 ### BorutaSHAP Important Features
 
-```{r out.width = 1100, out.height = 600, comment=""}
-include_graphics(snakemake@input[['pairwise_boruta']])
+```{r results="asis", comment=""}
+plot_pattern_display(path_name = pairwise_path, pattern = ".svg",
+                     grep_arg = "boruta-accepted")
 ```
 
 ### Results PDF
 
+[⇨ Open PDF in new window](file://`r wd_pairwise`pairwise.pdf){target="_blank"}
+
 ```{r out.width = 1100, out.height = 600, comment=""}
-include_graphics(snakemake@input[['pairwise']])
+include_graphics(paste0(pairwise_path, "pairwise.pdf"))
 ```
-<br>
-<br>
-<br>
-<br>
-<br>
-</br>
 
 #
 
@@ -220,29 +298,18 @@ include_graphics(snakemake@input[['pairwise']])
 ## Description
 
 Linear models or linear mixed effects models were used for post hoc testing to determine if a linear relationship exists between selected feature and response variable.
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
-<br>
 
 ## Results
 
 ```{r out.width = 1100, out.height = 600, comment=""}
-htmltools::includeHTML(snakemake@input[['post_hoc']])
+# htmltools::includeHTML(snakemake@input[["post_hoc"]])
 ```
 
 ## Graphs
 
 ```{r out.width = 1100, out.height = 600, comment=""}
-include_graphics(snakemake@input[['post_hoc_viz']])
+# include_graphics(paste0(snakemake@config[["post_hoc_viz"]],
+# "post-hoc-combined.pdf"))
 ```
 
 
@@ -254,9 +321,9 @@ See the [Github repository](https://github.com/JTFouquier/snakemake-MERF "Still 
 
 ```{r}
 # read in a table example
-# df = read.csv(snakemake@input[['table_boruta']], sep = "\t")
+# df = read.csv(snakemake@input[["table_boruta"]], sep = "\t")
 # knitr::kable(df$important.features, format = "html")
 ```
 
-<a download="report.Rmd" href="`r base64enc::dataURI(file = params$rmd, mime='text/rmd', encoding='base64')`">Click here for R Markdown source file</a>
+<a download="report.Rmd" href="`r base64enc::dataURI(file = params$rmd, mime="text/rmd", encoding="base64")`">Click here for R Markdown source file</a>
 

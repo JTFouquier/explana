@@ -205,6 +205,9 @@ main <- function() {
   colnames(delta_df)[colnames(delta_df) == "timepoint_w_"] <- input_timepoint
   colnames(delta_df)[colnames(delta_df) == "study_id_w_"] <- input_study_id
 
+  delta_df <- delta_df %>%
+    select(-ends_with("_reference"))
+
   write.table(delta_df, out_file, row.names = FALSE, sep = "\t")
 
   # TODO optional create visualizer
