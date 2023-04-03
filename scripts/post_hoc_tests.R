@@ -49,7 +49,6 @@ timepoint <- snakemake@config[["timepoint"]]
 interaction <- "no"
 # TODO make log file containing LME errors and warnings
 
-dir.create(output_folder)
 
 my_css <- function(analysis_type, dataset_type) {
 
@@ -144,11 +143,13 @@ lme_complete <- function(df_file, important_features_file, reference_type) {
   important_features_list <-
   unique(important_features_list[["decoded.features"]])
 
+  # TODO try using important.features encoded only
+
   # Multivariate analysis (all important variables explain response)
   css_list <- my_css(analysis_type = "multivariate",
   dataset_type <- reference_type)
   lme_model <- lme_post_hoc(df, response, important_features_list,
-                           random_effect, interaction)
+                            random_effect, interaction)
   print(tab_model(lme_model,
                   file = paste0(output_folder, reference_order,
                                 "-", html_number,
@@ -264,7 +265,7 @@ for (i in seq_along(df_list)) {
 }
 
 pdf_combine(pdf_list, output = paste0(snakemake@config[["out"]],
-"post-hoc-combined.pdf"))
+snakemake@config[["path_post_hoc"]], "post-hoc-combined.pdf"))
 
 
 

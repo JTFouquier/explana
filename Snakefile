@@ -1,13 +1,30 @@
 import json
 import os
+import sys
 
-# first configfile is the only thing you should change in snakefile;
-# (note: data from both 'configfile' .yamls are added to the config)
-configfile: "config/config.yaml"
-# Do not modify paths or bad things will happen. :)
-configfile: "config/config-paths.yaml"
+from snakemake.io import load_configfile
+from snakemake import parse_config
 
-# TODO add outputs concatenated with final output file
+
+# TODO improve these path numbers
+config["path_dim_pca"] = "01-DIM-PCA/"
+config["path_dim_scnic"] = "01-DIM-SCNIC/"
+
+config["path_rf_original"] = "04-SELECTED-FEATURES-original/"
+config["path_rf_first"] = "04-SELECTED-FEATURES-first/"
+config["path_rf_previous"] = "04-SELECTED-FEATURES-previous/"
+config["path_rf_pairwise"] = "04-SELECTED-FEATURES-pairwise/"
+
+config["path_post_hoc"] = "05-POST-HOC-TESTS/"
+
+# get the argument after the --configfile param
+index = sys.argv.index("--configfile")
+config_file = sys.argv[index + 1]
+cl_configfile = dict(load_configfile(config_file))
+
+config.update(cl_configfile)
+
+# paths with the final workflow results path included
 path_rf_original = config["out"] + config["path_rf_original"]
 path_rf_first = config["out"] + config["path_rf_first"]
 path_rf_previous = config["out"] + config["path_rf_previous"]
@@ -17,6 +34,7 @@ path_dim_pca = config["out"] + config["path_dim_pca"]
 path_dim_scnic = config["out"] + config["path_dim_scnic"]
 
 path_post_hoc = config["out"] + config["path_post_hoc"]
+
 
 def dim_reduction():
     dataset_json = json.loads(config["dataset_json"])
@@ -173,6 +191,7 @@ rule random_forest:
         out_file = config["out"] +
                    "04-SELECTED-FEATURES-{reference}/{reference}.pdf"
     params:
+        dataset = "{reference}",
         random_effect = config["random_effect"],
         sample_id = config["sample_id"],
         response_var = config["response_var"],
@@ -205,14 +224,16 @@ rule run_post_hoc_stats:
         "scripts/post_hoc_tests.R"
 
 # Only require log files because then report will always render
+# TODO add error reports to log file so people know entire 
+# algorithm did not work
 rule render_report:
     input:
         original_log = path_rf_original + "original-log.txt",
         first_log = path_rf_first + "first-log.txt",
         previous_log= path_rf_previous + "previous-log.txt",
         pairwise_log = path_rf_pairwise + "pairwise-log.txt",
-        # post_hoc = path_post_hoc + "post-hoc-analysis.html",
-        # post_hoc_viz = config["out"] + "post-hoc-combined.pdf"
+        post_hoc = path_post_hoc + "post-hoc-analysis.html",
+        post_hoc_viz = path_post_hoc + "post-hoc-combined.pdf"
     output:
         md_doc=config["report_name"],
     conda: "conda_envs/r_env.yaml",

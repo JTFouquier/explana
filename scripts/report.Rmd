@@ -9,31 +9,36 @@ output:
 
 ```{r setup, include=FALSE}
 source("scripts/install.R")
-package_list <- c("knitr", "htmltools", "tidyverse", "Hmisc")
+source("scripts/feature-heatmaps.R")
+source("scripts/colors.R")
+package_list <- c("knitr", "htmltools", "tidyverse", "Hmisc", "jsonlite")
 install_r_packages(package_list = package_list)
 library(knitr)
 library(htmltools)
 library(tidyverse)
 library(Hmisc)
+library(jsonlite)
+
 knitr::opts_chunk$set(echo = FALSE,
                       eval = TRUE)
-source("scripts/feature-heatmaps.R")
 ```
-***
-
-#
-
-<h1 style="background-color:lightgray; color: black; text-align: center; padding-top:30px; padding-bottom: 30px; padding-left: 20px;">Summary</h1>
 
 ```{r comment="", echo = FALSE}
 
 response_var <- snakemake@config[["response_var"]]
-drop_cols <- snakemake@config[["drop_cols"]]
-constrain_rows <- snakemake@config[["constrain_rows"]]
 random_effect <- snakemake@config[["random_effect"]]
+
+drop_cols <- snakemake@config[["drop_cols"]]
 drop_rows <- snakemake@config[["drop_rows"]]
+constrain_rows <- snakemake@config[["constrain_rows"]]
+constrain_cols <- snakemake@config[["constrain_cols"]]
+
 iterations <- snakemake@config[["iterations"]]
 n_estimators <- snakemake@config[["n_estimators"]]
+
+borutashap_trials <- snakemake@config[["borutaSHAP_trials"]]
+borutashap_percentile <- snakemake@config[["borutaSHAP_percentile"]]
+
 enc_percent_threshold <- snakemake@config[["enc_percent_threshold"]]
 
 out_path <- snakemake@config[["out"]]
@@ -49,62 +54,6 @@ wd_first <- paste0(wd, first_path)
 wd_previous <- paste0(wd, previous_path)
 wd_pairwise <- paste0(wd, pairwise_path)
 ```
-
-***
-
-#### Inputs and Analysis Arguments
-
-**Response variable:** `r response_var`
-
-**Random effect:** `r random_effect`
-
-**Features dropped:** `r toString(drop_cols)`
-
-**Values dropped (feature & value):** `r toString(drop_rows)`
-
-**Constrained to rows:** `r toString(constrain_rows)`
-
-**Analysis notes:** `r toString(snakemake@config[["analysis_notes"]])`
-
-***
-
-#### Summary of methods
-
-This workflow (name needed!) was used to identify important features 
-predictive of the response variable, **``r response_var``**.
-
-A random effect of **``r random_effect``** was used to adjust for 
-non-independence (repeated measurements) as needed. There were 
-**``r n_estimators` trees`** used per Random Forest model. If mixed 
-effects Random Forests were needed, **``r iterations` iterations`** 
-were performed. Categorical variables were encoded (expand) and 
-low occurring values were removed if found in less than 
-**``r enc_percent_threshold`%`** of samples. 
-
-Values of the response variable, **``r response_var``**, are 
-explained best with the important features selected using this 
-workflow.
-
-Please ensure you understand the workflow and that the accuracy 
-of the model is adequate for your purposes. When you are using 
-all your data without prior hypotheses, you are performing 
-*exploratory analysis* and should make this clear
-when discussing results.
-
-Additional figures and files can be found in output directory.
-
-***
-
-#### Directory Links
-
-[⇨ Full Analysis Directory](file://`r wd_analysis`){target="_blank"}
-
-[⇨ Original Dataset    |  ](file://`r wd_original`){target="_blank"}
-[⇨ First Delta Dataset    |  ](file://`r wd_first`){target="_blank"}
-[⇨ Previous Delta Dataset    |  ](file://`r wd_previous`){target="_blank"}
-[⇨ Pairwise Delta Dataset](file://`r wd_pairwise`){target="_blank"}
-
-***
 
 ```{r include = FALSE }
 
@@ -124,7 +73,89 @@ plot_pattern_display <- function(path_name, pattern, grep_arg) {
 make_feature_heatmaps(out_path)
 ```
 
+#### Analyst: `r toString(snakemake@config[["analyst"]])`
+
+***
+
+<h1 style="background-color:`r color_summary`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">Summary</h1>
+
+### Analysis Description:
+
+#### `r toString(snakemake@config[["analysis_notes"]])`
+
+***
+
+### Inputs and Analytic Decisions {.tabset}
+
+#### Analysis Summary
+
+**Response variable:** ``r response_var``
+
+**Random effect:** ``r random_effect``
+
+**Features dropped:** ``r toString(drop_cols)``
+
+**Values dropped (feature & value):** ``r toString(drop_rows)``
+
+**Constrained to rows:** ``r toString(constrain_rows)``
+
+#### Datasets
+
+```{r comment=""} 
+snakemake@config[["dataset_json"]] %>%
+  toJSON %>%
+  prettify()
+
+print(snakemake@config[["originaloob_all_features"]])
+cat(snakemake@config[["originaloob_all_features"]])
+```
+
 #
+
+***
+
+### Summary of methods
+
+This workflow (name needed!) was used to identify important features 
+predictive of the response variable, **``r response_var``**.
+
+Categorical variables were encoded (expand) and 
+low occurring values were removed if found in less than 
+**``r enc_percent_threshold`%`** of samples. A random effect 
+of **``r random_effect``** was used to adjust for non-independence 
+(repeated measurements) as needed. There were 
+**``r n_estimators` trees`** used per Random Forest model. If mixed 
+effects Random Forests were needed, **``r iterations` iterations`** 
+were performed. BorutaSHAP was used with 
+**``r borutashap_trials` trials`** and features were considered 
+important if they performed better than shuffled features
+**``r borutashap_percentile`%`** of the time.
+
+Values of the response variable, **``r response_var``**, are 
+explained best with the important features selected using this 
+workflow.
+
+Please ensure you understand the workflow and that the percent 
+variation explained for each model is adequate for your purposes. 
+When you are using all your data without prior hypotheses, you 
+are performing *exploratory analysis* and should make this clear
+when discussing results.
+
+Additional figures and files can be found in output directory.
+
+***
+
+### Directory Links
+
+[⇨ Full Analysis Directory](file://`r wd_analysis`){target="_blank"}
+
+[⇨ Original Dataset    |  ](file://`r wd_original`){target="_blank"}
+[⇨ First Delta Dataset    |  ](file://`r wd_first`){target="_blank"}
+[⇨ Previous Delta Dataset    |  ](file://`r wd_previous`){target="_blank"}
+[⇨ Pairwise Delta Dataset](file://`r wd_pairwise`){target="_blank"}
+
+***
+
 
 ### Important Feature Occurences by Dataset
 
@@ -135,7 +166,7 @@ Certain features may carry varying degrees of importance
 across different datasets and this workflow helps 
 identify these discrepancies.
 
-```{r out.width = 1100, out.height = 700, comment=""}
+```{r fig.align = "center"}
 include_graphics(paste0(out_path, "important-feature-occurrences.svg"))
 ```
 
@@ -143,9 +174,7 @@ include_graphics(paste0(out_path, "important-feature-occurrences.svg"))
 
 ***
 
-<h1 style="background-color:#FFFACD; color: black; text-align: center; padding-top:30px; padding-bottom: 30px; padding-left: 20px;">Original Dataset</h1>
-
-***
+<h1 style="background-color:`r color_original`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">Original Dataset</h1>
 
 ## Results {.tabset}
 
@@ -181,7 +210,7 @@ include_graphics(paste0(original_path, "original.pdf"))
 #
 ***
 
-<h1 style="background-color:cornflowerblue; color: black; text-align: center; padding-top:30px; padding-bottom: 30px; padding-left: 20px;">First Delta Dataset</h1>
+<h1 style="background-color:`r color_first`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">First Delta Dataset</h1>
 
 ## Results {.tabset}
 
@@ -189,7 +218,7 @@ include_graphics(paste0(original_path, "original.pdf"))
 
 [⇨ Open First Delta Dataset Directory](file://`r wd_first`){target="_blank"}
 
-```{r out.width = 1100, out.height = 600, comment=""}
+```{r out.width = 1000, out.height = 600, comment=""}
 cat(readLines(snakemake@input[["first_log"]]), sep = "\n")
 ```
 
@@ -216,7 +245,7 @@ include_graphics(paste0(first_path, "first.pdf"))
 #
 ***
 
-<h1 style="background-color:lightgreen; color: black; text-align: center; padding-top:30px; padding-bottom: 30px; padding-left: 20px;">Previous Delta Dataset</h1>
+<h1 style="background-color:`r color_previous`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">Previous Delta Dataset</h1>
 
 ## Results {.tabset}
 
@@ -244,14 +273,14 @@ plot_pattern_display(path_name = previous_path, pattern = ".svg",
 
 [⇨ Open PDF in new window](file://`r wd_previous`previous.pdf){target="_blank"}
 
-```{r out.width = 1100, out.height = 600, comment=""}
+```{r out.width = 1000, out.height = 600, comment=""}
 include_graphics(paste0(previous_path, "previous.pdf"))
 ```
 
 #
 ***
 
-<h1 style="background-color:#AB82FF; color: black; text-align: center; padding-top:30px; padding-bottom: 30px; padding-left: 20px;">Pairwise Delta Dataset</h1>
+<h1 style="background-color:`r color_pairwise`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">Pairwise Delta Dataset</h1>
 
 ## Results {.tabset}
 
@@ -259,7 +288,7 @@ include_graphics(paste0(previous_path, "previous.pdf"))
 
 [⇨ Open Pairwise Delta Dataset Directory](file://`r wd_pairwise`){target="_blank"}
 
-```{r out.width = 1100, out.height = 600, comment=""}
+```{r out.width = 1000, out.height = 600, comment=""}
 cat(readLines(snakemake@input[["pairwise_log"]]), sep = "\n")
 ```
 
@@ -279,7 +308,7 @@ plot_pattern_display(path_name = pairwise_path, pattern = ".svg",
 
 [⇨ Open PDF in new window](file://`r wd_pairwise`pairwise.pdf){target="_blank"}
 
-```{r out.width = 1100, out.height = 600, comment=""}
+```{r out.width = 1000, out.height = 600, comment=""}
 include_graphics(paste0(pairwise_path, "pairwise.pdf"))
 ```
 
@@ -289,7 +318,7 @@ include_graphics(paste0(pairwise_path, "pairwise.pdf"))
 
 #
 
-<h1 style="background-color:lightgray; color: black; text-align: center; padding-top:30px; padding-bottom: 30px; padding-left: 20px;">Post-hoc tests</h1>
+<h1 style="background-color:lightgray; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">Post-hoc tests</h1>
 
 # Results {.tabset}
 
@@ -302,14 +331,13 @@ Linear models or linear mixed effects models were used for post hoc testing to d
 ## Results
 
 ```{r out.width = 1100, out.height = 600, comment=""}
-# htmltools::includeHTML(snakemake@input[["post_hoc"]])
+htmltools::includeHTML(snakemake@input[["post_hoc"]])
 ```
 
 ## Graphs
 
 ```{r out.width = 1100, out.height = 600, comment=""}
-# include_graphics(paste0(snakemake@config[["post_hoc_viz"]],
-# "post-hoc-combined.pdf"))
+include_graphics(snakemake@input[["post_hoc_viz"]])
 ```
 
 

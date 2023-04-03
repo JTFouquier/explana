@@ -11,6 +11,7 @@
 # REQUIRED COLUMNS
 # For now html output must be in the 
 ##############################################################################
+analyst: "Jennifer Fouquier"
 random_effect: "StudyID"
 sample_id: "SampleID"
 timepoint: "Timepoint"
@@ -19,6 +20,7 @@ timepoint: "Timepoint"
 # TODO there are issues with keeping html output in same folder... fix later
 # HDL-Demo.html output is in Snakefile Dir (run code from this directory)
 ##############################################################################
+# TODO make the HDL-Name the same as the report name
 out: "workflow-results/HDL-Demo/"
 report_name: "HDL-Demo.html"
 response_var: "HDL" # Variable you are trying to explain

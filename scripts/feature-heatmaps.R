@@ -1,4 +1,5 @@
 source("scripts/install.R")
+source("scripts/colors.R")
 package_list <- c("ggplot2", "reshape2")
 install_r_packages(package_list = package_list)
 library(ggplot2)
@@ -31,32 +32,41 @@ make_feature_heatmaps <- function(base_path) {
     df_previous <- import_dataset_for_summary("previous")
     df_pairwise <- import_dataset_for_summary("pairwise")
 
-    # print(df_original)
-    # print(df_first)
-
-    # df_list <- list(df_original, df_first, df_previous, df_pairwise)
-    df_list <- list(df_pairwise, df_previous, df_first, df_original)
+    df_list <- list(df_original, df_first, df_previous, df_pairwise)
     df_join <- Reduce(function(x, y) merge(x, y, all = TRUE), df_list)
 
     df_join[is.na(df_join)] <- 0
 
-    ggplot(melt(df_join), aes(x = important.features, y = variable,
-    fill = decoded.features, color = decoded.features, alpha = value)) +
-    geom_tile(colour = "gray50") +
-    # geom_text(aes(label = )) +
-    scale_alpha_identity(guide = "none") +
-    coord_equal(expand = 0) +
-    labs(x = expression(atop("Selected Features",
-    atop(italic("Categorical variable values are encoded")))),
-    fill = "Decoded\nFeatures", y = "Dataset") +
-    # labs(y = "Dataset", fill = "Decoded Features",
-    # x = "Selected Features (Categorical variables are encoded)") +
-    theme_bw() +
-    theme(legend.position = "bottom",
-          legend.text = element_text(size = 5.5),
-          legend.title = element_text(size = 8),
-          panel.grid.major = element_blank(),
-          axis.text.x = element_text(angle = 55, hjust = 1, size = 6.5))
+    # dynamically change the plot height based on feature number
+    decoded_feature_facets <- length(unique(df_join$important.features))
+    height_per_41 <- 9.4
+    num_features_test <- 41
+    height <- decoded_feature_facets * height_per_41 / num_features_test
 
-    ggsave(filename = paste0(base_path, "important-feature-occurrences.svg"))
+    ggplot(melt(df_join), aes(x = variable, y = important.features,
+    alpha = value, fill = variable, color = important.features)) +
+    geom_point(colour = square_border, pch = 22, size = 5.8) +
+    scale_fill_manual(values = c("original" = color_original,
+    "first" = color_first, "previous" = color_previous,
+    "pairwise" = color_pairwise)) +
+    scale_alpha_identity(guide = "none") +
+    labs(y = expression(atop("Important Features",
+    atop(italic("Categorical variable values are encoded")))),
+    x = "Dataset") +
+    scale_x_discrete(position = "top", labels = c("original" = "Original",
+    "first" = "First", "previous" = "Previous", "pairwise" = "Pairwise")) +
+    theme_bw() +
+    theme(legend.position = "none",
+          panel.grid.major = element_line(color = grid_color),
+          panel.grid.major.x = element_line(color = horizontal_lines),
+          panel.grid.major.y = element_blank(),
+          panel.spacing = unit(0, "lines"),
+          strip.text.y = element_text(size = 8, angle = 0),
+          axis.text.x = element_text(angle = 45, hjust = 0, size = 8,
+          face = "bold"),
+          axis.text.y = element_text(size = 8)) +
+    facet_grid(decoded.features ~ ., scales = "free_y", space = "free")
+
+    ggsave(filename = paste0(base_path, "important-feature-occurrences.svg"),
+    width = 6, height = height)
 }
