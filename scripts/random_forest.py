@@ -10,6 +10,7 @@ import numpy as np
 import sys
 import re
 import math
+import yaml
 from sklearn.inspection import plot_partial_dependence
 
 from merf.merf import MERF
@@ -56,13 +57,15 @@ enc_percent_threshold = float(snakemake.config["enc_percent_threshold"])
 df_input = snakemake.input["in_file"]
 pdf_report = snakemake.output["out_file"]
 
-random_effect = snakemake.params["random_effect"]
+dataset = snakemake.params["dataset"]
+
+random_effect = snakemake.config["random_effect"]
 sample_id = snakemake.config["sample_id"]
 response_var = snakemake.config["response_var"]
 iterations = int(snakemake.config["iterations"])
 # set graphics dimensions
-_width = 11
-_height = 6
+_width = 13
+_height = 8
 
 # TODO review this
 join_flag = True
@@ -96,6 +99,7 @@ def setup_df_do_encoding(df, random_effect, response_var, join_flag, sample_id,
     #                 "weight_adj", "stratum", "cluster", "gender", 
     #                 "age", "happy"]
     # df[numeric_cols] = df[numeric_cols].astype(float)
+    # END NSHAP
     numeric_column_list = df._get_numeric_data().columns.values
     categoric_columns = [i for i in list(df.columns) if
                          i not in numeric_column_list]
@@ -118,18 +122,23 @@ def setup_df_do_encoding(df, random_effect, response_var, join_flag, sample_id,
     def remove_low_percentage_encoded_vars(df_encoded, percent):
         # TODO make function for removing columns
         # yes/1 counts per column; drop columns in 
-        value_counts = df_encoded.eq(1).sum()
-        target_value = round(len(df_dummy)*(percent/100))
+        df_complete = df_encoded
+        non_encoded_cols = [col for col in df_encoded.columns if not 'ENC_' in col]
+        df_categoric = df_encoded.drop(non_encoded_cols, axis=1)
+
+        value_counts = df_categoric.eq(1).sum()
+        target_value = round(len(df_categoric)*(percent/100))
+
         # list of column names to drop from df
         columns_to_drop = list(value_counts[value_counts < target_value].index)
-        df_encoded = df_encoded.drop(columns_to_drop, axis=1)
-        # save encoded features to dataframe to inspect
-        return(df_encoded)
+        df = df_complete.drop(columns_to_drop, axis=1)
+        return(df)
 
     if enc_percent_threshold >= 0:
         df_encoded = \
         remove_low_percentage_encoded_vars(df_encoded=df_encoded, 
                                            percent=enc_percent_threshold)
+        
     print("Input features after dropping vars below " + 
           str(enc_percent_threshold) + " percent: ", 
           df_encoded.shape[1])
@@ -140,6 +149,9 @@ def setup_df_do_encoding(df, random_effect, response_var, join_flag, sample_id,
     z = np.ones((len(x), 1))
     c = df_dummy[random_effect]
     y = df_dummy[response_var]
+
+    x.to_csv(out_file_prefix + "-input-model-df.txt", 
+             index=False, sep="\t")
 
     df_final_input_features = pd.DataFrame(x.columns,
                                            columns=['InputFeatures'])
@@ -154,17 +166,18 @@ def train_rf_model(x, y, rf_regressor):
     plt.plot([1, 2, 3, 4])
     plt.ylabel('place holder plot')
     training_stats_plot = plt.gcf()
-    plt.close()
+    # plt.close()
+    plt.close('all')
     return forest, training_stats_plot
 
 
 def graphic_handling(plt, plot_file_name, p_title, width=_width, height=_height):
     plot_file_name_list.append(plot_file_name)
-    plt.title(p_title, fontdict={"fontsize": 18})
+    plt.title(p_title, fontdict={"fontsize": 10})
     plt.tick_params(axis="both", labelsize=7)
     p = plt.gcf()
     p.set_size_inches(width, height)
-    plt.close()
+    plt.close('all')
     plot_list.append(p)
 
 
@@ -195,18 +208,14 @@ def shap_plots(shap_values, x, boruta_accepted, feature_importance,
         plt_s = shap_values[:, feature_index_list]
         plt_x = x.iloc[:, feature_index_list]
 
-        shap.summary_plot(shap_values=plt_s, features=plt_x, show=False,
-                          plot_size=(_width, _height), sort=True, 
+        shap.summary_plot(shap_values=plt_s, features=plt_x, show=False, sort=True, 
                           max_display=group_size)
         graphic_handling(plt, "-accepted-SHAP-summary-beeswarm-" + str(list_num), 
                          title_name_bee)
-        
-        shap.summary_plot(shap_values=plt_s, features=plt_x, show=False,
-                          plot_size=(_width, _height), sort=True,
+        shap.summary_plot(shap_values=plt_s, features=plt_x, show=False, sort=True,
                           plot_type="bar", max_display=group_size)
         graphic_handling(plt, "-accepted-SHAP-summary-bar-" + str(list_num), 
                          title_name_bar)
-        
 
     # save SHAP values to inspect TODO remove later
     shap_values_df = pd.DataFrame(shap_values, columns = list(x.columns.values))
@@ -300,7 +309,7 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
         rf_regressor = \
             RandomForestRegressor(n_jobs=-1, 
                                   n_estimators=n_estimators,
-                                  oob_score=True, max_features=0.95,
+                                  oob_score=True,
                                   max_depth=round(math.sqrt(num_features)))
         return(rf_regressor)
 
@@ -313,7 +322,7 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
         plot_merf_training_stats(mrf, 12)  # TODO fix
         plt.tight_layout()
         training_stats_plot = plt.gcf()
-        plt.close()
+        plt.close('all')
 
     elif fe_model_needed:
         forest, training_stats_plot = \
@@ -383,6 +392,7 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
     plot_file_name_list.append("-partial-dependence")
     plot_list.append(training_stats_plot)
     plot_file_name_list.append("-training-stats")
+    plt.close('all')
     _build_result_pdf(out_file, out_file_prefix, plot_list, plot_file_name_list)
 
 
