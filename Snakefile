@@ -200,6 +200,20 @@ rule random_forest:
     script:
         "scripts/random_forest.py"
 
+# feature summaries
+rule final_steps:
+    input:
+        selected_features_original = path_rf_original + "original-boruta-important.txt",
+        selected_features_first = path_rf_first + "first-boruta-important.txt",
+        selected_features_previous = path_rf_previous + "previous-boruta-important.txt",
+        selected_features_pairwise = path_rf_pairwise + "pairwise-boruta-important.txt"
+    output:
+        out_file = config["out"] + "all-important-features.txt",
+        out_file_image = config["out"] + "important-feature-occurrences.svg",
+    conda: "conda_envs/r_env.yaml",
+    script:
+        "scripts/feature-heatmaps.R"
+
 
 # TODO program if statements here and make report reflect missing data
 # TODO consider if statements with all rule
@@ -232,8 +246,9 @@ rule render_report:
         first_log = path_rf_first + "first-log.txt",
         previous_log= path_rf_previous + "previous-log.txt",
         pairwise_log = path_rf_pairwise + "pairwise-log.txt",
-        post_hoc = path_post_hoc + "post-hoc-analysis.html",
-        post_hoc_viz = path_post_hoc + "post-hoc-combined.pdf"
+        feature_occurances = config["out"] + "important-feature-occurrences.svg"
+        # post_hoc = path_post_hoc + "post-hoc-analysis.html",
+        # post_hoc_viz = path_post_hoc + "post-hoc-combined.pdf"
     output:
         md_doc=config["report_name"],
     conda: "conda_envs/r_env.yaml",
