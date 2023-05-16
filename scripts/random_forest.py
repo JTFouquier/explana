@@ -383,8 +383,6 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
     print("Accepted and Tentative: " + str(len(boruta_explainer.accepted) +
                                            len(boruta_explainer.tentative)))
     print("Rejected: " + str(len(boruta_explainer.rejected)))
-    print("\nTop BorutaSHAP Accepted Features (max 20 displayed)\n")
-    print(df_boruta.to_string(max_rows=20, index=False))
     plot_partial_dependence(forest, x, features=boruta_explainer.accepted)
     plot_some_partial_dependence = plt.gcf()
     plot_some_partial_dependence.set_size_inches(_width * 1.4, _height * 1.4)

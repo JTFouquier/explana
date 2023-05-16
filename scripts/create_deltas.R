@@ -79,7 +79,7 @@ diffs_for_all_vars_per_subject <- function(delta_df, vars, sid_df,
     }
     if (typeof(sid_df[[var]]) == "character" || var == "timepoint_w_") {
       delta_df[[var]][delta_df$sid_delta == comparison] <-
-        paste0(old_value, "_", new_value)
+        paste0(old_value, "__", new_value)
       delta_df[[paste0(var,
       "_reference")]][delta_df$sid_delta == comparison] <- paste0(old_value)
     } else {
@@ -106,11 +106,11 @@ all_reference_time_comparisons <- function(df, studyid, ref_times, time, vars,
       filter(study_id_w_ == {{studyid}} & timepoint_w_ == {{rt}})
     current_sample <- sid_df %>%
       filter(study_id_w_ == {{studyid}} & timepoint_w_ == {{time}})
-    comparison <- paste0(studyid, "_", rt, "_", time)
+    comparison <- paste0(studyid, "__", rt, "__", time)
 
     # Create new dataframe for each comparison
     df_new_comparison <- data.frame(sid_delta = comparison,
-                                    timepoint_w_ = paste0(rt, "_", time),
+                                    timepoint_w_ = paste0(rt, "__", time),
                                     study_id_w_ = studyid)
 
     # if there are dms, add differences here for each subject

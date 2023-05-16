@@ -11,13 +11,15 @@ output:
 source("scripts/install.R")
 # source("scripts/feature-heatmaps.R")
 source("scripts/colors.R")
-package_list <- c("knitr", "htmltools", "tidyverse", "Hmisc", "jsonlite")
+package_list <- c("knitr", "kableExtra", "htmltools", "tidyverse",
+"Hmisc", "jsonlite")
 install_r_packages(package_list = package_list)
 library(knitr)
 library(htmltools)
 library(tidyverse)
 library(Hmisc)
 library(jsonlite)
+library(kableExtra)
 
 knitr::opts_chunk$set(echo = FALSE,
                       eval = TRUE)
@@ -54,13 +56,30 @@ wd_first <- paste0(wd, first_path)
 wd_previous <- paste0(wd, previous_path)
 wd_pairwise <- paste0(wd, pairwise_path)
 
-make_tab_input <- function(dataset_type, out_path) {
-  input_vars <- paste0(out_path,
+pretty_table <- function(dataset_type, out_path, display_file) {
+  df <- paste0(out_path,
   snakemake@config[[paste0("path_rf_", dataset_type)]],
-  paste0(dataset_type, "-input-features.txt"))
-  cat(readLines(input_vars), sep = "\n")
+  paste0(dataset_type, display_file))
+  # cat(readLines(df), sep = "\n")
+  df <- read.csv(df, sep = "\t", check.names = FALSE)
+
+  kable(df, format = "html", escape = FALSE) %>%
+    kable_styling()
 }
 
+url_tables <- function(df_in) {
+  df <- read.csv(df_in, sep = "\t", check.names = FALSE)
+
+  df$url <- lapply(df$url, function(url) {
+    as.character(a(href = url, target = "_blank", url))
+  })
+
+  df_table <- df %>%
+    mutate(url = cell_spec(url, "html", escape = FALSE))
+
+  kable(df_table, format = "html", escape = FALSE) %>%
+    kable_styling()
+}
 ```
 
 ```{r include = FALSE }
@@ -84,7 +103,8 @@ plot_pattern_display <- function(path_name, pattern, grep_arg) {
 # after variables are encoded, remove very low occurring ones if wanted.
 if (enc_percent_threshold == "0") {
 
-  enc_percent_threshold_print <- "low occuring or rare categorical variables were not removed"
+  enc_percent_threshold_print <- paste0("low occuring or rare categorical",
+  " variables were not removed")
 
 } else {
 
@@ -163,6 +183,13 @@ When you are using all your data without prior hypotheses, you
 are performing *exploratory analysis* and should make this clear
 when discussing results.
 
+This workflow is designed to assist with understanding 
+original feature values, as well as changes in feature 
+values, when compared to various reference points. 
+Certain features may carry varying degrees of importance 
+across different datasets and this workflow helps 
+identify these discrepancies.
+
 Additional figures and files can be found in output directory.
 
 ***
@@ -178,18 +205,18 @@ Additional figures and files can be found in output directory.
 
 ***
 
+### Results Summary {.tabset}
 
-### Important Feature Occurences by Dataset
-
-This workflow is designed to assist with understanding 
-original feature values, as well as changes in feature 
-values, when compared to various reference points. 
-Certain features may carry varying degrees of importance 
-across different datasets and this workflow helps 
-identify these discrepancies.
+#### Selected Feature Occurences by Dataset
 
 ```{r fig.align = "center"}
 include_graphics(paste0(out_path, "important-feature-occurrences.svg"))
+```
+
+#### Interpretation/Literature Search
+
+```{r}
+url_tables(snakemake@input[["urls"]])
 ```
 
 #
@@ -198,11 +225,11 @@ include_graphics(paste0(out_path, "important-feature-occurrences.svg"))
 
 <h1 style="background-color:`r color_original`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">Original Dataset</h1>
 
+[⇨ Open File Directory](file://`r wd_original`){target="_blank"}
+
 ## Results {.tabset}
 
-### Log and SHAP Summary Results
-
-[⇨ Open File Directory](file://`r wd_original`){target="_blank"}
+### Log and SHAP Summary
 
 ```{r comment=""}
 cat(readLines(snakemake@input[["original_log"]]), sep = "\n")
@@ -214,20 +241,26 @@ plot_pattern_display(path_name = original_path, pattern = ".svg",
                      grep_arg = "SHAP-summary-beeswarm")
 ```
 
+### Selected Features
+
+```{r out.width = 1000, out.height = 600, comment=""}
+pretty_table("original", out_path, "-boruta-important.txt")
+```
+
 ### Input Features
 
 ```{r out.width = 1000, out.height = 600, comment=""}
-make_tab_input("original", out_path = out_path)
+pretty_table("original", out_path, "-input-features.txt")
 ```
 
-### BorutaSHAP Important Features
+### BorutaSHAP
 
 ```{r results="asis", comment=""}
 plot_pattern_display(path_name = original_path, pattern = ".svg",
                      grep_arg = "boruta-accepted")
 ```
 
-### Results PDF
+### Figures
 
 [⇨ Open PDF in new window](file://`r wd_original`original.pdf){target="_blank"}
 
@@ -235,16 +268,23 @@ plot_pattern_display(path_name = original_path, pattern = ".svg",
 include_graphics(paste0(original_path, "original.pdf"))
 ```
 
+### Interpretation/Literature Search
+
+```{r}
+url_tables(paste0(original_path, "original-urls.txt"))
+```
+
 #
+
 ***
 
 <h1 style="background-color:`r color_first`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">First Delta Dataset</h1>
 
+[⇨ Open File Directory](file://`r wd_first`){target="_blank"}
+
 ## Results {.tabset}
 
-### Log and SHAP Summary Results
-
-[⇨ Open File Directory](file://`r wd_first`){target="_blank"}
+### Log and SHAP Summary
 
 ```{r out.width = 1000, out.height = 600, comment=""}
 cat(readLines(snakemake@input[["first_log"]]), sep = "\n")
@@ -255,20 +295,26 @@ plot_pattern_display(path_name = first_path, pattern = ".svg",
                      grep_arg = "SHAP-summary-beeswarm")
 ```
 
+### Selected Features
+
+```{r out.width = 1000, out.height = 600, comment=""}
+pretty_table("first", out_path, "-boruta-important.txt")
+```
+
 ### Input Features
 
 ```{r out.width = 1000, out.height = 600, comment=""}
-make_tab_input("first", out_path)
+pretty_table("first", out_path, "-input-features.txt")
 ```
 
-### BorutaSHAP Important Features
+### BorutaSHAP
 
 ```{r results="asis", comment=""}
 plot_pattern_display(path_name = first_path, pattern = ".svg",
                      grep_arg = "boruta-accepted")
 ```
 
-### Results PDF
+### Figures
 
 [⇨ Open PDF in new window](file://`r wd_first`first.pdf){target="_blank"}
 
@@ -276,16 +322,23 @@ plot_pattern_display(path_name = first_path, pattern = ".svg",
 include_graphics(paste0(first_path, "first.pdf"))
 ```
 
+### Interpretation/Literature Search
+
+```{r}
+url_tables(paste0(first_path, "first-urls.txt"))
+```
+
 #
+
 ***
 
 <h1 style="background-color:`r color_previous`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">Previous Delta Dataset</h1>
 
+[⇨ Open File Directory](file://`r wd_previous`){target="_blank"}
+
 ## Results {.tabset}
 
-### Log and SHAP Summary Results
-
-[⇨ Open File Directory](file://`r wd_previous`){target="_blank"}
+### Log and SHAP Summary
 
 ```{r out.width = 1100, out.height = 600, comment=""}
 cat(readLines(snakemake@input[["previous_log"]]), sep = "\n")
@@ -296,20 +349,26 @@ plot_pattern_display(path_name = previous_path, pattern = ".svg",
                      grep_arg = "SHAP-summary-beeswarm")
 ```
 
+### Selected Features
+
+```{r out.width = 1000, out.height = 600, comment=""}
+pretty_table("previous", out_path, "-boruta-important.txt")
+```
+
 ### Input Features
 
 ```{r out.width = 1000, out.height = 600, comment=""}
-make_tab_input("previous", out_path)
+pretty_table("previous", out_path, "-input-features.txt")
 ```
 
-### BorutaSHAP Important Features
+### BorutaSHAP
 
 ```{r results="asis", comment=""}
 plot_pattern_display(path_name = previous_path, pattern = ".svg",
                      grep_arg = "boruta-accepted")
 ```
 
-### Results PDF
+### Figures
 
 [⇨ Open PDF in new window](file://`r wd_previous`previous.pdf){target="_blank"}
 
@@ -317,16 +376,22 @@ plot_pattern_display(path_name = previous_path, pattern = ".svg",
 include_graphics(paste0(previous_path, "previous.pdf"))
 ```
 
+### Interpretation/Literature Search
+
+```{r}
+url_tables(paste0(previous_path, "previous-urls.txt"))
+```
+
 #
 ***
 
 <h1 style="background-color:`r color_pairwise`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">Pairwise Delta Dataset</h1>
 
+[⇨ Open File Directory](file://`r wd_pairwise`){target="_blank"}
+
 ## Results {.tabset}
 
-### Log and SHAP Summary Results
-
-[⇨ Open File Directory](file://`r wd_pairwise`){target="_blank"}
+### Log and SHAP Summary
 
 ```{r out.width = 1000, out.height = 600, comment=""}
 cat(readLines(snakemake@input[["pairwise_log"]]), sep = "\n")
@@ -337,25 +402,37 @@ plot_pattern_display(path_name = pairwise_path, pattern = ".svg",
                      grep_arg = "SHAP-summary-beeswarm")
 ```
 
+### Selected Features
+
+```{r out.width = 1000, out.height = 600, comment=""}
+pretty_table("pairwise", out_path, "-boruta-important.txt")
+```
+
 ### Input Features
 
 ```{r out.width = 1000, out.height = 600, comment=""}
-make_tab_input("pairwise", out_path)
+pretty_table("pairwise", out_path, "-input-features.txt")
 ```
 
-### BorutaSHAP Important Features
+### BorutaSHAP
 
 ```{r results="asis", comment=""}
 plot_pattern_display(path_name = pairwise_path, pattern = ".svg",
                      grep_arg = "boruta-accepted")
 ```
 
-### Results PDF
+### Figures
 
 [⇨ Open PDF in new window](file://`r wd_pairwise`pairwise.pdf){target="_blank"}
 
 ```{r out.width = 1000, out.height = 600, comment=""}
 include_graphics(paste0(pairwise_path, "pairwise.pdf"))
+```
+
+### Interpretation/Literature Search
+
+```{r}
+url_tables(paste0(pairwise_path, "pairwise-urls.txt"))
 ```
 
 #
@@ -377,13 +454,13 @@ Linear models or linear mixed effects models were used for post hoc testing to d
 ## Results
 
 ```{r out.width = 1100, out.height = 600, comment=""}
-htmltools::includeHTML(snakemake@input[["post_hoc"]])
+# htmltools::includeHTML(snakemake@input[["post_hoc"]])
 ```
 
 ## Graphs
 
 ```{r out.width = 1100, out.height = 600, comment=""}
-include_graphics(snakemake@input[["post_hoc_viz"]])
+# include_graphics(snakemake@input[["post_hoc_viz"]])
 ```
 
 

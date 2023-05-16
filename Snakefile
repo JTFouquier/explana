@@ -71,6 +71,7 @@ config["pca_ds_list"], \
 config["scnic_ds_list"], dataset_json = dim_reduction()
 config["dataset_json"] = dataset_json
 
+# TODO check if all datasets are wanted
 rule all:
     input:
         original = path_rf_original + "original.pdf",
@@ -82,17 +83,21 @@ def get_pca_in_file(wildcards):
     in_file = dataset_json["datasets"][wildcards.pca_ds_name]["file_path"]
     return in_file
 
+
 def get_pca_groups_list(wildcards):
     pca_groups_list = dataset_json["datasets"][wildcards.pca_ds_name]["dim_param_dict"]["pca_groups_list"]
     return pca_groups_list
+
 
 def get_scnic_in_file(wildcards):
     in_file = dataset_json["datasets"][wildcards.scnic_ds_name]["file_path"]
     return in_file
 
+
 def get_scnic_method(wildcards):
     method = dataset_json["datasets"][wildcards.scnic_ds_name]["dim_param_dict"]["method"]
     return method
+
 
 def get_scnic_min_r(wildcards):
     min_r = dataset_json["datasets"][wildcards.scnic_ds_name]["dim_param_dict"]["min_r"]
@@ -115,6 +120,7 @@ rule dim_reduction_pca:
     script:
         "scripts/dim_reduction_pca.R"
 
+
 # TODO remove in_file_metadata
 rule dim_reduction_scnic:
     input:
@@ -131,6 +137,7 @@ rule dim_reduction_scnic:
     script:
         "scripts/dim_reduction_scnic.py"
 
+
 # After doing dimensinoality reductions and filters on individual datasets
 rule integrate_datasets:
     input:
@@ -143,6 +150,7 @@ rule integrate_datasets:
     conda: "conda_envs/r_env.yaml",
     script:
         "scripts/integrate_datasets.R"
+
 
 # Create "delta datasets"; differences between samples from different
 # timepoints, within individual
@@ -182,6 +190,7 @@ rule make_delta_datasets:
 # name of the output. Not sure how I want to handle this, but it was because
 # I wanted my file names to reflect the arguments
 
+
 # TODO check constrain, and wildcards (not a good use)
 rule random_forest:
     input:
@@ -200,8 +209,9 @@ rule random_forest:
     script:
         "scripts/random_forest.py"
 
+
 # feature summaries
-rule final_steps:
+rule final_steps_r:
     input:
         selected_features_original = path_rf_original + "original-boruta-important.txt",
         selected_features_first = path_rf_first + "first-boruta-important.txt",
@@ -214,6 +224,15 @@ rule final_steps:
     script:
         "scripts/feature-heatmaps.R"
 
+
+rule final_steps_python:
+    input: 
+        feature_file = config["out"] + "all-important-features.txt",
+    output:
+        out_file = config["out"] + "urls.txt",
+    conda: "conda_envs/merf.yaml",
+    script:
+        "scripts/url_interpretation.py"
 
 # TODO program if statements here and make report reflect missing data
 # TODO consider if statements with all rule
@@ -240,13 +259,15 @@ rule run_post_hoc_stats:
 # Only require log files because then report will always render
 # TODO add error reports to log file so people know entire 
 # algorithm did not work
+# TODO remove feature occurrances possibly
 rule render_report:
     input:
         original_log = path_rf_original + "original-log.txt",
         first_log = path_rf_first + "first-log.txt",
         previous_log= path_rf_previous + "previous-log.txt",
         pairwise_log = path_rf_pairwise + "pairwise-log.txt",
-        feature_occurances = config["out"] + "important-feature-occurrences.svg"
+        feature_occurances = config["out"] + "important-feature-occurrences.svg",
+        urls = config["out"] + "urls.txt"
         # post_hoc = path_post_hoc + "post-hoc-analysis.html",
         # post_hoc_viz = path_post_hoc + "post-hoc-combined.pdf"
     output:
