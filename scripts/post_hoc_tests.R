@@ -141,7 +141,7 @@ lme_complete <- function(df_file, important_features_file, reference_type) {
   important_features_list <-
   read.csv(important_features_file, sep = "\t", check.names = FALSE)
   important_features_list <-
-  unique(important_features_list[["decoded.features"]])
+  unique(important_features_list[["decoded_features"]])
 
   # TODO try using important.features encoded only
 

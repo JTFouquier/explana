@@ -154,7 +154,7 @@ def setup_df_do_encoding(df, random_effect, response_var, join_flag, sample_id,
              index=False, sep="\t")
 
     df_final_input_features = pd.DataFrame(x.columns,
-                                           columns=['InputFeatures'])
+                                           columns=['input_features'])
     df_final_input_features.to_csv(out_file_prefix + "-input-features.txt",
                                    index=False, sep="\t")
 
@@ -369,8 +369,8 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
                                       'feature_importance_vals']
         shap_imp_score_list.append(shap_imp_score.iloc[0])
 
-    df_boruta = pd.DataFrame({'important.features': boruta_explainer.accepted,
-                              'decoded.features': decoded_top_features_list,
+    df_boruta = pd.DataFrame({'important_features': boruta_explainer.accepted,
+                              'decoded_features': decoded_top_features_list,
                               'feature_importance_vals': shap_imp_score_list})
     df_boruta = df_boruta.sort_values(by=['feature_importance_vals'],
                                       ascending=False)

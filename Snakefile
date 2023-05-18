@@ -228,6 +228,10 @@ rule final_steps_r:
 rule final_steps_python:
     input: 
         feature_file = config["out"] + "all-important-features.txt",
+        original_features = path_rf_original + "original-boruta-important.txt",
+        first_features = path_rf_first + "first-boruta-important.txt",
+        previous_features = path_rf_previous + "previous-boruta-important.txt",
+        pairwise_features = path_rf_pairwise + "pairwise-boruta-important.txt"
     output:
         out_file = config["out"] + "urls.txt",
     conda: "conda_envs/merf.yaml",

@@ -2,7 +2,10 @@
 #devtools::install_github("jbisanz/qiime2R")
 # library(qiime2R)
 
+build_datatable_viz <- NULL
 source("scripts/install.R")
+source("scripts/viz-datatable.R")
+
 package_list <- c("dplyr", "usedist", "utils")
 install_r_packages(package_list = package_list)
 
@@ -10,7 +13,6 @@ library(dplyr)
 library(usedist)
 library(utils)
 
-source("scripts/viz-datatable.R")
 
 # from config
 output_folder <- snakemake@config[["out"]]
@@ -35,7 +37,7 @@ distance_matrices <- eval(parse(text = snakemake@params[["distance_matrices"]]))
 distance_matrices <- lapply(distance_matrices, read.table, fill = TRUE)
 
 
-include_distance_matrices <- function(distance_matrices, ref_sample,
+include_distance_matrices <- function(distance_matrices, ref_sample, # nolint
                                       current_sample, df_new_comparison) {
   # add all distances (comparisons between sample timepoints); NA if none
     for (i in names(distance_matrices)){
@@ -46,6 +48,7 @@ include_distance_matrices <- function(distance_matrices, ref_sample,
                         current_sample[[sample_id]]))[1]
       }, error = function(err) {
         result <- NA
+        return(result)
       }, finally = function() {
         return(result)
       })
@@ -58,7 +61,7 @@ include_distance_matrices <- function(distance_matrices, ref_sample,
 
 
 diffs_for_all_vars_per_subject <- function(delta_df, vars, sid_df,
-                                          comparison, time, rt) {
+                                           comparison, time, rt) {
 
   for (var in vars) {
     new_value <- sid_df[[var]][sid_df$timepoint_w_ == time]
@@ -91,8 +94,9 @@ diffs_for_all_vars_per_subject <- function(delta_df, vars, sid_df,
 }
 
 
-all_reference_time_comparisons <- function(df, studyid, ref_times, time, vars,
-                                          delta_df, dm_flag) {
+all_reference_time_comparisons <- function(df, studyid, ref_times, time, vars, # nolint
+                                           delta_df, dm_flag) {
+  "timepoint_w_" <- "study_id_w_" <- "sid_delta" <- NULL
   for (rt in ref_times) {
     sid_df <- df %>%
       filter((timepoint_w_ == rt | timepoint_w_ == time) &
@@ -136,6 +140,7 @@ all_reference_time_comparisons <- function(df, studyid, ref_times, time, vars,
 
 
 main <- function() {
+  "timepoint_w_" <- "study_id_w_" <- "sid_delta" <- NULL
   dm_flag <- FALSE
   if (length(distance_matrices) > 0) {
     dm_flag <- TRUE

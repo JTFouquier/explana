@@ -473,7 +473,7 @@ See the [Github repository](https://github.com/JTFouquier/snakemake-MERF "Still 
 ```{r}
 # read in a table example
 # df = read.csv(snakemake@input[["table_boruta"]], sep = "\t")
-# knitr::kable(df$important.features, format = "html")
+# knitr::kable(df$important_features, format = "html")
 ```
 
 <a download="report.Rmd" href="`r base64enc::dataURI(file = params$rmd, mime="text/rmd", encoding="base64")`">Click here for R Markdown source file</a>

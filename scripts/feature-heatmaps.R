@@ -1,3 +1,6 @@
+"value" <- "variable" <- "important_features" <- NULL
+"square_border" <- "dataset" <- "horizontal_lines" <- "grid_color" <- NULL
+
 source("scripts/install.R")
 source("scripts/colors.R")
 package_list <- c("ggplot2", "reshape2", "tidyverse", "readr")
@@ -17,7 +20,7 @@ base_path <- snakemake@config[["out"]]
 
 out_file <- snakemake@output[["out_file"]]
 
-make_feature_heatmaps <- function(base_path) {
+make_feature_heatmaps <- function(base_path) { # nolint
 
     color_original <- "black"
     color_first <- "black"
@@ -25,20 +28,19 @@ make_feature_heatmaps <- function(base_path) {
     color_pairwise <- "black"
 
     import_ds_for_summary <- function(ds_path, ds_type) {
-
         df <- as.data.frame(read_tsv(file = ds_path))
         # if there are no rows make empty df for figure placeholder
         # need original, first, previous, pairwise
         if (dim(df)[1] == 0) {
             df <- data.frame(matrix(ncol = 3, nrow = 0))
-            colnames(df) <- c("important.features", "decoded.features", ds_type)
-            df$important.features <- character()
-            df$decoded.features <- character()
+            colnames(df) <- c("important_features", "decoded_features", ds_type)
+            df$important_features <- character()
+            df$decoded_features <- character()
             df[[ds_type]] <- integer()
             return(df)
         }
         df[[ds_type]] <- 1
-        df <- select(df, -feature_importance_vals)
+        df <- select(df, -feature_importance_vals) # nolint
         return(df)
     }
 
@@ -58,19 +60,18 @@ make_feature_heatmaps <- function(base_path) {
     df_join[is.na(df_join)] <- 0
 
     df_all <- df_join %>%
-        select(dataset, important.features)
+        select(dataset, important_features) # nolint
 
     write_tsv(df_all,
     paste0(base_path, "all-important-features.txt"))
 
     # dynamically change the plot height based on feature number
-    decoded_feature_facets <- length(unique(df_join$important.features))
+    decoded_feature_facets <- length(unique(df_join$important_features))
     height_per_41 <- 10
     num_features_test <- 41
     height <- decoded_feature_facets * height_per_41 / num_features_test
-
-    ggplot(melt(df_join), aes(x = variable, y = important.features,
-    alpha = value, fill = variable, color = important.features)) +
+    ggplot(melt(df_join), aes(x = variable, y = important_features,
+    alpha = value, fill = variable, color = important_features)) +
     geom_point(colour = square_border, pch = 22, size = 5) +
     scale_fill_manual(values = c("Original" = color_original,
     "First" = color_first, "Previous" = color_previous,
@@ -90,7 +91,7 @@ make_feature_heatmaps <- function(base_path) {
           axis.text.x = element_text(angle = 45, hjust = 0, size = 11,
           face = "bold"),
           axis.text.y = element_text(size = 11)) +
-    facet_grid(decoded.features ~ ., scales = "free_y", space = "free")
+    facet_grid(decoded_features ~ ., scales = "free_y", space = "free")
 
     ggsave(filename = paste0(base_path, "important-feature-occurrences.svg"),
     width = 6, height = height)

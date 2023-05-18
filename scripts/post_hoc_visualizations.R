@@ -81,7 +81,7 @@ post_hoc_viz <- function(df, important_features, gg_info, df_path) {
   df[[paste0(timepoint)]] <- factor(df[[paste0(timepoint)]])
 
   important_features <- read.csv(important_features, sep = "\t")
-  important_features <- unique(important_features$decoded.features)
+  important_features <- unique(important_features$decoded_features)
 
   # These are not part of the facets -- just needed for display, etc
   cols_for_graph <- c(random_effect, response, timepoint)

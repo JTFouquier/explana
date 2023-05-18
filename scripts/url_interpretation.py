@@ -23,9 +23,9 @@ def build_url_list(feature_file, out_file, compiled_flag):
     # summary needs compiled url file with all datasets
     # not compiled is for individual datasets
     if compiled_flag:
-        col_names = ["dataset", "important.features"]
+        col_names = ["dataset", "important_features"]
     if not compiled_flag:
-        col_names = ["important.features"]
+        col_names = ["important_features"]
 		
     df = pd.read_csv(feature_file, sep="\t", usecols=col_names)
 
@@ -49,9 +49,9 @@ def build_url_list(feature_file, out_file, compiled_flag):
 
         return(url)
 
-    df_features = df["important.features"]
+    df_features = df["important_features"]
     df_url = df_features.apply(make_url).to_frame()
-    df_url = df_url.rename(columns={"important.features": 'url'})
+    df_url = df_url.rename(columns={"important_features": 'url'})
 
     # update df with other cols
     df_final = pd.concat([df, df_url.reindex(df.index)], axis=1)
