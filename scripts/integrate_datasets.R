@@ -6,15 +6,18 @@ library(dplyr)
 
 source("scripts/viz-datatable.R")
 
+
 output_folder <- paste0(snakemake@config[["out"]],
-snakemake@config[["path_rf_original"]])
+snakemake@config[["path_original"]])
 
 sample_id <- snakemake@config[["sample_id"]]
+study_id <- snakemake@config[["random_effect"]]
 
 file_path_list <- snakemake@input[["file_path_list"]]
 
 build_datatable <- snakemake@params[["build_datatable"]]
 ds_param_dict_list <- snakemake@params[["ds_param_dict_list"]]
+timepoint_config <- snakemake@config[["timepoint"]]
 
 
 verify_inputs <- function(constrain_cols, drop_cols) {
@@ -41,12 +44,13 @@ filter_dataframe <- function(df, df_mod_list, df_complete_flag) {
   # For complete/full/merged dataframe, get modification information from
   # Config file. For individual datasets, get from json
   if (df_complete_flag == TRUE) {
+    # for after datasets are merged together
     drop_rows <- eval(parse(text = snakemake@config[["drop_rows"]]))
     constrain_rows <- eval(parse(text = snakemake@config[["constrain_rows"]]))
     drop_cols <- eval(parse(text = snakemake@config[["drop_cols"]]))
     constrain_cols <- eval(parse(text = snakemake@config[["constrain_cols"]]))
-  }
-  else if (df_complete_flag == FALSE) {
+  } else if (df_complete_flag == FALSE) {
+    # for individual datasets
     constrain_cols <- df_mod_list[["constrain_cols"]]
     drop_cols <- df_mod_list[["drop_cols"]]
     constrain_rows <- df_mod_list[["constrain_rows"]]
@@ -82,8 +86,6 @@ filter_dataframe <- function(df, df_mod_list, df_complete_flag) {
 
 main <- function(file_path_list, ds_param_dict_list) {
   if (length(file_path_list) != length(ds_param_dict_list)) {
-    print(length(file_path_list))
-    print(length(ds_param_dict_list))
     print(print(paste0("WORKFLOW WARNING: Dataset count does not equal
     dataset parameter dictionary count")))
   }
@@ -101,6 +103,14 @@ main <- function(file_path_list, ds_param_dict_list) {
   df_complete_flag <- TRUE
   df_complete <- df_list %>% reduce(full_join, by = sample_id)
   df_complete <- filter_dataframe(df_complete, df_mod_list, df_complete_flag)
+
+  # make sure the timepoint column is ranked (ordered)
+  df_complete$timepoint_original <- df_complete[[timepoint_config]]
+
+  df_complete <- df_complete %>%
+    arrange(timepoint_original) %>%
+    mutate(timepoint_explana = dense_rank(timepoint_original)) %>%
+    select(-{{ timepoint_config }})
 
   write_tsv(df_complete, paste0(output_folder, "original.txt"))
 }

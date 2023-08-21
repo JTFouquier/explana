@@ -49,20 +49,26 @@ Features/Considerations for development
 # https://www.sciencedirect.com/science/article/pii/S1532046418301758
 
 """
-n_estimators = int(snakemake.config["n_estimators"])
-borutaSHAP_trials = int(snakemake.config["borutaSHAP_trials"])
-borutaSHAP_percentile = int(snakemake.config["borutaSHAP_percentile"])
+# From config (TODO, might want these all in rule)
+borutashap_trials = int(snakemake.config["borutashap_trials"])
+borutashap_threshold = int(snakemake.config["borutashap_threshold"])
+borutashap_p = float(snakemake.config["borutashap_p"])
 enc_percent_threshold = float(snakemake.config["enc_percent_threshold"])
+
+# From rule
+random_effect = snakemake.params["random_effect"]
+sample_id = snakemake.params["sample_id"]
+response_var = snakemake.params["response_var"]
+
+n_estimators = int(snakemake.params["n_estimators"])
+max_features = float(snakemake.params["max_features"])
+
+iterations = int(snakemake.params["iterations"])
 
 df_input = snakemake.input["in_file"]
 pdf_report = snakemake.output["out_file"]
-
 dataset = snakemake.params["dataset"]
 
-random_effect = snakemake.config["random_effect"]
-sample_id = snakemake.config["sample_id"]
-response_var = snakemake.config["response_var"]
-iterations = int(snakemake.config["iterations"])
 # set graphics dimensions
 _width = 13
 _height = 8
@@ -104,11 +110,7 @@ def setup_df_do_encoding(df, random_effect, response_var, join_flag, sample_id,
     categoric_columns = [i for i in list(df.columns) if
                          i not in numeric_column_list]
 
-    # whether or not fixed effects or mixed effects model is needed
-    if not fe_model_needed:
-        drop_list = [random_effect, sample_id]
-    if fe_model_needed:
-        drop_list = [sample_id]
+    drop_list = [random_effect, sample_id]
     print("Input features before encoding: ", df.shape[1])
 
     # encode variables to improve looking at specific values
@@ -153,16 +155,17 @@ def setup_df_do_encoding(df, random_effect, response_var, join_flag, sample_id,
     x.to_csv(out_file_prefix + "-input-model-df.txt", 
              index=False, sep="\t")
 
-    df_final_input_features = pd.DataFrame(x.columns,
-                                           columns=['input_features'])
-    df_final_input_features.to_csv(out_file_prefix + "-input-features.txt",
-                                   index=False, sep="\t")
+    df_input_features = pd.DataFrame(x.columns,
+                                     columns=['input_features'])
 
-    return x, z, c, y, feature_list
+    return x, z, c, y, feature_list, df_input_features
 
 # TODO add rerun step here
 def train_rf_model(x, y, rf_regressor):
     forest = rf_regressor.fit(x, y)
+    oob = str(round(forest.oob_score_*100, 1))  # percent variation
+    print("\nOut-of-bag (OOB) score (% variation explained): " 
+          + oob + "%")
     plt.plot([1, 2, 3, 4])
     plt.ylabel('place holder plot')
     training_stats_plot = plt.gcf()
@@ -171,7 +174,8 @@ def train_rf_model(x, y, rf_regressor):
     return forest, training_stats_plot
 
 
-def graphic_handling(plt, plot_file_name, p_title, width=_width, height=_height):
+def graphic_handling(plt, plot_file_name, p_title, width=_width, 
+                     height=_height):
     plot_file_name_list.append(plot_file_name)
     plt.title(p_title, fontdict={"fontsize": 10})
     plt.tick_params(axis="both", labelsize=7)
@@ -208,16 +212,17 @@ def shap_plots(shap_values, x, boruta_accepted, feature_importance,
         plt_s = shap_values[:, feature_index_list]
         plt_x = x.iloc[:, feature_index_list]
 
-        shap.summary_plot(shap_values=plt_s, features=plt_x, show=False, sort=True, 
-                          max_display=group_size)
-        graphic_handling(plt, "-accepted-SHAP-summary-beeswarm-" + str(list_num), 
-                         title_name_bee)
-        shap.summary_plot(shap_values=plt_s, features=plt_x, show=False, sort=True,
-                          plot_type="bar", max_display=group_size)
+        shap.summary_plot(shap_values=plt_s, features=plt_x, show=False, sort=True, max_display=group_size)
+        graphic_handling(plt, "-accepted-SHAP-summary-beeswarm-" + str(list_num), title_name_bee)
+        shap.summary_plot(shap_values=plt_s, features=plt_x, show=False, sort=True, plot_type="bar", max_display=group_size)
         graphic_handling(plt, "-accepted-SHAP-summary-bar-" + str(list_num), 
                          title_name_bar)
 
     # save SHAP values to inspect TODO remove later
+    shap_values_df = pd.DataFrame(shap_values)
+    shap_values_df.to_csv(out_file_prefix + "-SHAP-values-df1.txt",
+                          index=False, sep="\t")
+
     shap_values_df = pd.DataFrame(shap_values, columns = list(x.columns.values))
     shap_values_df.to_csv(out_file_prefix + "-SHAP-values-df.txt",
                           index=False, sep="\t")
@@ -252,15 +257,13 @@ def run_shap(trained_forest_model, x):
 
     return shap_imp, shap_values, shap_explainer
 
-
 # TODO check percentile
 def run_boruta_shap(forest, x, y):
     feature_selector = \
         BorutaShap(model=forest, importance_measure='shap',
-                   classification=False, percentile=borutaSHAP_percentile,
-                   pvalue=0.05)
-
-    feature_selector.fit(X=x, y=y, n_trials=borutaSHAP_trials,
+                   classification=False, percentile=borutashap_threshold,
+                   pvalue=borutashap_p)
+    feature_selector.fit(X=x, y=y, n_trials=borutashap_trials,
                          train_or_test="train", sample=False, verbose=False)
     for feature_group in ['all', 'accepted', 'tentative', 'rejected']:
         boruta_dict = \
@@ -291,6 +294,15 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
          join_flag):
     df = pd.read_csv(df_input, sep="\t", na_filter=False)
 
+    # if the input dataframe is empty; rule terminates 
+    if "Failed Analysis" in df.columns:
+        with open(out_file, "w") as file:
+            file.write("Failed Analysis")
+
+        with open(out_file_prefix + "-boruta-important.txt", "w") as file:
+            file.write("Failed Analysis")
+        return
+
     if len(np.unique(df[random_effect])) != len(df[random_effect]):
         fe_model_needed = False
         print("MODEL TYPE: Mixed Effects Random Forest (MERF) Regressor ")
@@ -298,7 +310,7 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
         print("MODEL TYPE: Random Forest (RF) Regressor")
         fe_model_needed = True
 
-    x, z, c, y, feature_list = \
+    x, z, c, y, feature_list, df_input_features = \
         setup_df_do_encoding(df=df, random_effect=random_effect,
                              response_var=response_var,
                              join_flag=join_flag, sample_id=sample_id,
@@ -309,8 +321,8 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
         rf_regressor = \
             RandomForestRegressor(n_jobs=-1, 
                                   n_estimators=n_estimators,
-                                  oob_score=True,
-                                  max_depth=round(math.sqrt(num_features)))
+                                  oob_score=True, max_features=max_features,
+                                  max_depth=7) # for BorutaSHAP complexity
         return(rf_regressor)
 
     # Run either mixed effects or fixed effects RF models
@@ -335,6 +347,7 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
     # Essentially if data is visualized in SHAP plots with all the rejected
     # features, they're very hard to interpret (flooded with meaningless info)
     # z, c, and y are the same as before
+    
     x = x.drop(boruta_explainer.rejected, axis=1)
 
     if not fe_model_needed:
@@ -374,8 +387,34 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
                               'feature_importance_vals': shap_imp_score_list})
     df_boruta = df_boruta.sort_values(by=['feature_importance_vals'],
                                       ascending=False)
-    df_boruta.to_csv(out_file_prefix + "-boruta-important.txt", index=False,
+    
+    df_boruta.to_csv(out_file_prefix + "-boruta-all-features.txt", index=False,
                      sep="\t")
+    
+    # check if input feature was selected or not
+    def check_inputs(row):
+        if pd.isnull(row['important_features']):
+            return "no"
+        else:
+            return "yes"
+        
+    df_input_features = df_input_features.merge(df_boruta["important_features"], how='left', left_on='input_features', right_on='important_features')
+    df_input_features['was_selected'] = df_input_features.apply(check_inputs, axis=1)
+
+    df_input_features = df_input_features.drop(['important_features'], axis=1)
+    df_input_features.to_csv(out_file_prefix + "-input-features.txt",
+                             index=False, sep="\t")
+    
+    if df_boruta.empty:
+        _df = pd.DataFrame({"important_features": ["no_selected_features"],
+                    "decoded_features": ["NA"],
+                    "feature_importance_vals": [-100]})
+        _df.to_csv(out_file_prefix + "-boruta-important.txt", index=False,
+        sep="\t")
+    else:
+        df_boruta.to_csv(out_file_prefix + "-boruta-important.txt", index=False,
+                     sep="\t")
+        
     print("\nBorutaSHAP features")
     print("Total input features: " + str(len(boruta_explainer.all_columns)))
     print("Accepted: " + str(len(boruta_explainer.accepted)))
@@ -383,11 +422,13 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
     print("Accepted and Tentative: " + str(len(boruta_explainer.accepted) +
                                            len(boruta_explainer.tentative)))
     print("Rejected: " + str(len(boruta_explainer.rejected)))
-    plot_partial_dependence(forest, x, features=boruta_explainer.accepted)
-    plot_some_partial_dependence = plt.gcf()
-    plot_some_partial_dependence.set_size_inches(_width * 1.4, _height * 1.4)
-    plot_list.append(plot_some_partial_dependence)
-    plot_file_name_list.append("-partial-dependence")
+
+    if len(boruta_explainer.accepted) > 0:
+        plot_partial_dependence(forest, x, features=boruta_explainer.accepted)
+        plot_some_partial_dependence = plt.gcf()
+        plot_some_partial_dependence.set_size_inches(_width * 1.4, _height * 1.4)
+        plot_list.append(plot_some_partial_dependence)
+        plot_file_name_list.append("-partial-dependence")
     plot_list.append(training_stats_plot)
     plot_file_name_list.append("-training-stats")
     plt.close('all')

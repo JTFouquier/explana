@@ -9,7 +9,6 @@ output:
 
 ```{r setup, include=FALSE}
 source("scripts/install.R")
-# source("scripts/feature-heatmaps.R")
 source("scripts/colors.R")
 package_list <- c("knitr", "kableExtra", "htmltools", "tidyverse",
 "Hmisc", "jsonlite")
@@ -21,8 +20,10 @@ library(Hmisc)
 library(jsonlite)
 library(kableExtra)
 
-knitr::opts_chunk$set(echo = FALSE,
-                      eval = TRUE)
+knitr::opts_chunk$set(echo = FALSE, eval = TRUE, error = FALSE,
+                      warning = FALSE, message = FALSE,
+                      comment = "")
+options(warn = -1)
 ```
 
 ```{r comment="", echo = FALSE}
@@ -37,17 +38,20 @@ constrain_cols <- snakemake@config[["constrain_cols"]]
 
 iterations <- snakemake@config[["iterations"]]
 n_estimators <- snakemake@config[["n_estimators"]]
+max_features <- snakemake@config[["max_features"]]
+version <- snakemake@config[["version"]]
 
-borutashap_trials <- snakemake@config[["borutaSHAP_trials"]]
-borutashap_percentile <- snakemake@config[["borutaSHAP_percentile"]]
+borutashap_trials <- snakemake@config[["borutashap_trials"]]
+borutashap_threshold <- snakemake@config[["borutashap_threshold"]]
+borutashap_p <- snakemake@config[["borutashap_p"]]
 
 enc_percent_threshold <- snakemake@config[["enc_percent_threshold"]]
 
 out_path <- snakemake@config[["out"]]
-original_path <- paste0(out_path, snakemake@config[["path_rf_original"]])
-first_path <- paste0(out_path, snakemake@config[["path_rf_first"]])
-previous_path <- paste0(out_path, snakemake@config[["path_rf_previous"]])
-pairwise_path <- paste0(out_path, snakemake@config[["path_rf_pairwise"]])
+original_path <- paste0(out_path, snakemake@config[["path_original"]])
+first_path <- paste0(out_path, snakemake@config[["path_first"]])
+previous_path <- paste0(out_path, snakemake@config[["path_previous"]])
+pairwise_path <- paste0(out_path, snakemake@config[["path_pairwise"]])
 
 wd <- paste0(getwd(), "/")
 wd_analysis <- paste0(wd, out_path)
@@ -57,19 +61,29 @@ wd_previous <- paste0(wd, previous_path)
 wd_pairwise <- paste0(wd, pairwise_path)
 
 pretty_table <- function(dataset_type, out_path, display_file) {
-  df <- paste0(out_path,
-  snakemake@config[[paste0("path_rf_", dataset_type)]],
-  paste0(dataset_type, display_file))
-  # cat(readLines(df), sep = "\n")
-  df <- read.csv(df, sep = "\t", check.names = FALSE)
 
-  kable(df, format = "html", escape = FALSE) %>%
-    kable_styling()
+  df_path <- paste0(out_path,
+  snakemake@config[[paste0("path_", dataset_type)]],
+  paste0(dataset_type, display_file))
+  if (!file.exists(df_path)) {
+    cat("Analysis not completed")
+  } else {
+    df <- read.csv(df_path, sep = "\t", check.names = FALSE)
+    if ("Failed Analysis" %in% colnames(df)) {
+      cat("Analysis not completed")
+    } else {
+      kable(df, format = "html", escape = FALSE) %>%
+        kable_styling()
+    }
+  }
 }
 
 url_tables <- function(df_in) {
   df <- read.csv(df_in, sep = "\t", check.names = FALSE)
 
+  if ("Failed Analysis" %in% colnames(df)) {
+    cat("Analysis not completed")
+  } else {
   df$url <- lapply(df$url, function(url) {
     as.character(a(href = url, target = "_blank", url))
   })
@@ -79,6 +93,7 @@ url_tables <- function(df_in) {
 
   kable(df_table, format = "html", escape = FALSE) %>%
     kable_styling()
+  }
 }
 ```
 
@@ -86,29 +101,30 @@ url_tables <- function(df_in) {
 
 plot_pattern_display <- function(path_name, pattern, grep_arg) {
   files <- list.files(path = path_name, pattern = pattern)
-  my_plots <- grep(grep_arg, files, value = TRUE)
+  if (length(files) < 1) {
+    cat("Analysis not completed")
+  } else {
+    my_plots <- grep(grep_arg, files, value = TRUE)
 
-  # get files with pattern and grep argument
-  for (f in my_plots) {
-      cat("\n\n")
-      cat(paste0("![](", path_name, f, ")"), "\n")
+    for (f in my_plots) {
+        cat("\n\n")
+        cat(paste0("![](", path_name, f, ")"), "\n")
+    }
   }
 }
 
 # create the plot to show which datasets important features
 # were occurring in (done now after building all models)
-# make_feature_heatmaps(out_path)
-
 
 # after variables are encoded, remove very low occurring ones if wanted.
 if (enc_percent_threshold == "0") {
 
-  enc_percent_threshold_print <- paste0("low occuring or rare categorical",
-  " variables were not removed")
+  enc_percent_threshold_print <- paste0("low occuring categorical",
+  " values were not removed")
 
 } else {
 
-  enc_percent_threshold_print <- paste0("low occurring or rare categorical values were removed if found in less than ", enc_percent_threshold, "% of samples") # nolint
+  enc_percent_threshold_print <- paste0("low occurring categorical values were removed if found in less than ", enc_percent_threshold, "% of samples") # nolint
 
 }
 
@@ -147,50 +163,33 @@ if (enc_percent_threshold == "0") {
 snakemake@config[["dataset_json"]] %>%
   toJSON %>%
   prettify()
-
-print(snakemake@config[["originaloob_all_features"]])
-# cat(snakemake@config[["originaloob_all_features"]])
 ```
 
 #
 
 ***
 
-### Summary of methods
+### Summary of Methods
 
-This workflow (name needed!) was used to identify important features 
-predictive of the response variable, **``r response_var``**.
+EXPLANA (EXploratory ANAlysis) Methods:
 
-Categorical variables were encoded (expand!!!!! TODO) and **``r enc_percent_threshold_print``**.
-
-A random effect 
-of **``r random_effect``** was used to adjust for non-independence 
-(repeated measurements) as needed. There were 
-**``r n_estimators` trees`** used per Random Forest model. If mixed 
-effects Random Forests were needed, **``r iterations` iterations`** 
-were performed. BorutaSHAP was used with 
-**``r borutashap_trials` trials`** and features were considered 
-important if they performed better than shuffled features
-**``r borutashap_percentile`%`** of the time.
-
-Values of the response variable, **``r response_var``**, are 
-explained best with the important features selected using this 
-workflow.
+EXPLANA assists with understanding the relationship between a response variable and original feature values. For longitudinal datasets, changes/deltas in feature values are automatically computed. Delta datasets (First, Previous and Pairwise delta datasets) are calculated using different reference points. This is important because features can carry varying degrees of importance between models built from different delta datasets. This workflow helps identify differences in feature relationships to a response variable by providing feature selection results from multiple models.
 
 Please ensure you understand the workflow and that the percent 
-variation explained for each model is adequate for your purposes. 
-When you are using all your data without prior hypotheses, you 
-are performing *exploratory analysis* and should make this clear
+variation explained (using out-of-bag/OOB scores) for each model is adequate for your purposes. When you are using all your data without prior hypotheses, you are performing *exploratory analysis* and should make this clear
 when discussing results.
 
-This workflow is designed to assist with understanding 
-original feature values, as well as changes in feature 
-values, when compared to various reference points. 
-Certain features may carry varying degrees of importance 
-across different datasets and this workflow helps 
-identify these discrepancies.
+Analytic decisions:
 
-Additional figures and files can be found in output directory.
+EXPLANA was used for exploratory analysis to identify important features 
+predictive of the response variable, **``r response_var``**.
+
+Categorical variables were binary encoded and **``r enc_percent_threshold_print``**. A random effect of **``r random_effect``** was used to adjust for non-independence (repeated measurements) if needed. There were **``r n_estimators` trees`** used per Random Forest model with a max feature fraction of **``r max_features``**  of the input features for each split in a decision tree. If mixed effects Random Forests were needed,
+**``r iterations` iterations`** were performed. BorutaSHAP was used with 
+**``r borutashap_trials` trials`** to find features that perform repeatedly better than shuffled versions of all input features. Selected features were considered important if they performed better than
+**``r borutashap_threshold`%`** of the importance score of the best shuffled feature with a false discovery rate of **``r borutashap_p`%`**.
+
+These methods were copy/pasted from an EXPLANA (version: ``r version``) feature selection report created on ``r Sys.Date()`` (see github.com for code and additional documentation; Copyright 2023 Regents of the University of Colorado. All rights reserved. Authored by Jennifer Fouquier).
 
 ***
 
@@ -212,6 +211,8 @@ Additional figures and files can be found in output directory.
 ```{r fig.align = "center"}
 include_graphics(paste0(out_path, "important-feature-occurrences.svg"))
 ```
+
+**Features selected as important from models built with Original and First, Previous and Pairwise delta datasets.** Average impact on response is displayed for positive instances of encoded variables. For numerical variables, the relationship to the response variable is more difficult to calculate, and indicated with "+/-". Grey boxes indicate features included in the model for each dataset. For comprehensive list of input features, see provided output. Random Forests can identify complex interactions and non-linear relationships. Post-hoc tests and further research is important.
 
 #### Interpretation/Literature Search
 
@@ -297,13 +298,13 @@ plot_pattern_display(path_name = first_path, pattern = ".svg",
 
 ### Selected Features
 
-```{r out.width = 1000, out.height = 600, comment=""}
+```{r out.width = 1000, out.height = 600}
 pretty_table("first", out_path, "-boruta-important.txt")
 ```
 
 ### Input Features
 
-```{r out.width = 1000, out.height = 600, comment=""}
+```{r out.width = 1000, out.height = 600}
 pretty_table("first", out_path, "-input-features.txt")
 ```
 
@@ -440,29 +441,6 @@ url_tables(paste0(pairwise_path, "pairwise-urls.txt"))
 ***
 
 #
-
-<h1 style="background-color:lightgray; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">Post-hoc tests</h1>
-
-# Results {.tabset}
-
-***
-
-## Description
-
-Linear models or linear mixed effects models were used for post hoc testing to determine if a linear relationship exists between selected feature and response variable.
-
-## Results
-
-```{r out.width = 1100, out.height = 600, comment=""}
-# htmltools::includeHTML(snakemake@input[["post_hoc"]])
-```
-
-## Graphs
-
-```{r out.width = 1100, out.height = 600, comment=""}
-# include_graphics(snakemake@input[["post_hoc_viz"]])
-```
-
 
 ***
 

@@ -1,16 +1,12 @@
 import pandas as pd
 import re
 import urllib.parse
-
+import os
 
 feature_file = snakemake.input["feature_file"]
 response = snakemake.config["response_var"]
 out_file = snakemake.output["out_file"]
 
-original_features = snakemake.input["original_features"]
-first_features = snakemake.input["first_features"]
-previous_features = snakemake.input["previous_features"]
-pairwise_features = snakemake.input["pairwise_features"]
 
 def perform_pubmed_search(search_terms):
     encoded_search_terms = urllib.parse.quote(search_terms)
@@ -27,7 +23,12 @@ def build_url_list(feature_file, out_file, compiled_flag):
     if not compiled_flag:
         col_names = ["important_features"]
 		
-    df = pd.read_csv(feature_file, sep="\t", usecols=col_names)
+    try:
+        df = pd.read_csv(feature_file, sep="\t", usecols=col_names)
+    except:
+        with open(out_file, "w") as file:
+            file.write("Failed Analysis")
+        return
 
     def make_url(x):
 
@@ -61,20 +62,16 @@ def build_url_list(feature_file, out_file, compiled_flag):
 
 def main(feature_file, out_file):
 
-    build_url_list(feature_file, out_file, True)
+    build_url_list(feature_file = feature_file, out_file = out_file, compiled_flag = True)
     out_p = str(snakemake.config["out"])
 
-    out_file = out_p + str(snakemake.config["path_rf_original"]) + "original-urls.txt"
-    build_url_list(original_features, out_file, False)
+    ref_list = ["original", "first", "previous", "pairwise"]
+    for i in range(0, len(ref_list)):
+        i = ref_list[i]
+        ref_features = snakemake.input[i + "_features"]
 
-    out_file = out_p + str(snakemake.config["path_rf_first"]) + "first-urls.txt"
-    build_url_list(first_features, out_file, False)
-
-    out_file = out_p + str(snakemake.config["path_rf_previous"]) + "previous-urls.txt"
-    build_url_list(previous_features, out_file, False)
-
-    out_file = out_p + str(snakemake.config["path_rf_pairwise"]) + "pairwise-urls.txt"
-    build_url_list(pairwise_features, out_file, False)
+        out_file = out_p + str(snakemake.config["path_" + i]) + i + "-urls.txt"
+        build_url_list(feature_file = ref_features, out_file = out_file, compiled_flag = False)
 
 
 main(feature_file = feature_file, out_file=out_file)

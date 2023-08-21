@@ -16,11 +16,13 @@ library(utils)
 
 # from config
 output_folder <- snakemake@config[["out"]]
+output_folder_first <- 
+
 
 sample_id <- snakemake@config[["sample_id"]]
 
 # change back to these names
-input_timepoint <- snakemake@config[["timepoint"]]
+input_timepoint <- "timepoint_explana"
 input_study_id <- snakemake@config[["random_effect"]]
 
 
@@ -57,7 +59,6 @@ include_distance_matrices <- function(distance_matrices, ref_sample, # nolint
     }
   return(df_new_comparison) # update the new comparison
 }
-
 
 
 diffs_for_all_vars_per_subject <- function(delta_df, vars, sid_df,
@@ -148,6 +149,28 @@ main <- function() {
 
   df <- read.csv(in_file, sep = "\t", check.names = FALSE)
 
+  total_timepoints <- length(unique(df[[input_timepoint]]))
+
+  # use total_timepoints <- 1 to test if not longitudinal
+  # If cross sectional, don't make deltas
+
+  rf_file_out <- paste0(output_folder, "04-SELECTED-FEATURES-",
+  reference_time, "/", reference_time, ".pdf")
+  if (total_timepoints == 1) {
+    if (reference_time == "first") {
+    writeLines("Failed Analysis", con = out_file)
+    writeLines("Failed Analysis", con = rf_file_out)
+    return()
+    }
+  }
+
+  if (total_timepoints <= 2) {
+    if (reference_time == "previous" || reference_time == "pairwise") {
+      writeLines("Failed Analysis", con = out_file)
+      writeLines("Failed Analysis", con = rf_file_out)
+      return()
+    }
+  }
   # FOR NSHAP study
   # df <- df %>% mutate(across(everything(), as.character))
   # df <- df %>% mutate(across(c(weight_sel, weight_adj, stratum,
