@@ -1,5 +1,5 @@
 ---
-title: "EXPLANA: EXPloratory ANAlysis Feature Selection Report"
+title: "EXPLANA: Feature Selection Report"
 date: "`r Sys.Date()`"
 output:
   html_document
