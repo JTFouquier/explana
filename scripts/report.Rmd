@@ -1,8 +1,6 @@
 ---
-title: "Feature Selection Report"
+title: "EXPLANA: EXPloratory ANAlysis Feature Selection Report"
 date: "`r Sys.Date()`"
-params:
-   rmd: "report.Rmd"
 output:
   html_document
 ---
@@ -47,23 +45,15 @@ borutashap_p <- snakemake@config[["borutashap_p"]]
 
 enc_percent_threshold <- snakemake@config[["enc_percent_threshold"]]
 
-out_path <- snakemake@config[["out"]]
-original_path <- paste0(out_path, snakemake@config[["path_original"]])
-first_path <- paste0(out_path, snakemake@config[["path_first"]])
-previous_path <- paste0(out_path, snakemake@config[["path_previous"]])
-pairwise_path <- paste0(out_path, snakemake@config[["path_pairwise"]])
+original_path <- snakemake@config[["path_original"]]
+first_path <- snakemake@config[["path_first"]]
+previous_path <- snakemake@config[["path_previous"]]
+pairwise_path <- snakemake@config[["path_pairwise"]]
 
-wd <- paste0(getwd(), "/")
-wd_analysis <- paste0(wd, out_path)
-wd_original <- paste0(wd, original_path)
-wd_first <- paste0(wd, first_path)
-wd_previous <- paste0(wd, previous_path)
-wd_pairwise <- paste0(wd, pairwise_path)
 
-pretty_table <- function(dataset_type, out_path, display_file) {
-
-  df_path <- paste0(out_path,
-  snakemake@config[[paste0("path_", dataset_type)]],
+pretty_table <- function(dataset_type, display_file) {
+  setwd(snakemake@config[["out"]])
+  df_path <- paste0(snakemake@config[[paste0("path_", dataset_type)]],
   paste0(dataset_type, display_file))
   if (!file.exists(df_path)) {
     cat("Analysis not completed")
@@ -79,6 +69,7 @@ pretty_table <- function(dataset_type, out_path, display_file) {
 }
 
 url_tables <- function(df_in) {
+  setwd(snakemake@config[["out"]])
   df <- read.csv(df_in, sep = "\t", check.names = FALSE)
 
   if ("Failed Analysis" %in% colnames(df)) {
@@ -100,6 +91,7 @@ url_tables <- function(df_in) {
 ```{r include = FALSE }
 
 plot_pattern_display <- function(path_name, pattern, grep_arg) {
+  setwd(snakemake@config[["out"]])
   files <- list.files(path = path_name, pattern = pattern)
   if (length(files) < 1) {
     cat("Analysis not completed")
@@ -137,7 +129,7 @@ if (enc_percent_threshold == "0") {
 
 <h1 style="background-color:`r color_summary`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">Summary</h1>
 
-### Analysis Description:
+###
 
 #### `r toString(snakemake@config[["analysis_notes"]])`
 
@@ -195,12 +187,12 @@ These methods were copy/pasted from an EXPLANA (version: ``r version``) feature 
 
 ### Directory Links
 
-[⇨ Full Analysis Directory](file://`r wd_analysis`){target="_blank"}
+[⇨ Full Analysis Directory](.){target="_blank"}
 
-[⇨ Original Dataset    |  ](file://`r wd_original`){target="_blank"}
-[⇨ First Delta Dataset    |  ](file://`r wd_first`){target="_blank"}
-[⇨ Previous Delta Dataset    |  ](file://`r wd_previous`){target="_blank"}
-[⇨ Pairwise Delta Dataset](file://`r wd_pairwise`){target="_blank"}
+[⇨ Original Dataset    |  ](./`r original_path`){target="_blank"}
+[⇨ First Delta Dataset    |  ](./`r first_path`){target="_blank"}
+[⇨ Previous Delta Dataset    |  ](./`r previous_path`){target="_blank"}
+[⇨ Pairwise Delta Dataset](./`r pairwise_path`){target="_blank"}
 
 ***
 
@@ -209,7 +201,8 @@ These methods were copy/pasted from an EXPLANA (version: ``r version``) feature 
 #### Selected Feature Occurences by Dataset
 
 ```{r fig.align = "center"}
-include_graphics(paste0(out_path, "important-feature-occurrences.svg"))
+setwd(snakemake@config[["out"]])
+include_graphics("important-feature-occurrences.svg")
 ```
 
 **Features selected as important from models built with Original and First, Previous and Pairwise delta datasets.** Average impact on response is displayed for positive instances of encoded variables. For numerical variables, the relationship to the response variable is more difficult to calculate, and indicated with "+/-". Grey boxes indicate features included in the model for each dataset. For comprehensive list of input features, see provided output. Random Forests can identify complex interactions and non-linear relationships. Post-hoc tests and further research is important.
@@ -217,7 +210,7 @@ include_graphics(paste0(out_path, "important-feature-occurrences.svg"))
 #### Interpretation/Literature Search
 
 ```{r}
-url_tables(snakemake@input[["urls"]])
+url_tables("urls.txt")
 ```
 
 #
@@ -226,7 +219,7 @@ url_tables(snakemake@input[["urls"]])
 
 <h1 style="background-color:`r color_original`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">Original Dataset</h1>
 
-[⇨ Open File Directory](file://`r wd_original`){target="_blank"}
+[⇨ Open File Directory](./`r original_path`){target="_blank"}
 
 ## Results {.tabset}
 
@@ -245,13 +238,13 @@ plot_pattern_display(path_name = original_path, pattern = ".svg",
 ### Selected Features
 
 ```{r out.width = 1000, out.height = 600, comment=""}
-pretty_table("original", out_path, "-boruta-important.txt")
+pretty_table("original", "-boruta-important.txt")
 ```
 
 ### Input Features
 
 ```{r out.width = 1000, out.height = 600, comment=""}
-pretty_table("original", out_path, "-input-features.txt")
+pretty_table("original", "-input-features.txt")
 ```
 
 ### BorutaSHAP
@@ -263,9 +256,10 @@ plot_pattern_display(path_name = original_path, pattern = ".svg",
 
 ### Figures
 
-[⇨ Open PDF in new window](file://`r wd_original`original.pdf){target="_blank"}
+[⇨ Open PDF in new window](./`r original_path`original.pdf){target="_blank"}
 
-```{r out.width = 1100, out.height = 600, comment=""}
+```{r out.width = 1000, out.height = 600, comment=""}
+setwd(snakemake@config[["out"]])
 include_graphics(paste0(original_path, "original.pdf"))
 ```
 
@@ -281,7 +275,7 @@ url_tables(paste0(original_path, "original-urls.txt"))
 
 <h1 style="background-color:`r color_first`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">First Delta Dataset</h1>
 
-[⇨ Open File Directory](file://`r wd_first`){target="_blank"}
+[⇨ Open File Directory](./`r first_path`){target="_blank"}
 
 ## Results {.tabset}
 
@@ -299,13 +293,13 @@ plot_pattern_display(path_name = first_path, pattern = ".svg",
 ### Selected Features
 
 ```{r out.width = 1000, out.height = 600}
-pretty_table("first", out_path, "-boruta-important.txt")
+pretty_table("first", "-boruta-important.txt")
 ```
 
 ### Input Features
 
 ```{r out.width = 1000, out.height = 600}
-pretty_table("first", out_path, "-input-features.txt")
+pretty_table("first", "-input-features.txt")
 ```
 
 ### BorutaSHAP
@@ -317,9 +311,10 @@ plot_pattern_display(path_name = first_path, pattern = ".svg",
 
 ### Figures
 
-[⇨ Open PDF in new window](file://`r wd_first`first.pdf){target="_blank"}
+[⇨ Open PDF in new window](./`r first_path`first.pdf){target="_blank"}
 
 ```{r out.width = 1100, out.height = 600, comment=""}
+setwd(snakemake@config[["out"]])
 include_graphics(paste0(first_path, "first.pdf"))
 ```
 
@@ -335,7 +330,7 @@ url_tables(paste0(first_path, "first-urls.txt"))
 
 <h1 style="background-color:`r color_previous`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">Previous Delta Dataset</h1>
 
-[⇨ Open File Directory](file://`r wd_previous`){target="_blank"}
+[⇨ Open File Directory](./`r previous_path`){target="_blank"}
 
 ## Results {.tabset}
 
@@ -353,13 +348,13 @@ plot_pattern_display(path_name = previous_path, pattern = ".svg",
 ### Selected Features
 
 ```{r out.width = 1000, out.height = 600, comment=""}
-pretty_table("previous", out_path, "-boruta-important.txt")
+pretty_table("previous", "-boruta-important.txt")
 ```
 
 ### Input Features
 
 ```{r out.width = 1000, out.height = 600, comment=""}
-pretty_table("previous", out_path, "-input-features.txt")
+pretty_table("previous", "-input-features.txt")
 ```
 
 ### BorutaSHAP
@@ -371,9 +366,10 @@ plot_pattern_display(path_name = previous_path, pattern = ".svg",
 
 ### Figures
 
-[⇨ Open PDF in new window](file://`r wd_previous`previous.pdf){target="_blank"}
+[⇨ Open PDF in new window](./`r previous_path`previous.pdf){target="_blank"}
 
 ```{r out.width = 1000, out.height = 600, comment=""}
+setwd(snakemake@config[["out"]])
 include_graphics(paste0(previous_path, "previous.pdf"))
 ```
 
@@ -388,7 +384,7 @@ url_tables(paste0(previous_path, "previous-urls.txt"))
 
 <h1 style="background-color:`r color_pairwise`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">Pairwise Delta Dataset</h1>
 
-[⇨ Open File Directory](file://`r wd_pairwise`){target="_blank"}
+[⇨ Open File Directory](./`r pairwise_path`){target="_blank"}
 
 ## Results {.tabset}
 
@@ -406,13 +402,13 @@ plot_pattern_display(path_name = pairwise_path, pattern = ".svg",
 ### Selected Features
 
 ```{r out.width = 1000, out.height = 600, comment=""}
-pretty_table("pairwise", out_path, "-boruta-important.txt")
+pretty_table("pairwise", "-boruta-important.txt")
 ```
 
 ### Input Features
 
 ```{r out.width = 1000, out.height = 600, comment=""}
-pretty_table("pairwise", out_path, "-input-features.txt")
+pretty_table("pairwise", "-input-features.txt")
 ```
 
 ### BorutaSHAP
@@ -424,9 +420,10 @@ plot_pattern_display(path_name = pairwise_path, pattern = ".svg",
 
 ### Figures
 
-[⇨ Open PDF in new window](file://`r wd_pairwise`pairwise.pdf){target="_blank"}
+[⇨ Open PDF in new window](./`r pairwise_path`pairwise.pdf){target="_blank"}
 
 ```{r out.width = 1000, out.height = 600, comment=""}
+setwd(snakemake@config[["out"]])
 include_graphics(paste0(pairwise_path, "pairwise.pdf"))
 ```
 
@@ -453,6 +450,3 @@ See the [Github repository](https://github.com/JTFouquier/snakemake-MERF "Still 
 # df = read.csv(snakemake@input[["table_boruta"]], sep = "\t")
 # knitr::kable(df$important_features, format = "html")
 ```
-
-<a download="report.Rmd" href="`r base64enc::dataURI(file = params$rmd, mime="text/rmd", encoding="base64")`">Click here for R Markdown source file</a>
-

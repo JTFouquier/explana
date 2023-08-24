@@ -12,6 +12,7 @@ snakemake@config[["path_original"]])
 
 sample_id <- snakemake@config[["sample_id"]]
 study_id <- snakemake@config[["random_effect"]]
+response_var <- snakemake@config[["response_var"]]
 
 file_path_list <- snakemake@input[["file_path_list"]]
 
@@ -30,6 +31,7 @@ verify_inputs <- function(constrain_cols, drop_cols) {
   return(TRUE)
 }
 
+
 check_duplicate_colnames <- function(df, df_file_name) {
   complete_column_list <- list(colnames(df))
   complete_column_list[sample_id] <- NULL
@@ -38,6 +40,7 @@ check_duplicate_colnames <- function(df, df_file_name) {
                  df_file_name, " will affect analysis."))
   }
 }
+
 
 filter_dataframe <- function(df, df_mod_list, df_complete_flag) {
 
@@ -84,6 +87,15 @@ filter_dataframe <- function(df, df_mod_list, df_complete_flag) {
 }
 
 
+fix_categorical_response_var <- function(df) {
+  if (class(df[[response_var]]) == "character") {
+    df[[response_var]] <- as.integer(as.factor(df[[response_var]]))
+  } else {
+  }
+  return(df)
+}
+
+
 main <- function(file_path_list, ds_param_dict_list) {
   if (length(file_path_list) != length(ds_param_dict_list)) {
     print(print(paste0("WORKFLOW WARNING: Dataset count does not equal
@@ -112,6 +124,8 @@ main <- function(file_path_list, ds_param_dict_list) {
     mutate(timepoint_explana = dense_rank(timepoint_original)) %>%
     select(-{{ timepoint_config }})
 
+  # if response var is categorical convert to int
+  df_complete <- fix_categorical_response_var(df_complete)
   write_tsv(df_complete, paste0(output_folder, "original.txt"))
 }
 

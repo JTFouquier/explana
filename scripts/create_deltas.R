@@ -16,8 +16,7 @@ library(utils)
 
 # from config
 output_folder <- snakemake@config[["out"]]
-output_folder_first <- 
-
+response_var <- snakemake@config[["response_var"]]
 
 sample_id <- snakemake@config[["sample_id"]]
 
@@ -68,7 +67,14 @@ diffs_for_all_vars_per_subject <- function(delta_df, vars, sid_df,
     new_value <- sid_df[[var]][sid_df$timepoint_w_ == time]
     old_value <- sid_df[[var]][sid_df$timepoint_w_ == rt]
     if (typeof(sid_df[[var]]) != "character") {
-      if (reference_time == "pairwise" && absolute_values == "yes") {
+      # if the response var is an integer and the differences are zero
+      # that means that it is a categorical var that we don't want to
+      # convert (we want to find differences in classes)
+      if (var == response_var && new_value == old_value) {
+        delta_df[[var]][delta_df$sid_delta == comparison] <- new_value
+        delta_df[[paste0(var,
+        "_reference")]][delta_df$sid_delta == comparison] <- old_value
+      } else if (reference_time == "pairwise" && absolute_values == "yes") {
         # TODO convert to abs values at end? reduce computational time
         delta_df[[var]][delta_df$sid_delta == comparison] <-
         abs(new_value - old_value)
