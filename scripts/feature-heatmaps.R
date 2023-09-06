@@ -178,6 +178,24 @@ make_feature_heatmaps <- function(base_path) { # nolint
     write_tsv(df_join_long,
     paste0(base_path, "df_join_long.txt"))
 
+    f_score_analysis <- "yes"
+    if (f_score_analysis == "yes") {
+        all_selected_features <- df_join_long %>%
+            select(important_features, variable, value) %>%
+            filter(value == 1)
+
+        write_tsv(all_selected_features, paste0(base_path,
+        "selected_features_for_Fscore.txt"))
+
+        # all input features for f-score analysis for testing
+        all_input_features <- unique(c(input_features_original,
+        input_features_first, input_features_previous, input_features_pairwise))
+        input_feature_df <- data.frame(input_features = all_input_features)
+        write_tsv(input_feature_df, paste0(base_path,
+        "input_features_for_Fscore.txt"))
+    }
+
+
     # dynamically change plot height based on selected feature number
     decoded_feature_facets <- length(unique((df_join$important_features)))
 

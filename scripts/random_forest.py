@@ -20,7 +20,6 @@ from BorutaShap import BorutaShap
 from sklearn.ensemble import RandomForestRegressor
 
 # TODO switch to OneHotEncoder
-from hot_encoding import _dummy_var_creation
 from utils import _build_result_pdf
 from boruta_shap_plot import _boruta_shap_plot
 
@@ -66,7 +65,7 @@ max_features = float(snakemake.params["max_features"])
 iterations = int(snakemake.params["iterations"])
 
 df_input = snakemake.input["in_file"]
-pdf_report = snakemake.output["out_file"]
+out_file = snakemake.output["out_file"]
 dataset = snakemake.params["dataset"]
 
 # set graphics dimensions
@@ -97,12 +96,53 @@ class Logger(object):
 sys.stdout = Logger()
 
 
+# placeholder dataframe for creating figure
+def no_features_selected(out_prefix):
+    _df = pd.DataFrame({"important_features": ["no_selected_features"],
+                        "decoded_features": ["NA"],
+                        "feature_importance_vals": [-100]})
+    _df.to_csv(out_prefix + "-boruta-important.txt", index=False, sep="\t")
+
+
+def fail_analysis(out_file, out_prefix):
+        with open(out_file, "w") as file:
+            file.write("Failed Analysis")
+        no_features_selected(out_prefix)
+        return
+
+
 def percent_var_statement(step, oob):
     if step == "full_forest":
+        # if first percent var explained is less than 5% then terminate
+        if float(oob) < 5.0:
+            print("\nOut-of-bag (OOB) score (% variation explained): " + oob + "% \n\nAnalysis failed due to low percent variation explained")
+            fail_analysis(out_file, out_prefix)
+            return
+            
         print("\nOut-of-bag (OOB) score (% variation explained): " + oob + "%")
+
+
     if step == "shap_rerun":
         print("Out-of-bag (OOB) score (% variation explained) excluding Boruta rejected features only for visualization/interpretation): " 
         + oob + "%")
+
+
+def dummy_var_creation(categorical_list, df, join_flag):
+    # TODO SUBSET FLAG
+    for orig_name in categorical_list:
+        subset_df = df[[orig_name]]
+        encoded_name = "ENC_" + orig_name + "_is"
+        dum_df = pd.get_dummies(subset_df, columns=[orig_name],
+                                prefix=[encoded_name])
+        # Keep adding encoded vars to df before returning
+        if join_flag:
+            df = df.join(dum_df)
+
+    if join_flag:
+        return df
+
+    else:
+        return dum_df
 
 
 def setup_df_do_encoding(df, random_effect, response_var, join_flag, 
@@ -119,18 +159,30 @@ def setup_df_do_encoding(df, random_effect, response_var, join_flag,
     categoric_columns = [i for i in list(df.columns) if
                          i not in numeric_column_list]
 
-    drop_list = [random_effect, sample_id]
+    do_not_encode = [random_effect, sample_id, response_var]
 
     print("\nN (" + random_effect + "): ", str(df[random_effect].nunique()))
     print("\nInput features before encoding: ", df.shape[1])
 
     # encode variables to improve looking at specific values
-    vars_to_encode = [i for i in categoric_columns if i not in drop_list]
-    df_dummy = _dummy_var_creation(vars_to_encode, df, join_flag)
+    vars_to_encode = [i for i in categoric_columns if i not in do_not_encode]
+    df_dummy = dummy_var_creation(vars_to_encode, df, join_flag)
     print("Input features after encoding: ", df_dummy.shape[1])
 
-    # remove vars before encoding, random effect, response, sample ID
-    df_encoded = df_dummy.drop(drop_list + vars_to_encode + [response_var], axis=1)
+    # if response var is categoric convert to integers
+    if df_dummy[response_var].dtype == 'object':
+
+        df_dummy = df_dummy.sort_values(by=response_var)
+
+        # remove vars before encoding, random effect, response, sample ID
+        df_dummy[response_var], u_maps = pd.factorize(df_dummy[response_var])
+
+        print("Numeric mapping for categoric response variable (sorted alphabetically and factorized):")
+        for i, category in enumerate(u_maps):
+            print(f"{category} was converted to {i}")
+
+    df_encoded = df_dummy.drop(do_not_encode + vars_to_encode + ["timepoint_original"], axis=1)
+
 
     def remove_low_percentage_encoded_vars(df_encoded, percent):
         # TODO make function for removing columns
@@ -163,8 +215,6 @@ def setup_df_do_encoding(df, random_effect, response_var, join_flag,
     c = df_dummy[random_effect]
     y = df_dummy[response_var]
 
-    x.to_csv(out_prefix + "-input-model-df.txt", index=False, sep="\t")
-
     df_features_in = pd.DataFrame(x.columns, columns=['input_features'])
 
     return x, z, c, y, df_features_in
@@ -174,7 +224,7 @@ def train_rf_model(x, y, rf_regressor, step):
     oob = str(round(forest.oob_score_*100, 1))  # percent variation
     percent_var_statement(step, oob)
     plt.close('all')
-    return forest
+    return forest, oob
 
 
 def graphic_handling(plt, plot_file_name, p_title, width, 
@@ -217,12 +267,8 @@ def shap_plots(shap_values, x, boruta_accepted, feature_importance):
     group_size = 10
     lists_to_graph = list_split(index_list_accepted, group_size = group_size)
 
-    # save SHAP values to inspect TODO remove later
-    shap_values_df = pd.DataFrame(shap_values)
-    shap_values_df.to_csv(out_prefix + "-SHAP-values-df1.txt",
-                          index=False, sep="\t")
-
-    shap_values_df = pd.DataFrame(shap_values, columns = list(x.columns.values))
+    shap_values_df = pd.DataFrame(shap_values,  
+                                  columns = list(x.columns.values))
     shap_values_df.to_csv(out_prefix + "-SHAP-values-df.txt",
                           index=False, sep="\t")
     # graph each list of important features after 
@@ -277,7 +323,7 @@ def train_merf_model(x, z, c, y, model, step):
     forest = mrf.trained_fe_model
     oob = str(round(forest.oob_score_*100, 1))  # percent variation
     percent_var_statement(step, oob)
-    return forest
+    return forest, oob
 
 
 def main(df_input, out_file, random_effect, sample_id, response_var,
@@ -286,11 +332,7 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
 
     # if the input dataframe is empty; rule terminates 
     if "Failed Analysis" in df.columns:
-        with open(out_file, "w") as file:
-            file.write("Failed Analysis")
-
-        with open(out_prefix + "-boruta-important.txt", "w") as file:
-            file.write("Failed Analysis")
+        fail_analysis(out_file, out_prefix)
         return
 
     if len(np.unique(df[random_effect])) != len(df[random_effect]):
@@ -315,12 +357,17 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
 
     # Run either mixed effects or fixed effects RF models
     if not fe_model_needed:
-        forest =  train_merf_model(x=x, z=z, c=c, y=y, model=instantiate_rf(),
-                                   step="full_forest")
+        forest, oob =  train_merf_model(x=x, z=z, c=c, y=y, 
+                                        model=instantiate_rf(), step="full_forest")
         plt.close('all')
 
     elif fe_model_needed:
-        forest = train_rf_model(x, y, instantiate_rf(), step="full_forest")
+        forest, oob = train_rf_model(x, y, instantiate_rf(), step="full_forest")
+
+    # if first time running RF is < 5.0 percent variation, end analysis
+    if float(oob) < 5.0:
+        fail_analysis(out_file, out_prefix)
+        return
 
     # BorutaSHAP to select features
     boruta_explainer = run_boruta_shap(forest, x, y)
@@ -333,10 +380,10 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
     x = x.drop(boruta_explainer.rejected, axis=1)
 
     if not fe_model_needed:
-        forest = train_merf_model(x=x, z=z, c=c, y=y, model=instantiate_rf(),
-                                  step="shap_rerun")
+        forest, _ = train_merf_model(x=x, z=z, c=c, y=y, 
+                                       model=instantiate_rf(), step="shap_rerun")
     elif fe_model_needed:
-        forest = train_rf_model(x, y, instantiate_rf(), step="shap_rerun")
+        forest, _ = train_rf_model(x, y, instantiate_rf(), step="shap_rerun")
 
     shap_imp, shap_values = run_shap(forest, x)
     shap_plots(shap_values, x, boruta_explainer.accepted, shap_imp)
@@ -382,12 +429,8 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
     df_features_in = df_features_in.drop(['important_features'], axis=1)
     df_features_in.to_csv(out_prefix + "-input-features.txt", index=False,
                           sep="\t")
-    
     if df_boruta.empty:
-        _df = pd.DataFrame({"important_features": ["no_selected_features"],
-                            "decoded_features": ["NA"],
-                            "feature_importance_vals": [-100]})
-        _df.to_csv(out_prefix + "-boruta-important.txt", index=False, sep="\t")
+        no_features_selected(out_prefix)
     else:
         df_boruta.to_csv(out_prefix + "-boruta-important.txt", index=False,
                          sep="\t")
@@ -403,6 +446,6 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
     _build_result_pdf(out_file, out_prefix, plot_list, plot_file_name_list)
 
 
-main(df_input=df_input, out_file=pdf_report, random_effect=random_effect,
+main(df_input=df_input, out_file=out_file, random_effect=random_effect,
      sample_id=sample_id, response_var=response_var, join_flag=join_flag)
 

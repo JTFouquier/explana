@@ -87,15 +87,6 @@ filter_dataframe <- function(df, df_mod_list, df_complete_flag) {
 }
 
 
-fix_categorical_response_var <- function(df) {
-  if (class(df[[response_var]]) == "character") {
-    df[[response_var]] <- as.integer(as.factor(df[[response_var]]))
-  } else {
-  }
-  return(df)
-}
-
-
 main <- function(file_path_list, ds_param_dict_list) {
   if (length(file_path_list) != length(ds_param_dict_list)) {
     print(print(paste0("WORKFLOW WARNING: Dataset count does not equal
@@ -124,8 +115,6 @@ main <- function(file_path_list, ds_param_dict_list) {
     mutate(timepoint_explana = dense_rank(timepoint_original)) %>%
     select(-{{ timepoint_config }})
 
-  # if response var is categorical convert to int
-  df_complete <- fix_categorical_response_var(df_complete)
   write_tsv(df_complete, paste0(output_folder, "original.txt"))
 }
 

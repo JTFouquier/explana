@@ -67,14 +67,7 @@ diffs_for_all_vars_per_subject <- function(delta_df, vars, sid_df,
     new_value <- sid_df[[var]][sid_df$timepoint_w_ == time]
     old_value <- sid_df[[var]][sid_df$timepoint_w_ == rt]
     if (typeof(sid_df[[var]]) != "character") {
-      # if the response var is an integer and the differences are zero
-      # that means that it is a categorical var that we don't want to
-      # convert (we want to find differences in classes)
-      if (var == response_var && new_value == old_value) {
-        delta_df[[var]][delta_df$sid_delta == comparison] <- new_value
-        delta_df[[paste0(var,
-        "_reference")]][delta_df$sid_delta == comparison] <- old_value
-      } else if (reference_time == "pairwise" && absolute_values == "yes") {
+      if (reference_time == "pairwise" && absolute_values == "yes") {
         # TODO convert to abs values at end? reduce computational time
         delta_df[[var]][delta_df$sid_delta == comparison] <-
         abs(new_value - old_value)
@@ -87,7 +80,7 @@ diffs_for_all_vars_per_subject <- function(delta_df, vars, sid_df,
         "_reference")]][delta_df$sid_delta == comparison] <- old_value
       }
     }
-    if (typeof(sid_df[[var]]) == "character" || var == "timepoint_w_") {
+    if (typeof(sid_df[[var]]) == "character" || var == "timepoint_w_" || var == sample_id) {
       delta_df[[var]][delta_df$sid_delta == comparison] <-
         paste0(old_value, "__", new_value)
       delta_df[[paste0(var,
@@ -196,8 +189,14 @@ main <- function() {
 
   df$timepoint_w_ <- factor(df$timepoint_w_, ordered = TRUE)
   df$sid_delta <- NULL
+  df[[sample_id]] <- as.character(df[[sample_id]])
   # get all variables/features, except ones used for script
   vars <- colnames(df %>% select(!study_id_w_))
+  # vars <- colnames(df)
+  # print(vars)
+  # vars <- vars[!names(vars) %in% list("study_id_w", "timepoint_original",sample_id)]
+  # print(vars)
+
   times <- unique(df$timepoint_w_)
 
   delta_df <- data.frame(sid_delta = character())
