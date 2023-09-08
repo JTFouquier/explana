@@ -9,12 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import sys
 import re
-import math
-import yaml
-from sklearn.inspection import plot_partial_dependence
 
 from merf.merf import MERF
-from merf.viz import plot_merf_training_stats
 from BorutaShap import BorutaShap
 # from boruta_shap_mine import BorutaShap
 from sklearn.ensemble import RandomForestRegressor
@@ -58,6 +54,7 @@ enc_percent_threshold = float(snakemake.config["enc_percent_threshold"])
 random_effect = snakemake.params["random_effect"]
 sample_id = snakemake.params["sample_id"]
 response_var = snakemake.params["response_var"]
+include_time = str.lower(snakemake.params["include_time"])
 
 n_estimators = int(snakemake.params["n_estimators"])
 max_features = float(snakemake.params["max_features"])
@@ -114,13 +111,13 @@ def fail_analysis(out_file, out_prefix):
 def percent_var_statement(step, oob):
     if step == "full_forest":
         # if first percent var explained is less than 5% then terminate
+        print("\n% Variation Explained:")
         if float(oob) < 5.0:
-            print("\nOut-of-bag (OOB) score (% variation explained): " + oob + "% \n\nAnalysis failed due to low percent variation explained")
+            print("Out-of-bag (OOB) score: " + oob + "% \n\n*** Analysis failed due to low percent variation explained")
             fail_analysis(out_file, out_prefix)
             return
             
-        print("\nOut-of-bag (OOB) score (% variation explained): " + oob + "%")
-
+        print("Out-of-bag (OOB) score: " + oob + "%")
 
     if step == "shap_rerun":
         print("Out-of-bag (OOB) score (% variation explained) excluding Boruta rejected features only for visualization/interpretation): " 
@@ -128,16 +125,17 @@ def percent_var_statement(step, oob):
 
 
 def dummy_var_creation(categorical_list, df, join_flag):
-    # TODO SUBSET FLAG
-    for orig_name in categorical_list:
-        subset_df = df[[orig_name]]
-        encoded_name = "ENC_" + orig_name + "_is"
-        dum_df = pd.get_dummies(subset_df, columns=[orig_name],
+    print("\nBinary encoded columns created for categorical input variables:")
+    for cat_var in categorical_list:
+        subset_df = df[[cat_var]]
+        encoded_name = "ENC_" + cat_var + "_is"
+        dum_df = pd.get_dummies(subset_df, columns=[cat_var],
                                 prefix=[encoded_name])
+        print("-> " + cat_var + ": " + 
+              str(dum_df.columns.to_list()))
         # Keep adding encoded vars to df before returning
         if join_flag:
             df = df.join(dum_df)
-
     if join_flag:
         return df
 
@@ -159,61 +157,66 @@ def setup_df_do_encoding(df, random_effect, response_var, join_flag,
     categoric_columns = [i for i in list(df.columns) if
                          i not in numeric_column_list]
 
-    do_not_encode = [random_effect, sample_id, response_var]
+    if include_time == "yes":
+        do_not_encode = [random_effect, sample_id, response_var]
+    if include_time == "no":
+        do_not_encode = [random_effect, sample_id, response_var, "timepoint_explana"]
 
     print("\nN (" + random_effect + "): ", str(df[random_effect].nunique()))
-    print("\nInput features before encoding: ", df.shape[1])
 
     # encode variables to improve looking at specific values
     vars_to_encode = [i for i in categoric_columns if i not in do_not_encode]
-    df_dummy = dummy_var_creation(vars_to_encode, df, join_flag)
-    print("Input features after encoding: ", df_dummy.shape[1])
+    df = dummy_var_creation(vars_to_encode, df, join_flag)
 
     # if response var is categoric convert to integers
-    if df_dummy[response_var].dtype == 'object':
+    if df[response_var].dtype == 'object':
 
-        df_dummy = df_dummy.sort_values(by=response_var)
+        df = df.sort_values(by=response_var)
 
         # remove vars before encoding, random effect, response, sample ID
-        df_dummy[response_var], u_maps = pd.factorize(df_dummy[response_var])
+        df[response_var], u_maps = pd.factorize(df[response_var])
 
-        print("Numeric mapping for categoric response variable (sorted alphabetically and factorized):")
+        print("\nNumeric mapping was created for categoric response" +
+              "variable," +  str(response_var) + ", (sorted alphabetically and factorized):")
         for i, category in enumerate(u_maps):
-            print(f"{category} was converted to {i}")
+            print(f"-> {category} was converted to {i}")
 
-    df_encoded = df_dummy.drop(do_not_encode + vars_to_encode + ["timepoint_original"], axis=1)
+        print("\n*** Percent variation explained is not optimal for categorical response variables. \n*** Use caution with interpretation.\n")
 
+    if include_time == "yes":
+        df_encoded = df.drop(do_not_encode + vars_to_encode + ["timepoint_original"], axis=1)
+    
+    if include_time == "no":
+        df_encoded = df.drop(do_not_encode + vars_to_encode + ["timepoint_original", "timepoint_explana"], axis=1)
 
-    def remove_low_percentage_encoded_vars(df_encoded, percent):
+    def remove_low_percentage_encoded_vars(df, percent):
         # TODO make function for removing columns
         # yes/1 counts per column; drop columns in 
-        df_complete = df_encoded
-        non_encoded_cols = [col for col in df_encoded.columns if not 'ENC_' in col]
-        df_categoric = df_encoded.drop(non_encoded_cols, axis=1)
+        non_encoded_cols = [col for col in df.columns if not 'ENC_' in col]
+        df_categoric = df.drop(non_encoded_cols, axis=1)
 
         value_counts = df_categoric.eq(1).sum()
         target_value = round(len(df_categoric)*(percent/100))
 
         # list of column names to drop from df
         columns_to_drop = list(value_counts[value_counts < target_value].index)
-        df = df_complete.drop(columns_to_drop, axis=1)
-        return(df)
+        df = df.drop(columns_to_drop, axis=1)
+        feature_list = df.columns.to_list()
+
+        return(feature_list)
+
 
     if enc_percent_threshold >= 0:
-        df_encoded = \
-        remove_low_percentage_encoded_vars(df_encoded=df_encoded, 
+        feature_list = \
+        remove_low_percentage_encoded_vars(df=df_encoded, 
                                            percent=enc_percent_threshold)
-        
-    print("Input features after dropping vars below " + 
-          str(enc_percent_threshold) + " percent: ", 
-          df_encoded.shape[1])
+    else:
+        feature_list = df.columns.to_list()
     
-    feature_list = [x for x in df_encoded.columns]
-
-    x = df_dummy[feature_list]  # Raw analysis and ALL (new, remove ref)
+    x = df[feature_list]  # Raw analysis and ALL (new, remove ref)
     z = np.ones((len(x), 1))
-    c = df_dummy[random_effect]
-    y = df_dummy[response_var]
+    c = df[random_effect]
+    y = df[response_var]
 
     df_features_in = pd.DataFrame(x.columns, columns=['input_features'])
 
@@ -439,8 +442,6 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
     print("Total input features: " + str(len(boruta_explainer.all_columns)))
     print("Accepted: " + str(len(boruta_explainer.accepted)))
     print("Tentative: " + str(len(boruta_explainer.tentative)))
-    print("Accepted and Tentative: " + str(len(boruta_explainer.accepted) +
-                                           len(boruta_explainer.tentative)))
     print("Rejected: " + str(len(boruta_explainer.rejected)))
     plt.close('all')
     _build_result_pdf(out_file, out_prefix, plot_list, plot_file_name_list)

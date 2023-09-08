@@ -198,6 +198,7 @@ rule random_forest:
         random_effect = config["random_effect"],
         sample_id = config["sample_id"],
         response_var = config["response_var"],
+        include_time = config["include_time"],
         max_features = config["max_features"],
         n_estimators = config["n_estimators"],
         iterations = config["iterations"],  # 20 suggested, 10 testing (MERF)

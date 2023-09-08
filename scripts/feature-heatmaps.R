@@ -21,13 +21,13 @@ base_path <- snakemake@config[["out"]]
 out_file <- snakemake@output[["out_file"]]
 
 
-add_average_shap_values <- function(df_all, ds_type){
+add_average_shap_values <- function(df, ds_type){
     # Encoded features are either yes or no (1 or 0); so the average
     # shap value tells how each binary feature impacted response
 
     input_features <- c()
     # only binary 1 important_feature values included in plot
-    enc_features <- df_all %>%
+    enc_features <- df %>%
         filter(dataset == ds_type) %>%
         filter(grepl("ENC_", important_features))
 
@@ -35,14 +35,15 @@ add_average_shap_values <- function(df_all, ds_type){
 
     # all input features
     ds_path <- paste0(snakemake@config[["out"]],
-    snakemake@config[[type_path]], str_to_lower(ds_type), "-input-model-df.txt")
+    snakemake@config[[type_path]], str_to_lower(ds_type), "-input-features.txt")
 
     if (file.exists(ds_path)) {
     } else {
-        return(list(df_all, input_features))
+        return(list(df, input_features))
     }
-    df_input <- as.data.frame(read_tsv(file = ds_path, show_col_types = FALSE))
-    input_features <- colnames(df_input)
+
+    input_features <-
+        read_tsv(file = ds_path, show_col_types = FALSE)$input_features
 
     # SHAP values dataframe
     ds_path <- paste0(snakemake@config[["out"]],
@@ -52,7 +53,7 @@ add_average_shap_values <- function(df_all, ds_type){
     # this will create blank columns in feature occurance plot
     if (file.exists(ds_path)) {
     } else {
-        return(list(df_all, input_features))
+        return(list(df, input_features))
     }
 
     df_shap <- as.data.frame(read_tsv(file = ds_path, show_col_types = FALSE))
@@ -71,14 +72,14 @@ add_average_shap_values <- function(df_all, ds_type){
 
         avg_shap <- round(mean(shap_instances[[i]]), digits = 2)
 
-        df_all <- df_all %>%
+        df <- df %>%
             mutate(shap_val = case_when(
                 important_features %in% c(i) & dataset == ds_type ~ avg_shap,
                 TRUE ~ shap_val
             ))
     }
 
-return(list(df_all, input_features))
+return(list(df, input_features))
 }
 
 
@@ -134,16 +135,16 @@ make_feature_heatmaps <- function(base_path) { # nolint
     # add shap values for encoded features
     df_join$shap_val <- 0
 
-    l <- add_average_shap_values(df_all = df_join, ds_type = "Original")
+    l <- add_average_shap_values(df = df_join, ds_type = "Original")
     df_join <- l[[1]]
     input_features_original <- l[[2]]
-    l <- add_average_shap_values(df_all = df_join, ds_type = "First")
+    l <- add_average_shap_values(df = df_join, ds_type = "First")
     df_join <- l[[1]]
     input_features_first <- l[[2]]
-    l <- add_average_shap_values(df_all = df_join, ds_type = "Previous")
+    l <- add_average_shap_values(df = df_join, ds_type = "Previous")
     df_join <- l[[1]]
     input_features_previous <- l[[2]]
-    l <- add_average_shap_values(df_all = df_join, ds_type = "Pairwise")
+    l <- add_average_shap_values(df = df_join, ds_type = "Pairwise")
     df_join <- l[[1]]
     input_features_pairwise <- l[[2]]
 
@@ -178,22 +179,19 @@ make_feature_heatmaps <- function(base_path) { # nolint
     write_tsv(df_join_long,
     paste0(base_path, "df_join_long.txt"))
 
-    f_score_analysis <- "yes"
-    if (f_score_analysis == "yes") {
-        all_selected_features <- df_join_long %>%
-            select(important_features, variable, value) %>%
-            filter(value == 1)
+    all_selected_features <- df_join_long %>%
+        select(important_features, variable, value) %>%
+        filter(value == 1)
 
-        write_tsv(all_selected_features, paste0(base_path,
-        "selected_features_for_Fscore.txt"))
+    write_tsv(all_selected_features, paste0(base_path,
+    "selected_features_for_Fscore.txt"))
 
-        # all input features for f-score analysis for testing
-        all_input_features <- unique(c(input_features_original,
-        input_features_first, input_features_previous, input_features_pairwise))
-        input_feature_df <- data.frame(input_features = all_input_features)
-        write_tsv(input_feature_df, paste0(base_path,
-        "input_features_for_Fscore.txt"))
-    }
+    # all input features for f-score analysis for testing
+    all_input_features <- unique(c(input_features_original,
+    input_features_first, input_features_previous, input_features_pairwise))
+    input_feature_df <- data.frame(input_features = all_input_features)
+    write_tsv(input_feature_df, paste0(base_path,
+    "input_features_for_Fscore.txt"))
 
 
     # dynamically change plot height based on selected feature number
