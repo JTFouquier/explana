@@ -11,38 +11,35 @@ library(compositions)
 require(microbiomeDASim)
 library(tidyverse)
 
-out_prefix <- "data/simulation/simulation"
+out_prefix <- "data/simulation/simulation-revert"
 
-# two cohorts (A and) 
-subjects_per_cohort <- 25 # 20 min for testing
+# two cohorts (A and)
+subjects_per_cohort <- 30 # 20 min for testing
 happiness_start <- 100 # 100 allows var to show
 
-n_features <- 30
-diff_abun_features <- 10
+n_features <- 15
+diff_abun_features <- 3
 
 std_dev_random_intercepts <- 7
 total_timepoints <- 5 # things might fail if changed
-
-therapy_1_effect <- 40
-therapy_2_effect <- 20
 
 # for initializing dataframe
 c_zeros <- rep(0, total_timepoints)
 c_char <- rep("", total_timepoints)
 
-green_blue_effect <- -20 # -20 works
+green_blue_effect <- -25 # -20 works
 
-cohort_a_effect <- -15
-cohort_b_effect <- 15
+unhealthy_effect <- -10
+healthy_effect <- 10
 
 income_high_effect <- 10
 income_low_effect <- -10
 
-sun_yes_effect <- 15
-sun_no_effect <- -15
+vacation_yes_effect <- 15
+vacation_no_effect <- -15
 
 s_p_effect <- 12
-p_s_effect <- -15
+p_s_effect <- -12
 
 my_sample <- function(x, plus_minus) {
   # get a random number plus or minus input value
@@ -61,10 +58,11 @@ make_microbiome_data <- function(subjects_per_cohort, n_features,
   df <-
       gen_norm_microbiome(features = n_features, diff_abun_features =
                           diff_abun_features, n_control = subjects_per_cohort,
-                          n_treat = subjects_per_cohort, control_mean =
-                          my_control_mean, sigma = 15, num_timepoints =  num_timepoints, t_interval = c(1,num_timepoints),
-                          rho = 0.7, corr_str = "ar1",func_form = "linear",
-                          beta = c(-30, my_slope),missing_pct = 0.0,
+                          n_treat = subjects_per_cohort,
+                          control_mean = my_control_mean, sigma = 15,num_timepoints = num_timepoints,
+                          t_interval = c(1, num_timepoints),
+                          rho = 0.7, corr_str = "ar1", func_form = "linear",
+                          beta = c(-30, my_slope), missing_pct = 0.0,
                           missing_per_subject = 0, miss_val = NA)
 
   df <- data.frame(t(df$Y))
@@ -136,21 +134,17 @@ get_random_intercepts <- function(df, study_id_modifier) {
 # Some are placeholders here, but modified later
 simulated_df_for_workflow <- function(
   happiness_original = c_zeros, cohort = c_char, cohort_effect = c_zeros,
-  timepoint = c(1, 2, 3, 4, 5), study_id = c_char, food_1 = c_zeros,
-  food_2 = c_zeros, food_1_effect = c_zeros, food_2_effect = c_zeros,relationship = c_char, relationship_s_p_effect = c_zeros,relationship_p_s_effect = c_zeros, therapy = c_char,
-  therapy_1_effect = c_zeros, therapy_2_effect = c_zeros,
-  therapy_change_effect = c_zeros, sun = c_char, medicine = c_char,
-  med_green_blue_effect = c_zeros,income = c_char, income_effect = c_zeros, happiness = c_zeros, total_subjects, study_id_modifier
-  ) {
+  timepoint = c(1, 2, 3, 4, 5), study_id = c_char, sunshine = c_zeros,
+  relaxation = c_zeros, sunshine_effect = c_zeros, relaxation_effect = c_zeros,relationship = c_char, relationship_s_p_effect = c_zeros,relationship_p_s_effect = c_zeros, therapy = c_char,
+  therapy_change_effect = c_zeros, vacation = c_char, medicine = c_char,
+  med_green_blue_effect = c_zeros,income = c_char, income_effect = c_zeros, happiness = c_zeros, total_subjects, study_id_modifier) {
 
   # Create data frame
   study_id <- paste0(1, study_id_modifier)
   study_id <- c(study_id, study_id, study_id, study_id, study_id)
-  df <- data.frame(happiness_original, timepoint, cohort, cohort_effect,study_id, food_1, food_2, food_1_effect, food_2_effect, relationship,
-                   relationship_s_p_effect, relationship_p_s_effect,
-                   therapy, therapy_change_effect, therapy_1_effect,
-                   therapy_2_effect, medicine, med_green_blue_effect, sun,
-                   income, income_effect, happiness)
+  df <- data.frame(happiness_original, timepoint, cohort, cohort_effect,study_id, sunshine, relaxation, sunshine_effect, relaxation_effect, relationship, relationship_s_p_effect, relationship_p_s_effect,
+  therapy, therapy_change_effect, medicine, med_green_blue_effect, vacation,
+  income, income_effect, happiness)
 
   num_columns <- length(colnames(df))
 
@@ -165,21 +159,19 @@ simulated_df_for_workflow <- function(
   subjects <- unique(df$study_id)
 
   df$sample_id <- paste0(df$study_id, ".", df$timepoint)
-  cohort_a_subjects <- subjects[1:(length(subjects) / 2)]
-  cohort_b_subjects <- subjects[!subjects %in% cohort_a_subjects]
+  unhealthy_subjects <- subjects[1:(length(subjects) / 2)]
+  healthy_subjects <- subjects[!subjects %in% unhealthy_subjects]
 
-  df_cohort_a <- base_dataframe(df, cohort_a_subjects, subjects, "cohort_a")
-  df_cohort_b <- base_dataframe(df, cohort_b_subjects, subjects, "cohort_b")
-  df <- rbind(df_cohort_a, df_cohort_b)
+  df_unhealthy <- base_dataframe(df, unhealthy_subjects, subjects, "unhealthy")
+  df_healthy <- base_dataframe(df, healthy_subjects, subjects, "healthy")
+  df <- rbind(df_unhealthy, df_healthy)
 
-  # add income and sun features
   df <- df %>%
     group_by(study_id) %>%
     mutate(income = sample(c("high", "low"), 1),
-           sun = sample(c("yes", "yes", "yes", "yes", "no", "no"), 1)) %>%
+           vacation = sample(c("yes", "yes", "yes", "yes", "no", "no"), 1)) %>%
     ungroup()
 
-  # add relationship and food_2 features
   df <- df %>%
     group_by(study_id) %>%
     rowwise() %>%
@@ -187,7 +179,7 @@ simulated_df_for_workflow <- function(
            timepoint %in% 3:5 ~ "p",
            timepoint %in% 1:2 ~ sample(c("p", "p", "p", "s", "s"), 1))
       ) %>%
-    mutate(food_2 = case_when(
+    mutate(relaxation = case_when(
            timepoint == 1 ~ 1,
            timepoint %in% 2:5 ~ 5)) %>%
     ungroup()
@@ -268,32 +260,28 @@ simulated_df_for_workflow <- function(
     }
 
     # ADD EFFECTS for:
-    # cohort, food_2, income
+    # cohort, relaxation, income
     df <- df %>%
       group_by(study_id) %>%
       group_by(timepoint) %>%
       rowwise() %>%
       mutate(cohort_effect = case_when(
-             cohort == "cohort_a" ~ cohort_a_effect,
-             cohort == "cohort_b" ~ cohort_b_effect),
+             cohort == "unhealthy" ~ unhealthy_effect,
+             cohort == "healthy" ~ healthy_effect),
 
-             sun_effect = case_when(
-             sun == "yes" ~ sun_yes_effect,
-             sun == "no" ~ sun_no_effect),
+             vacation_effect = case_when(
+             vacation == "yes" ~ vacation_yes_effect,
+             vacation == "no" ~ vacation_no_effect),
 
-             food_1 = case_when(
+             sunshine = case_when(
              timepoint == 1 ~ my_sample(10, 2),
              timepoint == 2 ~ my_sample(25, 2),
              timepoint == 3 ~ my_sample(40, 2),
              timepoint == 4 ~ my_sample(55, 2),
              timepoint == 5 ~ my_sample(70, 2)),
 
-             food_1_effect = food_1 * 0.01,
-
-             # TODO try to do this in only some people
-             food_2_effect = case_when(
-             timepoint == 2 ~ 12,
-             timepoint != 2 ~ 1),
+             sunshine_effect = sunshine * 0.01,
+             relaxation_effect = relaxation,
 
              income_effect = case_when(
              income == "high" ~ income_high_effect,
@@ -305,30 +293,24 @@ simulated_df_for_workflow <- function(
     filter(therapy == "therapy_1") %>%
     group_by(study_id) %>%
     rowwise() %>%
-    mutate(therapy_1_effect = case_when(
-           timepoint == 1 ~ 0,
-           timepoint != 1 ~ therapy_1_effect),
-           therapy_change_effect = case_when(
-           timepoint == 1 ~ my_sample(30, 3),
-           timepoint == 2 ~ my_sample(60, 3),
-           timepoint == 3 ~ my_sample(90, 3),
-           timepoint == 4 ~ my_sample(120, 3),
-           timepoint == 5 ~ my_sample(150, 3))) %>%
+    mutate(therapy_change_effect = case_when(
+           timepoint == 1 ~ my_sample(30, 2),
+           timepoint == 2 ~ my_sample(60, 2),
+           timepoint == 3 ~ my_sample(90, 2),
+           timepoint == 4 ~ my_sample(120, 2),
+           timepoint == 5 ~ my_sample(150, 2))) %>%
     ungroup()
 
   df_i2 <- df %>%
     filter(therapy == "therapy_2") %>%
     group_by(study_id) %>%
     rowwise() %>%
-    mutate(therapy_2_effect = case_when(
-           timepoint == 1 ~ 0,
-           timepoint != 1 ~ therapy_2_effect),
-           therapy_change_effect = case_when(
-           timepoint == 1 ~ my_sample(10, 4),
-           timepoint == 2 ~ my_sample(15, 4),
-           timepoint == 3 ~ my_sample(20, 4),
-           timepoint == 4 ~ my_sample(25, 4),
-           timepoint == 5 ~ my_sample(30, 4))) %>%
+    mutate(therapy_change_effect = case_when(
+           timepoint == 1 ~ my_sample(10, 2),
+           timepoint == 2 ~ my_sample(10, 2),
+           timepoint == 3 ~ my_sample(10, 2),
+           timepoint == 4 ~ my_sample(15, 2),
+           timepoint == 5 ~ my_sample(15, 2))) %>%
     ungroup()
 
   # merge both dataframes back together and sort
@@ -436,13 +418,13 @@ feature_count_list, n_dirichlet) {
 
 df_a <- simulated_df_for_workflow(happiness_original =
 rep(happiness_start, total_timepoints),
-cohort = rep("cohort_a", total_timepoints),
-total_subjects = subjects_per_cohort, study_id_modifier = "a")
+cohort = rep("unhealthy", total_timepoints),
+total_subjects = subjects_per_cohort, study_id_modifier = "unhealthy")
 
 df_b <- simulated_df_for_workflow(happiness_original =
 rep(happiness_start, total_timepoints),
-cohort = rep("cohort_b", total_timepoints),
-total_subjects = subjects_per_cohort, study_id_modifier = "b")
+cohort = rep("healthy", total_timepoints),
+total_subjects = subjects_per_cohort, study_id_modifier = "healthy")
 
 df <- rbind(df_a, df_b)
 
