@@ -275,7 +275,7 @@ rule render_report:
         # post_hoc = path_post_hoc + "post-hoc-analysis.html",
         # post_hoc_viz = path_post_hoc + "post-hoc-combined.pdf"
     output:
-        md_doc = out_dir + "EXPLANA-final-report.html",
+        md_doc = out_dir + "EXPLANA-report.html",
     conda: "conda_envs/r_env.yaml",
     script:
         "scripts/report.Rmd"

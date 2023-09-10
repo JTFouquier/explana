@@ -1,6 +1,6 @@
 ---
 title: "EXPLANA: Feature Selection Report"
-date: "`r Sys.Date()`"
+date: "Date: `r Sys.Date()`"
 output:
   html_document
 ---
@@ -68,9 +68,9 @@ pretty_table <- function(dataset_type, display_file) {
   }
 }
 
-url_tables <- function(df_in) {
+url_tables <- function(df_path) {
   setwd(snakemake@config[["out"]])
-  df <- read.csv(df_in, sep = "\t", check.names = FALSE)
+  df <- read.csv(df_path, sep = "\t", check.names = FALSE)
 
   if ("Failed Analysis" %in% colnames(df)) {
     cat("Analysis not completed")
@@ -120,7 +120,11 @@ if (enc_percent_threshold == "0") {
 
 }
 
-
+# SHAP figure text
+rmd_text <- c(
+  "**SHAP summary beeswarm plots of top selected features.** Plots show top features' influence on the machine learning prediction of a response variable. Each point represents one sample, and the horizontal position indicates impact on the response as indicated on the x-axis. Points to the left indicate a negative impact, and points to the right indicate a positive impact. The colors represent feature values, where red is larger and blue is smaller. For binary encoded features red is yes[1] and blue is no[0]. SHAP is an improvement upon other importance scores because it provides information about both rank (how helpful the feature was compared to other features [y-axis]) and impact (a positive or negative impact on response values [x-axis]). If multiple figures are shown, scales may vary. A maximum of ten features are shown per plot."
+)
+shap_description <- paste(rmd_text, collapse = "\n")
 ```
 
 #### Analyst: `r toString(snakemake@config[["analyst"]])`
@@ -135,7 +139,19 @@ if (enc_percent_threshold == "0") {
 
 ***
 
-### Inputs and Analytic Decisions {.tabset}
+### EXPLANA Overview
+
+EXPLANA assists with selecting which features, out of many input features, are related to a response variable. 
+
+For longitudinal datasets, changes in features for each study identifier, often subjects, are calculated using different reference points to obtain delta datasets (First, Previous and Pairwise delta datasets). This is important because features in longitudinal studies can carry varying degrees of importance between models built using different reference points. This workflow can automate feature selection from multiple longitudinal models.
+
+Please ensure you understand the workflow and that the percent variation explained (using out-of-bag (OOB) scores) is adequate for your purposes. 
+
+When you are using data without prior hypotheses, you are performing *exploratory analysis* and should make this clear.
+
+***
+
+### Analysis Description {.tabset}
 
 #### Analysis Summary
 
@@ -157,21 +173,9 @@ snakemake@config[["dataset_json"]] %>%
   prettify()
 ```
 
-#
-
 ***
 
-### Summary of Methods
-
-EXPLANA (EXploratory ANAlysis) Methods:
-
-EXPLANA assists with understanding the relationship between a response variable and original feature values. For longitudinal datasets, changes/deltas in feature values are automatically computed. Delta datasets (First, Previous and Pairwise delta datasets) are calculated using different reference points. This is important because features can carry varying degrees of importance between models built from different delta datasets. This workflow helps identify differences in feature relationships to a response variable by providing feature selection results from multiple models.
-
-Please ensure you understand the workflow and that the percent 
-variation explained (using out-of-bag/OOB scores) for each model is adequate for your purposes. When you are using all your data without prior hypotheses, you are performing *exploratory analysis* and should make this clear
-when discussing results.
-
-Analytic decisions:
+You are permitted to copy the following text verbatim for use in methods to ensure reproducibility. 
 
 EXPLANA was used for exploratory analysis to identify important features 
 predictive of the response variable, **``r response_var``**.
@@ -187,25 +191,27 @@ These methods were copy/pasted from an EXPLANA (version: ``r version``) feature 
 
 ### Directory Links
 
-[⇨ Full Analysis Directory](.){target="_blank"}
-
-[⇨ Original Dataset    |  ](./`r original_path`){target="_blank"}
-[⇨ First Delta Dataset    |  ](./`r first_path`){target="_blank"}
-[⇨ Previous Delta Dataset    |  ](./`r previous_path`){target="_blank"}
+[⇨ Full Analysis Directory | ](.){target="_blank"}
+[⇨ Original Dataset | ](./`r original_path`){target="_blank"}
+[⇨ First Delta Dataset | ](./`r first_path`){target="_blank"}
+[⇨ Previous Delta Dataset | ](./`r previous_path`){target="_blank"}
 [⇨ Pairwise Delta Dataset](./`r pairwise_path`){target="_blank"}
 
 ***
 
 ### Results Summary {.tabset}
 
-#### Selected Feature Occurences by Dataset
+#### Selected Features by Dataset
+```{r comment=""}
+pretty_table("", "summary-log-table.txt")
+```
 
 ```{r fig.align = "center"}
 setwd(snakemake@config[["out"]])
 include_graphics("important-feature-occurrences.svg")
 ```
 
-**Features selected as important from models built with Original and First, Previous and Pairwise delta datasets.** Average impact on response is displayed for positive instances of encoded variables. For numerical variables, the relationship to the response variable is more difficult to calculate, and indicated with "+/-". Grey boxes indicate features included in the model for each dataset. For comprehensive list of input features, see provided output. Random Forests can identify complex interactions and non-linear relationships. Post-hoc tests and further research is important.
+**Selected features from models built with Original and, for longitudinal analyses, First, Previous and Pairwise delta datasets.** Average impact on response is displayed for positive instances of encoded variables. For numerical variables, the relationship to the response variable is more complex to determine, and indicated with "+/-". Grey boxes indicate features included in the model for each dataset. For comprehensive list of input features, see provided output in sections below. Random Forests can identify complex interactions and non-linear relationships, therefore post-hoc tests and further research is important.
 
 #### Interpretation/Literature Search
 
@@ -219,43 +225,39 @@ url_tables("urls.txt")
 
 <h1 style="background-color:`r color_original`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">Original Dataset</h1>
 
+***
+
 [⇨ Open File Directory](./`r original_path`){target="_blank"}
 
 ## Results {.tabset}
 
-### Log and SHAP Summary
-
+### Model Summary
 ```{r comment=""}
-cat(readLines(snakemake@input[["original_log"]]), sep = "\n")
+pretty_table("original", "-log-df.txt")
 ```
 
+***
 
 ```{r results="asis", comment=""}
 plot_pattern_display(path_name = original_path, pattern = ".svg",
                      grep_arg = "SHAP-summary-beeswarm")
 ```
 
-### Selected Features
+```{r results='asis', echo=FALSE}
+cat(shap_description)
+```
 
+### Selected Features
 ```{r out.width = 1000, out.height = 600, comment=""}
 pretty_table("original", "-boruta-important.txt")
 ```
 
 ### Input Features
-
 ```{r out.width = 1000, out.height = 600, comment=""}
 pretty_table("original", "-input-features.txt")
 ```
 
-### BorutaSHAP
-
-```{r results="asis", comment=""}
-plot_pattern_display(path_name = original_path, pattern = ".svg",
-                     grep_arg = "boruta-accepted")
-```
-
 ### Figures
-
 [⇨ Open PDF in new window](./`r original_path`original.pdf){target="_blank"}
 
 ```{r out.width = 1000, out.height = 600, comment=""}
@@ -264,53 +266,54 @@ include_graphics(paste0(original_path, "original.pdf"))
 ```
 
 ### Interpretation/Literature Search
-
 ```{r}
 url_tables(paste0(original_path, "original-urls.txt"))
 ```
 
-#
+### Log
+```{r comment=""}
+cat(readLines(snakemake@input[["original_log"]]), sep = "\n")
+```
+
+##
 
 ***
 
 <h1 style="background-color:`r color_first`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">First Delta Dataset</h1>
 
+***
+
 [⇨ Open File Directory](./`r first_path`){target="_blank"}
 
 ## Results {.tabset}
 
-### Log and SHAP Summary
-
-```{r out.width = 1000, out.height = 600, comment=""}
-cat(readLines(snakemake@input[["first_log"]]), sep = "\n")
+### Model Summary
+```{r comment=""}
+pretty_table("first", "-log-df.txt")
 ```
+
+***
 
 ```{r results="asis", comment=""}
 plot_pattern_display(path_name = first_path, pattern = ".svg",
                      grep_arg = "SHAP-summary-beeswarm")
 ```
 
-### Selected Features
+```{r results='asis', echo=FALSE}
+cat(shap_description)
+```
 
+### Selected Features
 ```{r out.width = 1000, out.height = 600}
 pretty_table("first", "-boruta-important.txt")
 ```
 
 ### Input Features
-
 ```{r out.width = 1000, out.height = 600}
 pretty_table("first", "-input-features.txt")
 ```
 
-### BorutaSHAP
-
-```{r results="asis", comment=""}
-plot_pattern_display(path_name = first_path, pattern = ".svg",
-                     grep_arg = "boruta-accepted")
-```
-
 ### Figures
-
 [⇨ Open PDF in new window](./`r first_path`first.pdf){target="_blank"}
 
 ```{r out.width = 1100, out.height = 600, comment=""}
@@ -319,53 +322,54 @@ include_graphics(paste0(first_path, "first.pdf"))
 ```
 
 ### Interpretation/Literature Search
-
 ```{r}
 url_tables(paste0(first_path, "first-urls.txt"))
 ```
 
-#
+### Log
+```{r comment=""}
+cat(readLines(snakemake@input[["first_log"]]), sep = "\n")
+```
+
+##
 
 ***
 
 <h1 style="background-color:`r color_previous`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">Previous Delta Dataset</h1>
 
+***
+
 [⇨ Open File Directory](./`r previous_path`){target="_blank"}
 
 ## Results {.tabset}
 
-### Log and SHAP Summary
-
-```{r out.width = 1100, out.height = 600, comment=""}
-cat(readLines(snakemake@input[["previous_log"]]), sep = "\n")
+### Model Summary
+```{r comment=""}
+pretty_table("previous", "-log-df.txt")
 ```
+
+***
 
 ```{r results="asis", comment=""}
 plot_pattern_display(path_name = previous_path, pattern = ".svg",
                      grep_arg = "SHAP-summary-beeswarm")
 ```
 
-### Selected Features
+```{r results='asis', echo=FALSE}
+cat(shap_description)
+```
 
+### Selected Features
 ```{r out.width = 1000, out.height = 600, comment=""}
 pretty_table("previous", "-boruta-important.txt")
 ```
 
 ### Input Features
-
 ```{r out.width = 1000, out.height = 600, comment=""}
 pretty_table("previous", "-input-features.txt")
 ```
 
-### BorutaSHAP
-
-```{r results="asis", comment=""}
-plot_pattern_display(path_name = previous_path, pattern = ".svg",
-                     grep_arg = "boruta-accepted")
-```
-
 ### Figures
-
 [⇨ Open PDF in new window](./`r previous_path`previous.pdf){target="_blank"}
 
 ```{r out.width = 1000, out.height = 600, comment=""}
@@ -379,47 +383,50 @@ include_graphics(paste0(previous_path, "previous.pdf"))
 url_tables(paste0(previous_path, "previous-urls.txt"))
 ```
 
-#
+### Log
+```{r comment=""}
+cat(readLines(snakemake@input[["previous_log"]]), sep = "\n")
+```
+
+##
+
 ***
 
 <h1 style="background-color:`r color_pairwise`; color: black; text-align: center; padding-top:20px; padding-bottom: 20px; padding-left: 20px;">Pairwise Delta Dataset</h1>
+
+***
 
 [⇨ Open File Directory](./`r pairwise_path`){target="_blank"}
 
 ## Results {.tabset}
 
-### Log and SHAP Summary
-
-```{r out.width = 1000, out.height = 600, comment=""}
-cat(readLines(snakemake@input[["pairwise_log"]]), sep = "\n")
+### Model Summary
+```{r comment=""}
+pretty_table("pairwise", "-log-df.txt")
 ```
+
+---
 
 ```{r results="asis", comment=""}
 plot_pattern_display(path_name = pairwise_path, pattern = ".svg",
                      grep_arg = "SHAP-summary-beeswarm")
 ```
 
-### Selected Features
+```{r results='asis', echo=FALSE}
+cat(shap_description)
+```
 
+### Selected Features
 ```{r out.width = 1000, out.height = 600, comment=""}
 pretty_table("pairwise", "-boruta-important.txt")
 ```
 
 ### Input Features
-
 ```{r out.width = 1000, out.height = 600, comment=""}
 pretty_table("pairwise", "-input-features.txt")
 ```
 
-### BorutaSHAP
-
-```{r results="asis", comment=""}
-plot_pattern_display(path_name = pairwise_path, pattern = ".svg",
-                     grep_arg = "boruta-accepted")
-```
-
 ### Figures
-
 [⇨ Open PDF in new window](./`r pairwise_path`pairwise.pdf){target="_blank"}
 
 ```{r out.width = 1000, out.height = 600, comment=""}
@@ -428,16 +435,16 @@ include_graphics(paste0(pairwise_path, "pairwise.pdf"))
 ```
 
 ### Interpretation/Literature Search
-
 ```{r}
 url_tables(paste0(pairwise_path, "pairwise-urls.txt"))
 ```
 
-#
+### Log
+```{r comment=""}
+cat(readLines(snakemake@input[["pairwise_log"]]), sep = "\n")
+```
 
-***
-
-#
+##
 
 ***
 
@@ -450,3 +457,4 @@ See the [Github repository](https://github.com/JTFouquier/snakemake-MERF "Still 
 # df = read.csv(snakemake@input[["table_boruta"]], sep = "\t")
 # knitr::kable(df$important_features, format = "html")
 ```
+

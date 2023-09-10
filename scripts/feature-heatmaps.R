@@ -21,42 +21,38 @@ base_path <- snakemake@config[["out"]]
 out_file <- snakemake@output[["out_file"]]
 
 
-add_average_shap_values <- function(df, ds_type){
+add_average_shap_values <- function(df, ds){
     # Encoded features are either yes or no (1 or 0); so the average
     # shap value tells how each binary feature impacted response
 
     input_features <- c()
     # only binary 1 important_feature values included in plot
     enc_features <- df %>%
-        filter(dataset == ds_type) %>%
+        filter(dataset == ds) %>%
         filter(grepl("ENC_", important_features))
 
-    type_path <- paste0("path_", str_to_lower(ds_type))
+    type_path <- paste0("path_", str_to_lower(ds))
 
     # all input features
-    ds_path <- paste0(snakemake@config[["out"]],
-    snakemake@config[[type_path]], str_to_lower(ds_type), "-input-features.txt")
+    path_prefix <- paste0(snakemake@config[["out"]],
+    snakemake@config[[type_path]], str_to_lower(ds))
 
-    if (file.exists(ds_path)) {
+    fp <- paste0(path_prefix, "-input-model-df.txt")
+    if (file.exists(fp)) {
     } else {
         return(list(df, input_features))
     }
+    df_input <- read_tsv(file = fp, show_col_types = FALSE)
+    input_features <- input_features <- colnames(df_input)
 
-    input_features <-
-        read_tsv(file = ds_path, show_col_types = FALSE)$input_features
-
-    # SHAP values dataframe
-    ds_path <- paste0(snakemake@config[["out"]],
-    snakemake@config[[type_path]], str_to_lower(ds_type), "-SHAP-values-df.txt")
-
+    fp <- paste0(path_prefix, "-SHAP-values-df.txt")
     # continue if the model/dataset was run, or return if not
     # this will create blank columns in feature occurance plot
-    if (file.exists(ds_path)) {
+    if (file.exists(fp)) {
     } else {
         return(list(df, input_features))
     }
-
-    df_shap <- as.data.frame(read_tsv(file = ds_path, show_col_types = FALSE))
+    df_shap <- as.data.frame(read_tsv(file = fp, show_col_types = FALSE))
 
     # iterate through all binary encoded features
     for (i in enc_features$important_features){
@@ -74,7 +70,7 @@ add_average_shap_values <- function(df, ds_type){
 
         df <- df %>%
             mutate(shap_val = case_when(
-                important_features %in% c(i) & dataset == ds_type ~ avg_shap,
+                important_features %in% c(i) & dataset == ds ~ avg_shap,
                 TRUE ~ shap_val
             ))
     }
@@ -83,14 +79,40 @@ return(list(df, input_features))
 }
 
 
-make_feature_heatmaps <- function(base_path) { # nolint
+make_summary_log_dataframe <- function() {
+    load_log_df <- function(ds) {
+        type_path <- paste0("path_", str_to_lower(ds))
+        path_prefix <- paste0(snakemake@config[["out"]],
+        snakemake@config[[type_path]], str_to_lower(ds))
+
+        fp <- paste0(path_prefix, "-log-df.txt")
+        df <- as.data.frame(read_tsv(file = fp))
+        return(df)
+    }
+
+    df_original <- load_log_df("Original")
+    df_first <- load_log_df("First")
+    df_previous <- load_log_df("Previous")
+    df_pairwise <- load_log_df("Pairwise")
+
+    df_list <- list(df_original, df_first, df_previous, df_pairwise)
+    df <- Reduce(function(x, y) merge(x, y, all = TRUE), df_list)
+
+    write_tsv(df, paste0(base_path, "summary-log-table.txt"))
+
+}
+
+
+main <- function(base_path) { # nolint
 
     color_original <- "black"
     color_first <- "black"
     color_previous <- "black"
     color_pairwise <- "black"
 
-    import_ds_for_summary <- function(ds_path, ds_type) {
+    make_summary_log_dataframe()
+
+    import_ds_for_summary <- function(ds_path, ds) {
         df <- as.data.frame(read_tsv(file = ds_path, show_col_types = FALSE))
         if ("Failed Analysis" %in% colnames(df)) {
             df <- data.frame(
@@ -103,12 +125,10 @@ make_feature_heatmaps <- function(base_path) { # nolint
         max_rank <- length(df$feature_importance_vals)
         df$ranked_importance <- max_rank + 1 - rank(df$feature_importance_vals)
 
-        df[[ds_type]] <- 1
+        df[[ds]] <- 1
         return(df)
     }
 
-    # TODO needs to fail gracefully when model was not run
-    # as in cross-sectional studies; there would only be 'Original'
     df_original <- import_ds_for_summary(selected_features_original, "Original")
     df_first <- import_ds_for_summary(selected_features_first, "First")
     df_previous <- import_ds_for_summary(selected_features_previous, "Previous")
@@ -135,16 +155,16 @@ make_feature_heatmaps <- function(base_path) { # nolint
     # add shap values for encoded features
     df_join$shap_val <- 0
 
-    l <- add_average_shap_values(df = df_join, ds_type = "Original")
+    l <- add_average_shap_values(df = df_join, ds = "Original")
     df_join <- l[[1]]
     input_features_original <- l[[2]]
-    l <- add_average_shap_values(df = df_join, ds_type = "First")
+    l <- add_average_shap_values(df = df_join, ds = "First")
     df_join <- l[[1]]
     input_features_first <- l[[2]]
-    l <- add_average_shap_values(df = df_join, ds_type = "Previous")
+    l <- add_average_shap_values(df = df_join, ds = "Previous")
     df_join <- l[[1]]
     input_features_previous <- l[[2]]
-    l <- add_average_shap_values(df = df_join, ds_type = "Pairwise")
+    l <- add_average_shap_values(df = df_join, ds = "Pairwise")
     df_join <- l[[1]]
     input_features_pairwise <- l[[2]]
 
@@ -193,17 +213,14 @@ make_feature_heatmaps <- function(base_path) { # nolint
     write_tsv(input_feature_df, paste0(base_path,
     "input_features_for_Fscore.txt"))
 
-
     # dynamically change plot height based on selected feature number
     decoded_feature_facets <- length(unique((df_join$important_features)))
-
     if (decoded_feature_facets < 20) {
         height_ratio <- 12 / 40
     } else {
         height_ratio <- 10.8 / 40
     }
     height <- decoded_feature_facets * height_ratio
-
     if (height <= 4) {
         height <- 4
     }
@@ -247,4 +264,4 @@ make_feature_heatmaps <- function(base_path) { # nolint
     width = 8.5, height = height)
 }
 
-make_feature_heatmaps(base_path)
+main(base_path)
