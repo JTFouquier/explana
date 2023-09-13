@@ -2,7 +2,7 @@
 # colors for report
 # This is really messy and not sure what I plan to use or not.
 
-color_summary <- "#8dd3c7"
+color_summary <- "#9E9AC8"
 
 # dataset main colors
 # color_original <- "#f3f1ac"
@@ -14,6 +14,7 @@ color_summary <- "#8dd3c7"
 square_border <- "#f5f5f5"
 horizontal_lines <- "#f2f2f2"
 grid_color <- "#bfbfbf"
+
 
 
 # Links to qualitative color dataset from Color Brewer
@@ -52,47 +53,25 @@ grid_color <- "#bfbfbf"
 # .Set3 .q0-12{fill:rgb(141,211,199)} .Set3 .q1-12{fill:rgb(255,255,179)} .Set3 .q2-12{fill:rgb(190,186,218)} .Set3 .q3-12{fill:rgb(251,128,114)} .Set3 .q4-12{fill:rgb(128,177,211)} .Set3 .q5-12{fill:rgb(253,180,98)} .Set3 .q6-12{fill:rgb(179,222,105)} .Set3 .q7-12{fill:rgb(252,205,229)} .Set3 .q8-12{fill:rgb(217,217,217)} .Set3 .q9-12{fill:rgb(188,128,189)} .Set3 .q10-12{fill:rgb(204,235,197)} .Set3 .q11-12{fill:rgb(255,237,111)}
 
 
-#8dd3c7 teal
-#ffffb3 light yellow
-#bebada lavender
-#fb8072 red
-#80b1d3 blue
-#fdb462 orange
-#b3de69 chartreuse
-#fccde5 pink
-#d9d9d9 grey
-#bc80bd purple
-#ccebc5 mint
-#ffed6f dark yellow
+# library(RColorBrewer)
+# display.brewer.all()
+
+# # display.brewer.pal(n = 6, name = 'Purples')
+# display.brewer.pal(n = 6, name = 'PuRd')
+# display.brewer.pal(n = 6, name = 'PuBuGn')
+# display.brewer.pal(n = 10, name = 'BuPu')
+# display.brewer.pal(n = 8, name = 'BuPu')
+# brewer.pal(8, "BuPu")
+
+# display.brewer.pal(n = 10, name = 'BuPu')
+# display.brewer.pal(n = 5, name = 'BuGn')
+# brewer.pal(5, "BuGn")
 
 
-# color theme 1
-# color_original <- "#8dd3c7"
-# color_first <- "#fb8072"
-# color_previous <- "#bc80bd"
-# color_pairwise <- "#fdb462"
-
-
-# color theme 2
-# color_original <- "#8dd3c7"
-# color_previous <- "#fb8072"
-# color_first <- "#bc80bd"
-# color_pairwise <- "#80b1d3"
-
-# color theme 3
-color_original <- "#8dd3c7"
-color_first <- "#bc80bd"
-color_previous <- "#fdb462"
-color_pairwise <- "#80b1d3"
-
-
-# color theme grey
-# color_original <- "black"
-# color_first <- "black"
-# color_previous <- "black"
-# color_pairwise <- "black"
-
-
+color_original <- "#9EBCDA"
+color_first <- "#CBC9E2"
+color_previous <- "#9E9AC8"
+color_pairwise <- "#756BB1"
 
 
 

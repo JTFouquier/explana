@@ -196,9 +196,6 @@ main <- function(base_path) { # nolint
         filter(important_features != "Failed Analysis") %>%
         ungroup()
 
-    write_tsv(df_join_long,
-    paste0(base_path, "df_join_long.txt"))
-
     all_selected_features <- df_join_long %>%
         select(important_features, variable, value) %>%
         filter(value == 1)
@@ -225,10 +222,29 @@ main <- function(base_path) { # nolint
         height <- 4
     }
 
+    # long var names smoosh graph (esp. for taxonomy); truncate if needed
+    trunc_label_len <- 40  # must be even number
+
+    # do this for feature names
+    df_join_long$temp_label <- ifelse(nchar(df_join_long$important_features) <
+    trunc_label_len, df_join_long$important_features,
+    paste(substr(df_join_long$important_features, 1, trunc_label_len / 2),
+    "...", substr(df_join_long$important_features,
+    nchar(df_join_long$important_features) - ((trunc_label_len / 2) - 1),
+    nchar(df_join_long$important_features))))
+
+    # and for decoded feature names
+    df_join_long$temp_label_decoded <- ifelse(nchar(df_join_long$decoded_features) <
+    trunc_label_len, df_join_long$decoded_features,
+    paste(substr(df_join_long$decoded_features, 1, trunc_label_len / 2),
+    "...", substr(df_join_long$decoded_features,
+    nchar(df_join_long$decoded_features) - ((trunc_label_len / 2) - 1),
+    nchar(df_join_long$decoded_features))))
+
     ggplot(df_join_long, aes(x = factor(variable, level = c("Original",
     "First", "Previous", "Pairwise")),
-    y = important_features, alpha = value,
-    fill = variable, color = important_features, label = figure_labels)) +
+    y = temp_label, alpha = value,
+    fill = variable, color = temp_label, label = figure_labels)) +
 
     # labels showing included features in each model
     geom_label(label.padding = unit(0.25, "lines"),
@@ -258,10 +274,18 @@ main <- function(base_path) { # nolint
           axis.text.x = element_text(angle = 45, hjust = 0, size = 8,
           face = "bold"),
           axis.text.y = element_text(size = 8)) +
-    facet_grid(decoded_features ~ ., scales = "free_y", space = "free")
+    facet_grid(temp_label_decoded ~ ., scales = "free_y", space = "free")
 
     ggsave(filename = paste0(base_path, "important-feature-occurrences.svg"),
     width = 8.5, height = height)
+
+    # remove temporary truncated label names (for fig)
+    df_join_long$temp_label <- NULL
+    df_join_long$temp_label_decoded <- NULL
+
+    write_tsv(df_join_long,
+    paste0(base_path, "df_join_long.txt"))
+
 }
 
 main(base_path)
