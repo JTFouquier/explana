@@ -29,10 +29,7 @@ options(warn = -1)
 response_var <- snakemake@config[["response_var"]]
 random_effect <- snakemake@config[["random_effect"]]
 
-drop_cols <- snakemake@config[["drop_cols"]]
-drop_rows <- snakemake@config[["drop_rows"]]
-constrain_rows <- snakemake@config[["constrain_rows"]]
-constrain_cols <- snakemake@config[["constrain_cols"]]
+df_mod <- snakemake@config[["df_mod"]]
 
 iterations <- snakemake@config[["iterations"]]
 n_estimators <- snakemake@config[["n_estimators"]]
@@ -171,11 +168,11 @@ When you are using data without prior hypotheses, you are performing *explorator
 
 **Random effect:** ``r random_effect``
 
-**Features dropped:** ``r toString(drop_cols)``
+**Dataset Modifications:**
 
-**Values dropped (feature & value):** ``r toString(drop_rows)``
-
-**Constrained to rows:** ``r toString(constrain_rows)``
+```{r results='asis'}
+cat(df_mod)
+```
 
 ***
 
@@ -194,10 +191,11 @@ These methods were copy/pasted from an EXPLANA (version: ``r version``) feature 
 
 #### Input Datasets
 
-```{r comment=""} 
-snakemake@config[["dataset_json"]] %>%
+```{r comment=""}
+ds_print <- snakemake@config[["input_datasets"]] %>%
   toJSON %>%
   prettify()
+cat(ds_print)
 ```
 
 ### Directory Links
@@ -213,6 +211,7 @@ snakemake@config[["dataset_json"]] %>%
 ### Results Summary {.tabset}
 
 #### Selected Features by Dataset
+
 ```{r comment=""}
 pretty_table("", "summary-log-table.txt")
 ```
@@ -245,6 +244,7 @@ url_tables("urls.txt")
 ## {.tabset}
 
 ### Model Summary
+
 ```{r comment=""}
 pretty_table("original", "-log-df.txt")
 ```
@@ -261,16 +261,19 @@ shap_description(fig_flag)
 ```
 
 ### Selected Features
+
 ```{r out.width = 1000, out.height = 600, comment=""}
 pretty_table("original", "-boruta-important.txt")
 ```
 
 ### Input Features
+
 ```{r out.width = 1000, out.height = 600, comment=""}
 pretty_table("original", "-input-features.txt")
 ```
 
 ### Figures
+
 [⇨ Open PDF in new window](./`r original_path`original.pdf){target="_blank"}
 
 ```{r out.width = 1000, out.height = 600, comment=""}
@@ -279,11 +282,13 @@ include_graphics(paste0(original_path, "original.pdf"))
 ```
 
 ### Interpretation/Literature Search
+
 ```{r}
 url_tables(paste0(original_path, "original-urls.txt"))
 ```
 
 ### Log
+
 ```{r comment=""}
 cat(readLines(snakemake@input[["original_log"]]), sep = "\n")
 ```
@@ -301,6 +306,7 @@ cat(readLines(snakemake@input[["original_log"]]), sep = "\n")
 ## Results {.tabset}
 
 ### Model Summary
+
 ```{r comment=""}
 pretty_table("first", "-log-df.txt")
 ```
@@ -317,16 +323,19 @@ shap_description(fig_flag)
 ```
 
 ### Selected Features
+
 ```{r out.width = 1000, out.height = 600}
 pretty_table("first", "-boruta-important.txt")
 ```
 
 ### Input Features
+
 ```{r out.width = 1000, out.height = 600}
 pretty_table("first", "-input-features.txt")
 ```
 
 ### Figures
+
 [⇨ Open PDF in new window](./`r first_path`first.pdf){target="_blank"}
 
 ```{r out.width = 1100, out.height = 600, comment=""}
@@ -335,11 +344,13 @@ include_graphics(paste0(first_path, "first.pdf"))
 ```
 
 ### Interpretation/Literature Search
+
 ```{r}
 url_tables(paste0(first_path, "first-urls.txt"))
 ```
 
 ### Log
+
 ```{r comment=""}
 cat(readLines(snakemake@input[["first_log"]]), sep = "\n")
 ```
@@ -357,6 +368,7 @@ cat(readLines(snakemake@input[["first_log"]]), sep = "\n")
 ## {.tabset}
 
 ### Model Summary
+
 ```{r comment=""}
 pretty_table("previous", "-log-df.txt")
 ```
@@ -373,16 +385,19 @@ shap_description(fig_flag)
 ```
 
 ### Selected Features
+
 ```{r out.width = 1000, out.height = 600, comment=""}
 pretty_table("previous", "-boruta-important.txt")
 ```
 
 ### Input Features
+
 ```{r out.width = 1000, out.height = 600, comment=""}
 pretty_table("previous", "-input-features.txt")
 ```
 
 ### Figures
+
 [⇨ Open PDF in new window](./`r previous_path`previous.pdf){target="_blank"}
 
 ```{r out.width = 1000, out.height = 600, comment=""}
@@ -397,6 +412,7 @@ url_tables(paste0(previous_path, "previous-urls.txt"))
 ```
 
 ### Log
+
 ```{r comment=""}
 cat(readLines(snakemake@input[["previous_log"]]), sep = "\n")
 ```
@@ -414,11 +430,12 @@ cat(readLines(snakemake@input[["previous_log"]]), sep = "\n")
 ## {.tabset}
 
 ### Model Summary
+
 ```{r comment=""}
 pretty_table("pairwise", "-log-df.txt")
 ```
 
----
+***
 
 ```{r results="asis", comment=""}
 fig_flag = plot_pattern_display(path_name = pairwise_path, pattern = ".svg",
@@ -430,16 +447,19 @@ shap_description(fig_flag)
 ```
 
 ### Selected Features
+
 ```{r out.width = 1000, out.height = 600, comment=""}
 pretty_table("pairwise", "-boruta-important.txt")
 ```
 
 ### Input Features
+
 ```{r out.width = 1000, out.height = 600, comment=""}
 pretty_table("pairwise", "-input-features.txt")
 ```
 
 ### Figures
+
 [⇨ Open PDF in new window](./`r pairwise_path`pairwise.pdf){target="_blank"}
 
 ```{r out.width = 1000, out.height = 600, comment=""}
@@ -448,11 +468,13 @@ include_graphics(paste0(pairwise_path, "pairwise.pdf"))
 ```
 
 ### Interpretation/Literature Search
+
 ```{r}
 url_tables(paste0(pairwise_path, "pairwise-urls.txt"))
 ```
 
 ### Log
+
 ```{r comment=""}
 cat(readLines(snakemake@input[["pairwise_log"]]), sep = "\n")
 ```

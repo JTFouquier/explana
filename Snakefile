@@ -41,39 +41,38 @@ path_post_hoc = out_dir + config["path_post_hoc"]
 
 
 def dim_reduction():
-    dataset_json = json.loads(config["dataset_json"])
+    input_datasets = config["input_datasets"]
     file_path_list = []
     ds_param_dict_list = []
     pca_ds_list = []
     scnic_ds_list = []
 
-    for ds_name in dataset_json["datasets"]:
-        dim_method = dataset_json["datasets"][ds_name]["dim_method"]
-        ds_param_dict_list.append(dataset_json["datasets"][ds_name]
-        ["ds_param_dict"]["df_mod"])
-        if dim_method == "pca":
+    for ds_name in input_datasets:
+        dim_method = input_datasets[ds_name]["dim_method"]
+        ds_param_dict_list.append(input_datasets[ds_name]["df_mod"])
+        if dim_method == "pca" or dim_method == "PCA":
             f_out = path_dim_pca + ds_name + "/PCA-dim-reduction-" \
                                              "for-workflow.txt"
             pca_ds_list.append(ds_name)
 
-        elif dim_method == "scnic":
+        elif dim_method == "scnic" or dim_method == "SCNIC":
             f_out = path_dim_scnic + ds_name + \
                     "/SCNIC-dim-reduction-for-workflow.txt"
             scnic_ds_list.append(ds_name)
 
-        else:
-            f_out = dataset_json["datasets"][ds_name]["file_path"]
+        elif dim_method == "None":
+            f_out = input_datasets[ds_name]["file_path"]
 
         file_path_list.append(f_out)
 
     return file_path_list, ds_param_dict_list, \
            pca_ds_list, \
-           scnic_ds_list, dataset_json
+           scnic_ds_list, input_datasets
 
 config["file_path_list"], config["ds_param_dict_list"], \
 config["pca_ds_list"], \
-config["scnic_ds_list"], dataset_json = dim_reduction()
-config["dataset_json"] = dataset_json
+config["scnic_ds_list"], input_datasets = dim_reduction()
+config["input_datasets"] = input_datasets
 
 
 rule all:
@@ -85,27 +84,25 @@ rule all:
 
 
 def get_pca_in_file(wildcards):
-    in_file = dataset_json["datasets"][wildcards.pca_ds_name]["file_path"]
+    in_file = input_datasets[wildcards.pca_ds_name]["file_path"]
     return in_file
 
 
-def get_pca_groups_list(wildcards):
-    pca_groups_list = dataset_json["datasets"][wildcards.pca_ds_name]["dim_param_dict"]["pca_groups_list"]
-    return pca_groups_list
-
+def get_pca_list(wildcards):
+    pca_list = input_datasets[wildcards.pca_ds_name]["dim_param_dict"]["pca_list"]
+    return pca_list
 
 def get_scnic_in_file(wildcards):
-    in_file = dataset_json["datasets"][wildcards.scnic_ds_name]["file_path"]
+    in_file = input_datasets[wildcards.scnic_ds_name]["file_path"]
     return in_file
 
-
 def get_scnic_method(wildcards):
-    method = dataset_json["datasets"][wildcards.scnic_ds_name]["dim_param_dict"]["method"]
+    method = input_datasets[wildcards.scnic_ds_name]["dim_param_dict"]["method"]
     return method
 
 
 def get_scnic_min_r(wildcards):
-    min_r = dataset_json["datasets"][wildcards.scnic_ds_name]["dim_param_dict"]["min_r"]
+    min_r = input_datasets[wildcards.scnic_ds_name]["dim_param_dict"]["min_r"]
     return min_r
 
 
@@ -120,7 +117,7 @@ rule dim_reduction_pca:
     params:
         dataset_name = expand("{pca_ds_name}",
             pca_ds_name=config["pca_ds_list"]),
-        pca_groups_list = get_pca_groups_list,
+        pca_list = get_pca_list,
     conda: "conda_envs/r_env.yaml",
     script:
         "scripts/dim_reduction_pca.R"

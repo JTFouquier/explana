@@ -14,16 +14,21 @@ library(factoextra)
 library(MASS)
 library(dplyr)
 
-dataset_json <- snakemake@config[["dataset_json"]]
-in_file <- dataset_json[["datasets"]][[snakemake@params[["dataset_name"]]]][["file_path"]]
+# dataset_json <- snakemake@config[["dataset_json"]]
+# in_file <- dataset_json[["datasets"]][[snakemake@params[["dataset_name"]]]][["file_path"]]
+
+ds_name <- snakemake@params[["dataset_name"]]
+input_datasets <- snakemake@config[["input_datasets"]]
+in_file <- input_datasets[[ds_name]][["file_path"]]
 
 out_file <- snakemake@output[["out_file"]]
 sample_id <- snakemake@config[["sample_id"]]
 
 # Need to get the name of the user declared 'pca_groups_list' using method
 # from Snakefile, then get the actual data object from config file.
-pca_groups_list_name <- snakemake@params[["pca_groups_list"]]
-pca_groups_list <- snakemake@config[[pca_groups_list_name]]
+pca_list_name <- snakemake@params[["pca_list"]]
+pca_list <- pca_list_name
+# pca_groups_list <- snakemake@config[[pca_groups_list_name]]
 
 # TODO sort out good folder names and locations
 final_output_folder <- paste0(snakemake@config[["out"]],
@@ -51,13 +56,14 @@ check_for_directories <- function(folder_list) {
 }
 
 
-perform_pca <- function(pca_list, df, final_output_folder) {
+perform_pca <- function(pca_list, pca_name, df, final_output_folder) {
 
   # get items from each list describing how to perform pca
-  pca_name <- pca_list$pca_name
+  pca_list <- list(pca_list[pca_name][[1]])[[1]]
+
   output_folder <- paste0(final_output_folder, pca_name, "/")
-  feature_list <- pca_list$feature_list
-  cum_var_thres <- pca_list$cum_var_thres
+  feature_list <- eval(parse(text = pca_list$feature_list))
+  cum_var_thres <- eval(parse(text = pca_list$cum_var_thres))
 
   pca.df <- df %>% select(all_of(feature_list))
   # Scale PCA plot
@@ -149,13 +155,11 @@ perform_pca <- function(pca_list, df, final_output_folder) {
   return(df)
 }
 
-all_pca_lists <- pca_groups_list
-all_pca_lists <- eval(parse(text = all_pca_lists))
+all_pca_lists <- pca_list
 output_folder_list <- character()
 # create the folders first, so that time isn't wasted processing PCAs
-for (pca_info in all_pca_lists) {
-  # print(paste0("pca_info", pca_info))
-  output_folder_from_group <- paste0(final_output_folder, pca_info$pca_name)
+for (pca_name in names(all_pca_lists)) {
+  output_folder_from_group <- paste0(final_output_folder, pca_name)
   output_folder_list <- c(output_folder_list, output_folder_from_group)
 }
 
@@ -165,9 +169,10 @@ output_folder_list <- c(output_folder_list, final_output_folder)
 check_for_directories(output_folder_list)
 
 # TODO check for unique items
-for (pca_info in all_pca_lists) {
-  df <- perform_pca(pca_list = pca_info, df = df,
-                   final_output_folder = final_output_folder)
+for (pca_name in names(all_pca_lists)) {
+  df <- perform_pca(pca_list = all_pca_lists[pca_name],
+                    pca_name = pca_name, df = df,
+                    final_output_folder = final_output_folder)
 }
 
 # TODO write final file only after all pcs have been included loop
