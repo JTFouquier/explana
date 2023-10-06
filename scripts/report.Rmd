@@ -60,7 +60,9 @@ pretty_table <- function(dataset_type, display_file) {
       cat("")
     } else {
       kable(df, format = "html", escape = FALSE) %>%
-        kable_styling()
+        kable_styling(
+          font_size = 11
+        )
     }
   }
 }
@@ -266,6 +268,12 @@ shap_description(fig_flag)
 pretty_table("original", "-boruta-important.txt")
 ```
 
+### Feature Stats
+
+```{r out.width = 1000, out.height = 600, comment=""}
+pretty_table("original", "-feature-stats.txt")
+```
+
 ### Input Features
 
 ```{r out.width = 1000, out.height = 600, comment=""}
@@ -290,7 +298,8 @@ url_tables(paste0(original_path, "original-urls.txt"))
 ### Log
 
 ```{r comment=""}
-cat(readLines(snakemake@input[["original_log"]]), sep = "\n")
+setwd(snakemake@config[["out"]])
+cat(readLines(paste0(original_path, "original-log.txt")), sep = "\n")
 ```
 
 ##
@@ -328,6 +337,12 @@ shap_description(fig_flag)
 pretty_table("first", "-boruta-important.txt")
 ```
 
+### Feature Stats
+
+```{r out.width = 1000, out.height = 600, comment=""}
+pretty_table("first", "-feature-stats.txt")
+```
+
 ### Input Features
 
 ```{r out.width = 1000, out.height = 600}
@@ -352,7 +367,8 @@ url_tables(paste0(first_path, "first-urls.txt"))
 ### Log
 
 ```{r comment=""}
-cat(readLines(snakemake@input[["first_log"]]), sep = "\n")
+setwd(snakemake@config[["out"]])
+cat(readLines(paste0(first_path, "first-log.txt")), sep = "\n")
 ```
 
 ##
@@ -390,6 +406,12 @@ shap_description(fig_flag)
 pretty_table("previous", "-boruta-important.txt")
 ```
 
+### Feature Stats
+
+```{r out.width = 1000, out.height = 600, comment=""}
+pretty_table("previous", "-feature-stats.txt")
+```
+
 ### Input Features
 
 ```{r out.width = 1000, out.height = 600, comment=""}
@@ -414,7 +436,8 @@ url_tables(paste0(previous_path, "previous-urls.txt"))
 ### Log
 
 ```{r comment=""}
-cat(readLines(snakemake@input[["previous_log"]]), sep = "\n")
+setwd(snakemake@config[["out"]])
+cat(readLines(paste0(previous_path, "previous-log.txt")), sep = "\n")
 ```
 
 ##
@@ -452,6 +475,12 @@ shap_description(fig_flag)
 pretty_table("pairwise", "-boruta-important.txt")
 ```
 
+### Feature Stats
+
+```{r out.width = 1000, out.height = 600, comment=""}
+pretty_table("pairwise", "-feature-stats.txt")
+```
+
 ### Input Features
 
 ```{r out.width = 1000, out.height = 600, comment=""}
@@ -476,7 +505,8 @@ url_tables(paste0(pairwise_path, "pairwise-urls.txt"))
 ### Log
 
 ```{r comment=""}
-cat(readLines(snakemake@input[["pairwise_log"]]), sep = "\n")
+setwd(snakemake@config[["out"]])
+cat(readLines(paste0(pairwise_path, "pairwise-log.txt")), sep = "\n")
 ```
 
 ##

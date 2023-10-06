@@ -10,6 +10,7 @@ from snakemake import parse_config
 config["path_dim_pca"] = "01-DIM-PCA/"
 config["path_dim_scnic"] = "01-DIM-SCNIC/"
 
+# can simplifity this code
 config["path_original"] = "04-SELECTED-FEATURES-original/"
 config["path_first"] = "04-SELECTED-FEATURES-first/"
 config["path_previous"] = "04-SELECTED-FEATURES-previous/"
@@ -77,10 +78,7 @@ config["input_datasets"] = input_datasets
 
 rule all:
     input:
-        original = path_original + "original.pdf",
-        first = path_first + "first.pdf",
-        previous = path_previous + "previous.pdf",
-        pairwise = path_pairwise + "pairwise.pdf"
+        md_doc = out_dir + "EXPLANA-report.html"
 
 
 def get_pca_in_file(wildcards):
@@ -141,6 +139,7 @@ rule dim_reduction_scnic:
 
 
 # After doing dimensinoality reductions and filters on individual datasets
+# TODO handle biom tables; for now, must be 
 rule integrate_datasets:
     input:
         file_path_list = config["file_path_list"],
@@ -165,31 +164,20 @@ rule make_delta_datasets:
     params:
         reference_time = "{reference}",
         absolute_values = "no",
-        build_datatable = config["build_datatable"], # TODO have this be optional default true
+        build_datatable = config["build_datatable"],
         distance_matrices = config["distance_matrices"],
     conda: "conda_envs/r_env.yaml",
     script:
         "scripts/create_deltas.R"
 
 
-# Python in a complicated environment
-# MERF has extremely specific Python requirements that could pose problems
-# when combined with other software? Unsure.
-# TODO add 'previous' or 'first' and other options to log file/report
-# TODO prevent them from running pairwise from 'previous' file?
-# TODO fix underscores in names.
-#
-# Also, this whole thing is done a little strange with the variables in the
-# name of the output. Not sure how I want to handle this, but it was because
-# I wanted my file names to reflect the arguments
-
-
-# TODO check constrain, and wildcards (not a good use)
 rule random_forest:
     input:
         in_file = out_dir + "04-SELECTED-FEATURES-{reference}/{reference}.txt"
     output:
-        out_file = out_dir + "04-SELECTED-FEATURES-{reference}/{reference}.pdf"
+        out_file = out_dir + "04-SELECTED-FEATURES-{reference}/{reference}.pdf",
+        out_boruta = out_dir + \
+        "04-SELECTED-FEATURES-{reference}/{reference}-boruta-important.txt",
     params:
         dataset = "{reference}",
         random_effect = config["random_effect"],
@@ -198,7 +186,7 @@ rule random_forest:
         include_time = config["include_time"],
         max_features = config["max_features"],
         n_estimators = config["n_estimators"],
-        iterations = config["iterations"],  # 20 suggested, 10 testing (MERF)
+        iterations = config["iterations"],
         borutashap_threshold = config["borutashap_threshold"],
         borutashap_p = config["borutashap_p"],
         borutashap_trials = config["borutashap_trials"]
@@ -206,8 +194,7 @@ rule random_forest:
     script:
         "scripts/random_forest.py"
 
-# TODO see if I can create these files for deltas on original timepoint check
-# feature summaries
+
 rule final_steps_r:
     input:
         selected_features_original = path_original + "original-boruta-important.txt",
@@ -235,42 +222,15 @@ rule final_steps_python:
     script:
         "scripts/url_interpretation.py"
 
-# TODO program if statements here and make report reflect missing data
-# TODO consider if statements with all rule
-# TODO idea make four new render reports
-# TODO consider making some of these parameters
-# rule run_post_hoc_stats:
-#     input:
-#         deltas_first = path_first + "first.txt",
-#         deltas_previous = path_previous + "previous.txt",
-#         deltas_pairwise = path_pairwise + "pairwise.txt",
-#         df_original = path_original + "original.txt",
-#         fixed_effects_first = path_first + "first-boruta-important.txt",
-#         fixed_effects_previous = path_previous + "previous-boruta-important.txt",
-#         fixed_effects_pairwise = path_pairwise + "pairwise-boruta-important.txt",
-#         fixed_effects_original = path_original + "original-boruta-important.txt"
-#     output:
-#         out_file = path_post_hoc + "post-hoc-analysis.html"
-#     params:
-#         response_var = config["response_var"],
-#     conda: "conda_envs/r_env.yaml",
-#     script:
-#         "scripts/post_hoc_tests.R"
 
-# Only require log files because then report will always render
-# TODO add error reports to log file so people know entire 
-# algorithm did not work
-# TODO remove feature occurrances possibly
 rule render_report:
     input:
-        original_log = path_original + "original-log.txt",
-        first_log = path_first + "first-log.txt",
-        previous_log= path_previous + "previous-log.txt",
-        pairwise_log = path_pairwise + "pairwise-log.txt",
+        original_pdf = path_original + "original.pdf",
+        first_pdf = path_first + "first.pdf",
+        previous_pdf = path_previous + "previous.pdf",
+        pairwise_pdf = path_pairwise + "pairwise.pdf",
         feature_occurances = out_dir + "important-feature-occurrences.svg",
         urls = out_dir + "urls.txt",
-        # post_hoc = path_post_hoc + "post-hoc-analysis.html",
-        # post_hoc_viz = path_post_hoc + "post-hoc-combined.pdf"
     output:
         md_doc = out_dir + "EXPLANA-report.html",
     conda: "conda_envs/r_env.yaml",

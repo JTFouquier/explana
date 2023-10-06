@@ -31,11 +31,11 @@ add_average_shap_values <- function(df, ds){
         filter(dataset == ds) %>%
         filter(grepl("ENC_", important_features))
 
-    type_path <- paste0("path_", str_to_lower(ds))
+    type_path <- paste0("path_", stringr::str_to_lower(ds))
 
     # all input features
     path_prefix <- paste0(snakemake@config[["out"]],
-    snakemake@config[[type_path]], str_to_lower(ds))
+    snakemake@config[[type_path]], stringr::str_to_lower(ds))
 
     fp <- paste0(path_prefix, "-input-model-df.txt")
     if (file.exists(fp)) {
@@ -58,18 +58,18 @@ add_average_shap_values <- function(df, ds){
     for (i in enc_features$important_features){
 
         enc_instances <- df_input %>%
-            select({{i}}) %>%
-            mutate(original_index = row_number()) %>%
+            dplyr::select({{i}}) %>%
+            dplyr::mutate(original_index = dplyr::row_number()) %>%
             filter(.[[i]] == 1)
 
         shap_instances <- df_shap[enc_instances$original_index,]
         shap_instances <- shap_instances %>%
-            select(all_of({{i}}))
+            dplyr::select(dplyr::all_of({{i}}))
 
         avg_shap <- round(mean(shap_instances[[i]]), digits = 2)
 
         df <- df %>%
-            mutate(shap_val = case_when(
+            dplyr::mutate(shap_val = dplyr::case_when(
                 important_features %in% c(i) & dataset == ds ~ avg_shap,
                 TRUE ~ shap_val
             ))
@@ -81,9 +81,9 @@ return(list(df, input_features))
 
 make_summary_log_dataframe <- function() {
     load_log_df <- function(ds) {
-        type_path <- paste0("path_", str_to_lower(ds))
+        type_path <- paste0("path_", stringr::str_to_lower(ds))
         path_prefix <- paste0(snakemake@config[["out"]],
-        snakemake@config[[type_path]], str_to_lower(ds))
+        snakemake@config[[type_path]], stringr::str_to_lower(ds))
 
         fp <- paste0(path_prefix, "-log-df.txt")
         df <- as.data.frame(read_tsv(file = fp))
@@ -123,7 +123,8 @@ main <- function(base_path) { # nolint
         }
 
         max_rank <- length(df$feature_importance_vals)
-        df$ranked_importance <- max_rank + 1 - rank(df$feature_importance_vals)
+        df$ranked_importance <- max_rank + 1 - rank(df$feature_importance_vals,
+        ties.method = "first")
 
         df[[ds]] <- 1
         return(df)
@@ -169,14 +170,14 @@ main <- function(base_path) { # nolint
     input_features_pairwise <- l[[2]]
 
     # turn into long dataframe for use with feature map
-    df_join_long <- pivot_longer(df_join, cols = c("Original",
+    df_join_long <- tidyr::pivot_longer(df_join, cols = c("Original",
     "First", "Previous", "Pairwise"), names_to = "variable",
     values_to = "value")
 
     df_join_long <- df_join_long %>%
-        rowwise() %>%
-        mutate(figure_labels = case_when(
-            value == 1 & shap_val == 0 ~ paste0(toString(ranked_importance),
+        dplyr::rowwise() %>%
+        dplyr::mutate(figure_labels = dplyr::case_when(value == 1 &
+        shap_val == 0 ~ paste0(toString(ranked_importance),
             ": +\\-"),
             value == 1 ~ paste0(toString(ranked_importance), ": ",
             toString(shap_val)),
@@ -193,11 +194,17 @@ main <- function(base_path) { # nolint
             value == 0 & variable == "Pairwise"
             & important_features %in% input_features_pairwise ~ " "
         )) %>%
-        filter(important_features != "Failed Analysis") %>%
-        ungroup()
+        filter(important_features != "no_selected_features") %>%
+        dplyr::ungroup()
+
+    # get the total number of features selected by dataset for figure
+    original_n <- df_join_long %>% filter(dataset == "Original")
+    first_n <- df_join_long %>% filter(dataset == "First")
+    previous_n <- df_join_long %>% filter(dataset == "Previous")
+    pairwise_n <- df_join_long %>% filter(dataset == "Pairwise")
 
     all_selected_features <- df_join_long %>%
-        select(important_features, variable, value) %>%
+        dplyr::select(important_features, variable, value) %>%
         filter(value == 1)
 
     write_tsv(all_selected_features, paste0(base_path,
@@ -234,16 +241,32 @@ main <- function(base_path) { # nolint
     nchar(df_join_long$important_features))))
 
     # and for decoded feature names
-    df_join_long$temp_label_decoded <- ifelse(nchar(df_join_long$decoded_features) <
-    trunc_label_len, df_join_long$decoded_features,
+    df_join_long$temp_label_decoded <- ifelse(nchar(df_join_long$decoded_features) < trunc_label_len,
+    df_join_long$decoded_features,
     paste(substr(df_join_long$decoded_features, 1, trunc_label_len / 2),
     "...", substr(df_join_long$decoded_features,
     nchar(df_join_long$decoded_features) - ((trunc_label_len / 2) - 1),
     nchar(df_join_long$decoded_features))))
 
+    get_n <- function(df) {
+        n_string <- toString(max(df$ranked_importance))
+        if (n_string == "-Inf") {
+            n_string <- ""
+        } else {
+            n_string <- paste0("\n   N:", n_string)
+        }
+        return(n_string)
+    }
+
+    custom_labels <- c(
+    "Original" = paste0("Original", get_n(original_n)),
+    "First" = paste0("First", get_n(first_n)),
+    "Previous" = paste0("Previous:", get_n(previous_n)),
+    "Pairwise" = paste0("Pairwise", get_n(pairwise_n))
+    )
+
     ggplot(df_join_long, aes(x = factor(variable, level = c("Original",
-    "First", "Previous", "Pairwise")),
-    y = temp_label, alpha = value,
+    "First", "Previous", "Pairwise")), y = temp_label, alpha = value,
     fill = variable, color = temp_label, label = figure_labels)) +
 
     # labels showing included features in each model
@@ -263,7 +286,7 @@ main <- function(base_path) { # nolint
     labs(y = expression(atop("Important Features",
     atop("(Categorical variable values are encoded)"))),
     x = "Dataset") +
-    scale_x_discrete(position = "top") +
+    scale_x_discrete(position = "top", labels = custom_labels) +
     theme_bw() +
     theme(legend.position = "none",
           panel.grid.major = element_line(color = grid_color),

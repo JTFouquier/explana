@@ -34,10 +34,15 @@ check_duplicate_colnames <- function(df, df_file_name) {
 filter_dataframe <- function(df, df_mod_list, df_complete_flag) {
 
   # For complete/full/merged dataframe, get modification information from
-  # Config file. For individual datasets, get from json
+  # Config file. For individual datasets, get from yaml
   if (df_complete_flag == TRUE) {
+
+    # if no filtering intended on df, then df_mod might not be provided
     df_mod <- snakemake@config[["df_mod"]]
-    eval(parse(text = df_mod))
+    if (is.null(df_mod)) {
+    } else {
+      eval(parse(text = df_mod))
+    }
   } else if (df_complete_flag == FALSE) {
     eval(parse(text = df_mod_list))
   }
@@ -52,18 +57,22 @@ main <- function(file_path_list, ds_param_dict_list) {
     print(print(paste0("WORKFLOW WARNING: Dataset count does not equal
     dataset parameter dictionary count")))
   }
+  print(file_path_list)
   df_list <- list()
+  df_complete_flag <- TRUE  # before datasets are all integrated
   for (i in 1:length(file_path_list)) {
     # For each dataset, get the parameter dict (drop, constrain, etc)
     ds_param_dict <- ds_param_dict_list[[i]]
     df_mod_list <- ds_param_dict
     df_complete_flag <- FALSE
-    df <- as.data.frame(read_tsv(file_path_list[[i]]))
+    df <- as.data.frame(readr::read_tsv(file_path_list[[i]]))
     df <- filter_dataframe(df, df_mod_list, df_complete_flag)
     df_list <- append(df_list, list(df))
   }
   df_complete_flag <- TRUE
-  df_complete <- df_list %>% reduce(full_join, by = sample_id)
+  # TODO document this
+  # consider option to join by first dataset (most important?)
+  df_complete <- df_list %>% purrr::reduce(left_join, by = sample_id)
   df_complete <- filter_dataframe(df_complete, df_mod_list, df_complete_flag)
 
   # make sure the timepoint column is ranked (ordered)
@@ -86,4 +95,5 @@ if (build_datatable %in% c("TRUE", "True")) {
   input_file_name <- paste0(output_folder, "original.txt")
   output_file_name <- paste0(output_folder, "vizualizer-merged-dfs.html")
   build_datatable_viz(input_file_name, output_file_name)
+} else {
 }
