@@ -10,15 +10,15 @@ library("LaplacesDemon")
 library(compositions)
 require(microbiomeDASim)
 library(tidyverse)
-out_prefix <- "data/simulation/simulation-revert"
+out_prefix <- "data/simulation/simulation"
 
 # two cohorts (A and)
-subjects_per_cohort <- 30 # 20 min for testing
+subjects_per_cohort <- 50 # 20 min for testing
 happiness_start <- 100 # 100 allows var to show
 
 # simulated longitudinal microbiome using microbiomeDASim
-n_features <- 30
-diff_abun_features <- 5
+n_features <- 200
+diff_abun_features <- 25
 
 total_timepoints <- 5 # things might fail if changed
 
@@ -31,14 +31,14 @@ green_blue_effect <- -22 # -20 works
 unhealthy_effect <- -10
 healthy_effect <- 11
 
-income_high_effect <- 10
-income_low_effect <- -11
+salary_high_effect <- 10
+salary_low_effect <- -11
 
-vacation_yes_effect <- 10
-vacation_no_effect <- -11
+pet_dog_effect <- 15
+pet_fish_effect <- 5
 
-s_p_effect <- 7
-p_s_effect <- -13
+no_yes_effect <- 7
+yes_no_effect <- -13
 
 my_sample <- function(x, plus_minus) {
   # get a random number plus or minus input value
@@ -67,8 +67,10 @@ make_microbiome_data <- function(subjects_per_cohort, n_features,
 
   df <- data.frame(t(df$Y))
 
+  colnames(df) <- gsub("NoDiffBug_", "not_da_microbe", colnames(df))
+  colnames(df) <- gsub("Diff_Bug", "da_microbe", colnames(df))
   df <- df %>%
-    rownames_to_column(var = "Sample")
+    tibble::rownames_to_column(var = "Sample")
   write_tsv(df, paste0(out_prefix, "-microbiome-counts.txt"))
 
   # make compositional (sum to 1)
@@ -98,13 +100,13 @@ base_dataframe <- function(df, subjects_list, subjects, cohort) {
 
   df <- df %>%
     filter(study_id %in% subjects_list) %>%
-    mutate(cohort = cohort)
+    dplyr::mutate(cohort = cohort)
 
   subjects_half1 <- subjects[seq(1, length(subjects), 2)]
   subjects_half2 <- subjects[!(subjects %in% subjects_half1)]
 
   df <- df %>%
-    mutate(intervention = case_when(
+    dplyr::mutate(intervention = dplyr::case_when(
       study_id %in% subjects_half1 ~ "treated",
       study_id %in% subjects_half2 ~ "control"
     ))
@@ -128,17 +130,17 @@ add_random_effects_subjects <- function(df) {
                        sd = 5, r = 0.7, plot = FALSE)
 
   df_sim <- df_sim %>%
-    pivot_longer(cols = -c(id, intervention),
+    tidyr::pivot_longer(cols = -c(id, intervention),
     names_to = "timepoint", values_to = "intervention_change_effect") %>%
-    mutate(timepoint = as.integer(timepoint))
+    dplyr::mutate(timepoint = as.integer(timepoint))
 
   df_sim <- df_sim %>%
-    arrange(intervention) %>%
-    select(intervention_change_effect)
+    dplyr::arrange(intervention) %>%
+    dplyr::select(intervention_change_effect)
 
   df <- df %>%
-    arrange(desc(intervention)) %>%
-    select(!intervention_change_effect)
+    dplyr::arrange(desc(intervention)) %>%
+    dplyr::select(!intervention_change_effect)
 
   df["intervention_change_effect"] <- df_sim["intervention_change_effect"]
   return(df)
@@ -160,13 +162,13 @@ simulated_df_for_workflow <- function(cohort = c_char,
   df <- data.frame(happiness_original, cohort, cohort_effect = c_zeros,
                    timepoint = c(1, 2, 3, 4, 5), study_id, sunshine = c_zeros,
                    relaxation = c_zeros, sunshine_effect = c_zeros,
-                   relaxation_effect = c_zeros, relationship = c_char,
-                   relationship_s_p_effect = c_zeros,
-                   relationship_p_s_effect = c_zeros, intervention = c_char,
-                   intervention_change_effect = c_zeros, vacation = c_char,
-                   vacation_effect = c_zeros,
+                   relaxation_effect = c_zeros, bonus = c_char,
+                   bonus_no_yes_effect = c_zeros,
+                   bonus_yes_no_effect = c_zeros, intervention = c_char,
+                   intervention_change_effect = c_zeros, pet = c_char,
+                   pet_effect = c_zeros,
                    medicine = c_char, med_green_blue_effect = c_zeros,
-                   income = c_char, income_effect = c_zeros,
+                   salary = c_char, salary_effect = c_zeros,
                    happiness = c_zeros)
 
   num_columns <- length(colnames(df))
@@ -188,22 +190,22 @@ simulated_df_for_workflow <- function(cohort = c_char,
   df <- rbind(df_unhealthy, df_healthy)
 
   df <- df %>%
-    group_by(study_id) %>%
-    mutate(income = sample(c("high", "low"), 1),
-           vacation = sample(c("yes", "yes", "no"), 1)) %>%
-    ungroup()
+    dplyr::group_by(study_id) %>%
+    dplyr::mutate(salary = sample(c("high", "low"), 1),
+           pet = sample(c("dog", "dog", "fish"), 1)) %>%
+    dplyr::ungroup()
 
   df <- df %>%
-    group_by(study_id) %>%
-    rowwise() %>%
-    mutate(relationship = case_when(
-           timepoint %in% 3:5 ~ "p",
-           timepoint %in% 1:2 ~ sample(c("p", "p", "p", "s", "s"), 1))
+    dplyr::group_by(study_id) %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(bonus = dplyr::case_when(
+           timepoint %in% 3:5 ~ "no",
+           timepoint %in% 1:2 ~ sample(c("no", "no", "no", "yes", "yes"), 1))
       ) %>%
-    mutate(relaxation = case_when(
+    dplyr::mutate(relaxation = dplyr::case_when(
            timepoint == 1 ~ 2,
            timepoint %in% 2:5 ~ 12)) %>%
-    ungroup()
+    dplyr::ungroup()
 
   # affected means switched pill color; otherwise the same
   # split by factor x list_piece function
@@ -222,9 +224,9 @@ simulated_df_for_workflow <- function(cohort = c_char,
 
   # Medication
   df <- df %>%
-    group_by(study_id) %>%
-    rowwise() %>%
-    mutate(medicine = case_when(
+    dplyr::group_by(study_id) %>%
+    dplyr::rowwise() %>%
+    dplyr::mutate(medicine = dplyr::case_when(
       timepoint == 1 ~ "blue",
 
       study_id %in% med_affected_1 & timepoint %in% 2:3 ~ "blue",
@@ -259,42 +261,42 @@ simulated_df_for_workflow <- function(cohort = c_char,
         & df$study_id == i] <- my_sample(green_blue_effect, 2)
       }
 
-      # time 1_2 change in relationship
-      if ("s" %in% t1$relationship && "p" %in% t2$relationship) {
-        df$relationship_s_p_effect[df$timepoint == 2
-        & df$study_id == i] <- my_sample(s_p_effect, 1)
+      # time 1_2 change in bonus
+      if ("no" %in% t1$bonus && "yes" %in% t2$bonus) {
+        df$bonus_no_yes_effect[df$timepoint == 2
+        & df$study_id == i] <- my_sample(no_yes_effect, 1)
       }
-      if ("p" %in% t1$relationship && "s" %in% t2$relationship) {
-        df$relationship_p_s_effect[df$timepoint == 2
-        & df$study_id == i] <- my_sample(p_s_effect, 1)
+      if ("yes" %in% t1$bonus && "no" %in% t2$bonus) {
+        df$bonus_yes_no_effect[df$timepoint == 2
+        & df$study_id == i] <- my_sample(yes_no_effect, 1)
       }
 
-      # time 1_3 change in relationship
-      if ("s" %in% t2$relationship && "p" %in% t3$relationship) {
-        df$relationship_s_p_effect[df$timepoint == 3
-        & df$study_id == i] <- my_sample(s_p_effect, 1)
+      # time 1_3 change in bonus
+      if ("no" %in% t2$bonus && "yes" %in% t3$bonus) {
+        df$bonus_no_yes_effect[df$timepoint == 3
+        & df$study_id == i] <- my_sample(no_yes_effect, 1)
       }
-      if ("p" %in% t2$relationship && "s" %in% t3$relationship) {
-        df$relationship_p_s_effect[df$timepoint == 3
-        & df$study_id == i] <- my_sample(p_s_effect, 1)
+      if ("yes" %in% t2$bonus && "no" %in% t3$bonus) {
+        df$bonus_yes_no_effect[df$timepoint == 3
+        & df$study_id == i] <- my_sample(yes_no_effect, 1)
       }
     }
 
     # ADD EFFECTS for:
-    # cohort, relaxation, income
+    # cohort, relaxation, salary
     df <- df %>%
-      group_by(study_id) %>%
-      group_by(timepoint) %>%
-      rowwise() %>%
-      mutate(cohort_effect = case_when(
+      dplyr::group_by(study_id) %>%
+      dplyr::group_by(timepoint) %>%
+      dplyr::rowwise() %>%
+      dplyr::mutate(cohort_effect = dplyr::case_when(
              cohort == "unhealthy" ~ unhealthy_effect,
              cohort == "healthy" ~ healthy_effect),
 
-             vacation_effect = case_when(
-             vacation == "yes" ~ vacation_yes_effect,
-             vacation == "no" ~ vacation_no_effect),
+             pet_effect = dplyr::case_when(
+             pet == "dog" ~ pet_dog_effect,
+             pet == "fish" ~ pet_fish_effect),
 
-             sunshine = case_when(
+             sunshine = dplyr::case_when(
              timepoint == 1 ~ 10,
              timepoint == 2 ~ 25,
              timepoint == 3 ~ 40,
@@ -304,12 +306,12 @@ simulated_df_for_workflow <- function(cohort = c_char,
              sunshine_effect = sunshine * 0.1,
              relaxation_effect = relaxation,
 
-             income_effect = case_when(
-             income == "high" ~ income_high_effect,
-             income == "low" ~ income_low_effect)) %>%
-      ungroup()
+             salary_effect = dplyr::case_when(
+             salary == "high" ~ salary_high_effect,
+             salary == "low" ~ salary_low_effect)) %>%
+      dplyr::ungroup()
 
-  df <- df %>% arrange(study_id)
+  df <- df %>% dplyr::arrange(study_id)
 
   return(df)
   } # end add_effects function
@@ -423,7 +425,7 @@ df <- add_random_effects_subjects(df)
 
 # Include effect values in happiness/response
 df <- df %>%
-  mutate(happiness = happiness_original +
+  dplyr::mutate(happiness = happiness_original +
   rowSums(.[grep("_effect", names(.))]))
 
 write.table(df, paste0(out_prefix, "-effects.txt"),
@@ -451,5 +453,5 @@ write.table(df_microbes, paste0(out_prefix, "-microbiome.txt"),
 row.names = FALSE, sep = "\t")
 
 add_noisy_variables(df_microbes, "happiness", out_prefix,
-            feature_count_list = c(105, 405),  # feature n
-            n_dirichlet = 95)
+            feature_count_list = c(405),  # feature n
+            n_dirichlet = 94)
