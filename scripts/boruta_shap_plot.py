@@ -6,8 +6,8 @@ Adapted from:
 https://github.com/Ekeany/Boruta-Shap/blob/master/src/BorutaShap.py
 
 Modified by Jennifer Fouquier to remove plt.show() or plt.close() so I can
-save to PDF file report and customize figure titles for improved report.
-
+save to PDF file report and customize figure titles for improved report.Additional modifications include minor figure changes and dynamic changes
+of figure size to allow many features to fit on one bar plot. 
 
 """
 import matplotlib.pyplot as plt
@@ -51,14 +51,14 @@ def _make_box_plot(self, data, X_rotation, X_size, y_scale, figsize,
     # Use a color palette
     # dynamically change width of figure if there are many values
     total_x_vals = len(set(data["Methods"]))
-    allowed_x_per_width = 80
+    allowed_x_per_width = 70
     x_ratio = total_x_vals/allowed_x_per_width
     if x_ratio < 1:
         boruta_width = figsize[0]
     else:
         boruta_width = figsize[0]*x_ratio
-    figsize = (boruta_width, figsize[1])
-    plt.figure(figsize=figsize)
+    # figsize = (boruta_width, figsize[1])
+    # plt.figure(figsize=figsize)
     ax = sns.boxplot(x=data["Methods"], y=data["value"], order=order,
                      palette=my_palette)
 
@@ -71,13 +71,13 @@ def _make_box_plot(self, data, X_rotation, X_size, y_scale, figsize,
         new_label = new_label.replace("'", "")
 
     ax.set_title(which_features.capitalize() + " Features from BorutaShap",
-                 fontsize=12)
-    ax.set_ylabel('Z-Score', fontsize=10)
-    ax.set_xlabel('Features', fontsize=10)
+                 fontsize=8)
+    ax.set_ylabel('Z-Score', fontsize=7)
+    ax.set_xlabel('Features', fontsize=7)
     return boruta_width
 
 
-def _boruta_shap_plot(self, X_rotation=90, X_size=9, figsize=(13, 8),
+def _boruta_shap_plot(self, X_rotation=90, X_size=5, figsize=(11, 11),
                       y_scale='log', which_features='all'):
     """
     creates a boxplot of the feature importances
@@ -122,4 +122,3 @@ def _boruta_shap_plot(self, X_rotation=90, X_size=9, figsize=(13, 8),
                                   figsize=figsize,
                                   which_features=which_features)
     return boruta_width
-

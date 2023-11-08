@@ -21,7 +21,7 @@ base_path <- snakemake@config[["out"]]
 out_file <- snakemake@output[["out_file"]]
 
 
-add_average_shap_values <- function(df, ds){
+add_average_shap_values <- function(df, ds) {
     # Encoded features are either yes or no (1 or 0); so the average
     # shap value tells how each binary feature impacted response
 
@@ -62,7 +62,7 @@ add_average_shap_values <- function(df, ds){
             dplyr::mutate(original_index = dplyr::row_number()) %>%
             filter(.[[i]] == 1)
 
-        shap_instances <- df_shap[enc_instances$original_index,]
+        shap_instances <- df_shap[enc_instances$original_index, ]
         shap_instances <- shap_instances %>%
             dplyr::select(dplyr::all_of({{i}}))
 
@@ -174,6 +174,8 @@ main <- function(base_path) { # nolint
     "First", "Previous", "Pairwise"), names_to = "variable",
     values_to = "value")
 
+    print(df_join_long)
+
     df_join_long <- df_join_long %>%
         dplyr::rowwise() %>%
         dplyr::mutate(figure_labels = dplyr::case_when(value == 1 &
@@ -207,15 +209,16 @@ main <- function(base_path) { # nolint
         dplyr::select(important_features, variable, value) %>%
         filter(value == 1)
 
+
     write_tsv(all_selected_features, paste0(base_path,
-    "selected_features_for_Fscore.txt"))
+    "selected_features_for_fscore.txt"))
 
     # all input features for f-score analysis for testing
     all_input_features <- unique(c(input_features_original,
     input_features_first, input_features_previous, input_features_pairwise))
     input_feature_df <- data.frame(input_features = all_input_features)
     write_tsv(input_feature_df, paste0(base_path,
-    "input_features_for_Fscore.txt"))
+    "input_features_for_fscore.txt"))
 
     # dynamically change plot height based on selected feature number
     decoded_feature_facets <- length(unique((df_join$important_features)))
@@ -261,7 +264,7 @@ main <- function(base_path) { # nolint
     custom_labels <- c(
     "Original" = paste0("Original", get_n(original_n)),
     "First" = paste0("First", get_n(first_n)),
-    "Previous" = paste0("Previous:", get_n(previous_n)),
+    "Previous" = paste0("Previous", get_n(previous_n)),
     "Pairwise" = paste0("Pairwise", get_n(pairwise_n))
     )
 
@@ -293,14 +296,14 @@ main <- function(base_path) { # nolint
           panel.grid.major.x = element_line(color = horizontal_lines),
           panel.grid.major.y = element_blank(),
           panel.spacing = unit(0, "lines"),
-          strip.text.y = element_text(size = 8, angle = 0),
-          axis.text.x = element_text(angle = 45, hjust = 0, size = 8,
+          strip.text.y = element_text(size = 7, angle = 0),
+          axis.text.x = element_text(angle = 45, hjust = 0, size = 7,
           face = "bold"),
-          axis.text.y = element_text(size = 8)) +
+          axis.text.y = element_text(size = 7)) +
     facet_grid(temp_label_decoded ~ ., scales = "free_y", space = "free")
 
     ggsave(filename = paste0(base_path, "important-feature-occurrences.svg"),
-    width = 8.5, height = height)
+    width = 6.5, height = height)
 
     # remove temporary truncated label names (for fig)
     df_join_long$temp_label <- NULL

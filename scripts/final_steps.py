@@ -1,7 +1,6 @@
 import pandas as pd
 import re
 import urllib.parse
-import os
 
 feature_file = snakemake.input["feature_file"]
 response = snakemake.config["response_var"]
@@ -12,7 +11,7 @@ def perform_pubmed_search(search_terms):
     encoded_search_terms = urllib.parse.quote(search_terms)
     base_url = 'https://pubmed.ncbi.nlm.nih.gov/?term='
     url = base_url + encoded_search_terms
-    return(url)
+    return (url)
 
 
 def build_url_list(feature_file, out_file, compiled_flag):
@@ -22,7 +21,6 @@ def build_url_list(feature_file, out_file, compiled_flag):
         col_names = ["dataset", "important_features"]
     if not compiled_flag:
         col_names = ["important_features"]
-		
     try:
         df = pd.read_csv(feature_file, sep="\t", usecols=col_names)
     except:
@@ -40,15 +38,16 @@ def build_url_list(feature_file, out_file, compiled_flag):
             try:
                 feature_value_1 = re.split("__", feature_values)[0]
                 feature_value_2 = re.split("__", feature_values)[1]
-                url = perform_pubmed_search(feature_value_1 + " AND " + feature_value_2 + " AND " + feature + " AND " + response)
-
+                url = perform_pubmed_search(feature_value_1 + " AND " +
+                                            feature_value_2 + " AND " +
+                                            feature + " AND " + response)
             except:
-                url = perform_pubmed_search(feature_values + " AND " + feature + " AND " + response)
-            
+                url = perform_pubmed_search(feature_values + " AND " + feature
+                                            + " AND " + response)
         except IndexError:
             url = perform_pubmed_search(x + " AND " + response)
 
-        return(url)
+        return (url)
 
     df_features = df["important_features"]
     df_url = df_features.apply(make_url).to_frame()
@@ -58,12 +57,14 @@ def build_url_list(feature_file, out_file, compiled_flag):
     df_final = pd.concat([df, df_url.reindex(df.index)], axis=1)
 
     df_final.to_csv(out_file, sep="\t", index=False)
-    
+
 
 def main(feature_file, out_file):
 
-    build_url_list(feature_file = feature_file, out_file = out_file, compiled_flag = True)
     out_p = str(snakemake.config["out"])
+
+    build_url_list(feature_file=feature_file, out_file=out_file,
+                   compiled_flag=True)
 
     ref_list = ["original", "first", "previous", "pairwise"]
     for i in range(0, len(ref_list)):
@@ -71,7 +72,8 @@ def main(feature_file, out_file):
         ref_features = snakemake.input[i + "_features"]
 
         out_file = out_p + str(snakemake.config["path_" + i]) + i + "-urls.txt"
-        build_url_list(feature_file = ref_features, out_file = out_file, compiled_flag = False)
+        build_url_list(feature_file=ref_features, out_file=out_file,
+                       compiled_flag=False)
 
 
-main(feature_file = feature_file, out_file=out_file)
+main(feature_file=feature_file, out_file=out_file)

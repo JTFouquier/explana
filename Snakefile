@@ -7,18 +7,16 @@ from snakemake import parse_config
 
 
 # TODO improve these path numbers
-config["path_dim_pca"] = "01-DIM-PCA/"
-config["path_dim_scnic"] = "01-DIM-SCNIC/"
+config["path_dim_pca"] = "DIM-PCA/"
+config["path_dim_scnic"] = "DIM-SCNIC/"
 
 # can simplifity this code
-config["path_original"] = "04-SELECTED-FEATURES-original/"
-config["path_first"] = "04-SELECTED-FEATURES-first/"
-config["path_previous"] = "04-SELECTED-FEATURES-previous/"
-config["path_pairwise"] = "04-SELECTED-FEATURES-pairwise/"
+config["path_original"] = "SELECTED-FEATURES-original/"
+config["path_first"] = "SELECTED-FEATURES-first/"
+config["path_previous"] = "SELECTED-FEATURES-previous/"
+config["path_pairwise"] = "SELECTED-FEATURES-pairwise/"
 
-config["path_post_hoc"] = "05-POST-HOC-TESTS/"
-
-config["version"] = "2023.08.0"
+config["version"] = "2023.11.0"
 
 out_dir = config["out"]
 
@@ -37,8 +35,6 @@ path_pairwise = out_dir + config["path_pairwise"]
 
 path_dim_pca = out_dir + config["path_dim_pca"]
 path_dim_scnic = out_dir + config["path_dim_scnic"]
-
-path_post_hoc = out_dir + config["path_post_hoc"]
 
 
 def dim_reduction():
@@ -147,7 +143,6 @@ rule integrate_datasets:
         out_file = path_original + "original.txt"
     params:
         ds_param_dict_list = config["ds_param_dict_list"],
-        build_datatable = config["build_datatable"],
     conda: "conda_envs/r_env.yaml",
     script:
         "scripts/integrate_datasets.R"
@@ -159,12 +154,11 @@ rule make_delta_datasets:
     input:
         in_file = path_original + "original.txt"
     output:
-        out_file = out_dir + "04-SELECTED-FEATURES-{reference}/"
+        out_file = out_dir + "SELECTED-FEATURES-{reference}/"
                    "{reference}.txt"
     params:
         reference_time = "{reference}",
         absolute_values = "no",
-        build_datatable = config["build_datatable"],
         distance_matrices = config["distance_matrices"],
     conda: "conda_envs/r_env.yaml",
     script:
@@ -173,11 +167,11 @@ rule make_delta_datasets:
 
 rule random_forest:
     input:
-        in_file = out_dir + "04-SELECTED-FEATURES-{reference}/{reference}.txt"
+        in_file = out_dir + "SELECTED-FEATURES-{reference}/{reference}.txt"
     output:
-        out_file = out_dir + "04-SELECTED-FEATURES-{reference}/{reference}.pdf",
+        out_file = out_dir + "SELECTED-FEATURES-{reference}/{reference}.pdf",
         out_boruta = out_dir + \
-        "04-SELECTED-FEATURES-{reference}/{reference}-boruta-important.txt",
+        "SELECTED-FEATURES-{reference}/{reference}-boruta-important.txt",
     params:
         dataset = "{reference}",
         random_effect = config["random_effect"],
@@ -206,7 +200,7 @@ rule final_steps_r:
         out_file_image = out_dir + "important-feature-occurrences.svg",
     conda: "conda_envs/r_env.yaml",
     script:
-        "scripts/feature-heatmaps.R"
+        "scripts/final_steps.R"
 
 
 rule final_steps_python:
@@ -220,7 +214,7 @@ rule final_steps_python:
         out_file = out_dir + "urls.txt",
     conda: "conda_envs/merf.yaml",
     script:
-        "scripts/url_interpretation.py"
+        "scripts/final_steps.py"
 
 
 rule render_report:

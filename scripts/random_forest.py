@@ -1,50 +1,22 @@
 
-
-# TODO organize imports; these are a mess
 import os
 
 import shap
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
 import sys
 import re
 
+import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestRegressor
+from matplotlib.backends.backend_pdf import PdfPages
+
 from merf.merf import MERF
 from BorutaShap import BorutaShap
-# from boruta_shap_mine import BorutaShap
-from sklearn.ensemble import RandomForestRegressor
 
-# TODO switch to OneHotEncoder
-from utils import _build_result_pdf
 from boruta_shap_plot import _boruta_shap_plot
 
-"""
-TODO list
-Add baseline information and perform tests
-
-Simple fixes
-- add use reference for deltas with categorical
-- fix hardcoding & add sample ID for all
-- consider shadowed scope vars
-- fix rounding for feature importance output file
-- remove leading 'X' from feature names
-
-Features/Considerations for development
-- consider adding time as both categorical and continuous variable
-    and allow flexibility
-- consider what random effects make sense -- allow user to choose? 
-- longitudinal vs time series
-- gradient descent (ML) vs inverse matrix computation formula (stats) 
-    (for one-hot encoding)
-
-# reading
-# https://slundberg.github.io/shap/notebooks/plots/dependence_plot.html
-# https://shap.readthedocs.io/en/latest/example_notebooks/tabular_examples/tree_based_models/Force%20Plot%20Colors.html?highlight=force%20plot
-# https://www.sciencedirect.com/science/article/pii/S1532046418301758
-
-"""
-# From config (TODO, might want these all in rule)
+# From config
 borutashap_trials = int(snakemake.config["borutashap_trials"])
 borutashap_threshold = int(snakemake.config["borutashap_threshold"])
 borutashap_p = float(snakemake.config["borutashap_p"])
@@ -67,7 +39,7 @@ dataset = snakemake.params["dataset"]
 
 # set graphics dimensions
 _width = 10
-_height = 7
+_height = 6
 
 # TODO review this
 join_flag = True
@@ -89,6 +61,20 @@ class Logger(object):
     def flush(self):
         pass
 
+
+def _build_result_pdf(out_file, out_file_prefix, plot_list,
+                      plot_file_name_list):
+    pp = PdfPages(out_file)
+    my_count = 0
+    # TODO add only important plot list (don't save svg or pdf)
+    for i in plot_list:
+        file_name = out_file_prefix + plot_file_name_list[my_count]
+        my_count += 1
+
+        i.savefig(file_name + ".svg", format='svg')
+
+        pp.savefig(i)
+    pp.close()
 
 # placeholder dataframe for creating figure
 def no_features_selected():
@@ -144,14 +130,6 @@ def dummy_var_creation(categorical_list, df, join_flag):
 def setup_df_do_encoding(df, random_effect, response_var, join_flag,
                          sample_id):
     shap_statement = ""  # Not needed unless categorical response
-
-    # For NSHAP Study
-    # df = df.astype(str)
-    # numeric_cols = ["weight_sel", "drugs_count", "np_count",
-    #                 "weight_adj", "stratum", "cluster", "gender",
-    #                 "age", "happy"]
-    # df[numeric_cols] = df[numeric_cols].astype(float)
-    # END NSHAP
     numeric_column_list = df._get_numeric_data().columns.values
     categoric_columns = [i for i in list(df.columns) if
                          i not in numeric_column_list]
@@ -181,7 +159,7 @@ def setup_df_do_encoding(df, random_effect, response_var, join_flag,
         print("\nNumeric mapping was created for categoric response" +
               "variable, " + str(response_var) +
               ", (sorted alphabetically and factorized):")
-        shap_statement = str(response_var) + " (response var) mapping:\n"
+        shap_statement = str(response_var) + " (response) mapping:\n"
         for i, category in enumerate(u_maps):
             print(f"{category} maps to {i}")
             shap_statement += f"{category} maps to {i}\n"
@@ -244,16 +222,16 @@ def train_rf_model(x, y, rf_regressor, step):
 
 def graphic_handling(plt, plot_file_name, p_title, width,
                      height, tick_size, title_size, is_shap, shap_statement):
-    if not is_shap:
-        shap_annotation = ""
-    if is_shap:
-        shap_annotation = shap_statement
-
     plot_file_name_list.append(plot_file_name)
+    shap_annotation = ""
+
+    top_adjustment = 0.82 if is_shap else 0.95
+    plt.subplots_adjust(top=top_adjustment)
+
     plt.title(p_title, fontdict={"fontsize": title_size})
     plt.tick_params(axis="both", labelsize=tick_size)
-    plt.annotate(shap_annotation, xy=(0.95, 1.08), xycoords='axes fraction',
-                 fontsize=8, ha='center', va='center')
+    plt.annotate(shap_annotation, xy=(0.80, 1.12), xycoords='axes fraction',
+                 fontsize=7, ha='center', va='center')
     p = plt.gcf()
     p.set_size_inches(width, height)
     plt.close("all")
@@ -270,36 +248,39 @@ def my_shap_summary_plots(feature_index_list, shap_values, x, list_num,
                           group_size, shap_statement):
     plt_s = shap_values[:, feature_index_list]
     plt_x = x.iloc[:, feature_index_list]
-    ax_sz = 10
-    title_sz = 12
-    tick_sz = 9
+    ax_sz = 11
+    title_sz = 11
+    tick_sz = 6
     is_shap = True
 
     # beeswarm
+    plt.figure(figsize=(_width, _height))
     t = str.capitalize(response_var) + " prediction with selected features " \
         + "(" + str.capitalize(dataset) + " dataset)"
     shap.summary_plot(shap_values=plt_s, features=plt_x, show=False,
                       sort=True, max_display=group_size,
-                      color_bar_label='Selected feature value',
-                      plot_size=(0.5*_width, 0.7*_height))
+                      color_bar_label='Selected Feature Value',
+                      plot_size=(0.8*_width, 0.7*_height))
     plt.ylabel("Selected Features\n", fontsize=ax_sz)
     plt.xlabel("SHAP value (impact on response)\nLeft of zero is " +
                "negative impact and right of zero is positive impact",
                fontsize=ax_sz)
     graphic_handling(plt, "-accepted-SHAP-summary-beeswarm-" +
-                     str(list_num), t, 1*_width, 1*_height, tick_sz,
+                     str(list_num), t, _width, _height, tick_sz,
                      title_sz, is_shap, shap_statement)
 
     # beeswarm bar
+    plt.figure(figsize=(_width, _height))
     t = "Average impact on " + str.capitalize(response_var) \
         + " (absolute values; " + str.capitalize(dataset) + " dataset)"
     shap.summary_plot(shap_values=plt_s, features=plt_x, show=False, sort=True,
                       plot_type="bar", max_display=group_size,
-                      plot_size=(0.5*_width, 0.7*_height))
+                      plot_size=(0.8*_width, 0.7*_height))
     plt.ylabel("Selected Features\n", fontsize=ax_sz)
-    plt.xlabel("Mean |SHAP value| (avg impact on model output magnitude)")
+    plt.xlabel("Mean |SHAP value| (avg impact on model output magnitude)",
+               fontsize=ax_sz)
     graphic_handling(plt, "-accepted-SHAP-summary-bar-" + str(list_num), t,
-                     1*_width, 1*_height, tick_sz, title_sz, is_shap,
+                     _width, _height, tick_sz, title_sz, is_shap,
                      shap_statement)
 
 
@@ -327,15 +308,16 @@ def shap_plots(shap_values, x, boruta_accepted, feature_importance,
     # TODO save the dataframe and get vals 1
     is_shap = True
     for col in boruta_accepted:
+        plt.figure(figsize=(_width, _height))
         shap.dependence_plot(col, shap_values, x, show=False, x_jitter=0.03,
                              interaction_index=None)
-        plt.ylabel("SHAP value for\n" + str(col), fontsize=9)
-        plt.xlabel(str(col), fontsize=9)
+        plt.ylabel("SHAP value for\n" + str(col), fontsize=8)
+        plt.xlabel(str(col), fontsize=8)
         graphic_handling(plt, "-SHAP-dependence-plot-interaction-" +
                          str(col_count) + "-" + str(col),
                          "Dependence plot showing feature impact on\n " +
                          response_var + " (" + str.capitalize(dataset) +
-                         " dataset)", _width, _height, 9, 12, is_shap,
+                         " dataset)", _width, _height, 7, 8, is_shap,
                          shap_statement)
         col_count += 1
 
@@ -354,12 +336,11 @@ def run_shap(trained_forest_model, x):
     shap_imp.sort_values(by=["feature_importance_vals"],
                          ascending=False, inplace=True)
     shap_imp["feature_importance_vals"] = \
-        shap_imp["feature_importance_vals"].apply(lambda x: round(x, 5))
+        shap_imp["feature_importance_vals"].apply(lambda x: round(x, 4))
 
     return shap_imp, shap_values
 
 
-# TODO check percentile
 def run_boruta_shap(forest, x, y, shap_statement):
     is_shap = False
     feature_selector = \
@@ -373,7 +354,7 @@ def run_boruta_shap(forest, x, y, shap_statement):
                                          which_features=feature_group)
         graphic_handling(plt, "-boruta-" + feature_group + "-features",
                          "Boruta " + feature_group + " features",
-                         boruta_width, 1.2*_height, 6, 10, is_shap,
+                         boruta_width, _height, 6, 9, is_shap,
                          shap_statement)
     return feature_selector
 
@@ -391,6 +372,8 @@ def summary_stats_table(x, df_boruta):
     x_subset = x[df_boruta["important_features"]]
     feat_names = x_subset.columns
     x_subset = x_subset.describe().transpose()
+    x_subset = x_subset.round(3)
+
     x_subset["important_features"] = feat_names
     merged_df = pd.merge(x_subset, df_boruta, on='important_features',
                          how='left')
@@ -481,17 +464,16 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
         else:
             # BorutaSHAP to select features
             boruta_explainer = run_boruta_shap(forest, x, y, shap_statement)
-
             # refit forest after excluding rejected features prior to
             # visualizing data. Essentially if data is visualized in SHAP plots
-            # with all the rejected features, they're very hard to interpret
-            # (flooded with meaningless info)
+            # with all the rejected features, they're not effective
+            # for understanding feature impact on response
             # z, c, and y are the same as before
 
             x = x.drop(boruta_explainer.rejected, axis=1)
 
             if rf_type == "MERF":
-                forest, oob_rerun = train_merf_model(x=x, z=z, c=c, y=y, 
+                forest, oob_rerun = train_merf_model(x=x, z=z, c=c, y=y,
                                                      model=instantiate_rf(),
                                                      step="shap_rerun")
             elif rf_type == "RF":
@@ -500,12 +482,8 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
 
             var_explained += " (" + str(oob_rerun) + "%)"
             shap_imp, shap_values = run_shap(forest, x)
-            shap_plots(shap_values, x, boruta_explainer.accepted, shap_imp,
-                       shap_statement)
-
-            shap_imp.to_csv(out_prefix + "SHAP-feature-imp.txt", sep='\t',
-                            mode='a')
-
+            shap_plots(shap_values, x, boruta_explainer.accepted,
+                       shap_imp, shap_statement)
             # get encoded vals prefix "ENC_Location_is_1_3" decoded = Location
             decoded_top_features_list = []
             shap_imp_score_list = []
@@ -586,7 +564,7 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
 
     # remove some svgs because they're saved in PDF
     for file_name in files_in_folder:
-        for n in ['SHAP-dependence-plot', 'features.svg']:
+        for n in ["SHAP-dependence-plot", "features.svg", "SHAP-summary-bar"]:
             if n in file_name:
                 fp = os.path.join(out_path, file_name)
                 os.remove(fp)

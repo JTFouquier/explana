@@ -1,10 +1,9 @@
 source("scripts/install.R")
-package_list <- c("dplyr")
+package_list <- c("dplyr", "readr")
 install_r_packages(package_list = package_list)
 
+library(readr)
 library(dplyr)
-
-source("scripts/viz-datatable.R")
 
 
 output_folder <- paste0(snakemake@config[["out"]],
@@ -88,12 +87,3 @@ main <- function(file_path_list, ds_param_dict_list) {
 
 
 main(file_path_list, ds_param_dict_list)
-
-# TODO optional create visualizer
-# TODO change this to either df or load the dataframe
-if (build_datatable %in% c("TRUE", "True")) {
-  input_file_name <- paste0(output_folder, "original.txt")
-  output_file_name <- paste0(output_folder, "vizualizer-merged-dfs.html")
-  build_datatable_viz(input_file_name, output_file_name)
-} else {
-}

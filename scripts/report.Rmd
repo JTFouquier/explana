@@ -178,16 +178,16 @@ cat(df_mod)
 
 ***
 
-##### Analysis Description
+##### Methods
 
 Feel free to copy the following text, including citation information, for use in methods to ensure reproducibility:
 
 EXPLANA was used for exploratory analysis to identify important features predictive of the response variable, **``r response_var``**.
 
 Categorical variables were binary encoded and **``r enc_percent_threshold_print``**. A random effect of **``r random_effect``** was used to adjust for non-independence (repeated measurements) if needed. There were **``r n_estimators` trees`** used per Random Forest model with a max feature fraction of **``r max_features``**  of the input features for each split in a decision tree. If mixed effects Random Forests were needed,
-**``r iterations` iterations`** were performed. BorutaSHAP was used with **``r borutashap_trials` trials`** to find features that perform repeatedly better than shuffled versions of all input features. Selected features were considered important if they performed better than **``r borutashap_threshold`%`** of the importance score of the best shuffled feature with a false discovery rate of **``r borutashap_p`%`**.
+**``r iterations` iterations`** were performed. BorutaSHAP was used with **``r borutashap_trials` trials`** to find features that perform repeatedly better than shuffled versions of all input features. Selected features were considered important if they performed better than **``r borutashap_threshold`%`** of the importance score of the best shuffled feature with a p-value of **``r borutashap_p`%`**.
 
-These methods were copy/pasted from an EXPLANA (version: ``r version``) feature selection report created on ``r Sys.Date()`` (see github.com for code and additional documentation; Copyright 2023 Regents of the University of Colorado. All rights reserved. Authored by Jennifer Fouquier).
+These methods were copy/pasted from an EXPLANA (version: ``r version``) feature selection report created on ``r Sys.Date()`` (see github.com for code and additional documentation). Copyright 2023 Regents of the University of Colorado. All rights reserved.
 
 ***
 
