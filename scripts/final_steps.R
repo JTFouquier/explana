@@ -28,8 +28,8 @@ add_average_shap_values <- function(df, ds) {
     input_features <- c()
     # only binary 1 important_feature values included in plot
     enc_features <- df %>%
-        filter(dataset == ds) %>%
-        filter(grepl("ENC_", important_features))
+        dplyr::filter(dataset == ds) %>%
+        dplyr::filter(grepl("ENC_", important_features))
 
     type_path <- paste0("path_", stringr::str_to_lower(ds))
 
@@ -60,7 +60,7 @@ add_average_shap_values <- function(df, ds) {
         enc_instances <- df_input %>%
             dplyr::select({{i}}) %>%
             dplyr::mutate(original_index = dplyr::row_number()) %>%
-            filter(.[[i]] == 1)
+            dplyr::filter(.[[i]] == 1)
 
         shap_instances <- df_shap[enc_instances$original_index, ]
         shap_instances <- shap_instances %>%
@@ -79,7 +79,7 @@ return(list(df, input_features))
 }
 
 
-make_summary_log_dataframe <- function() {
+make_summary_log_dataframe <- function(){
     load_log_df <- function(ds) {
         type_path <- paste0("path_", stringr::str_to_lower(ds))
         path_prefix <- paste0(snakemake@config[["out"]],
@@ -97,6 +97,16 @@ make_summary_log_dataframe <- function() {
 
     df_list <- list(df_original, df_first, df_previous, df_pairwise)
     df <- Reduce(function(x, y) merge(x, y, all = TRUE), df_list)
+
+    my_order <- c("Model Type (Evaluation)", "% Variance Explained", "N Trees",
+                 "Feature fraction/split", "Max Depth", "MERF Iters.",
+                 "BorutaSHAP Trials", "BorutaSHAP Threshold", "P-value",
+                 "N Study IDs", "N Samples", "Input Features",
+                 "Accepted Features", "Tentative Features",
+                 "Rejected Features")
+
+    df <- df %>%
+        dplyr::arrange(factor(Data, levels = my_order))
 
     write_tsv(df, paste0(base_path, "summary-log-table.txt"))
 
@@ -147,7 +157,7 @@ main <- function(base_path) { # nolint
 
     df <- df_join %>%
         select(dataset, important_features) %>% # nolint
-        filter(important_features != "Failed Analysis") %>%
+        dplyr::filter(important_features != "Failed Analysis") %>%
         arrange(dataset)
 
     write_tsv(df,
@@ -174,8 +184,6 @@ main <- function(base_path) { # nolint
     "First", "Previous", "Pairwise"), names_to = "variable",
     values_to = "value")
 
-    print(df_join_long)
-
     df_join_long <- df_join_long %>%
         dplyr::rowwise() %>%
         dplyr::mutate(figure_labels = dplyr::case_when(value == 1 &
@@ -196,29 +204,29 @@ main <- function(base_path) { # nolint
             value == 0 & variable == "Pairwise"
             & important_features %in% input_features_pairwise ~ " "
         )) %>%
-        filter(important_features != "no_selected_features") %>%
+        dplyr::filter(important_features != "no_selected_features") %>%
         dplyr::ungroup()
 
     # get the total number of features selected by dataset for figure
-    original_n <- df_join_long %>% filter(dataset == "Original")
-    first_n <- df_join_long %>% filter(dataset == "First")
-    previous_n <- df_join_long %>% filter(dataset == "Previous")
-    pairwise_n <- df_join_long %>% filter(dataset == "Pairwise")
+    original_n <- df_join_long %>% dplyr::filter(dataset == "Original")
+    first_n <- df_join_long %>% dplyr::filter(dataset == "First")
+    previous_n <- df_join_long %>% dplyr::filter(dataset == "Previous")
+    pairwise_n <- df_join_long %>% dplyr::filter(dataset == "Pairwise")
 
     all_selected_features <- df_join_long %>%
         dplyr::select(important_features, variable, value) %>%
-        filter(value == 1)
+        dplyr::filter(value == 1)
 
-
-    write_tsv(all_selected_features, paste0(base_path,
-    "selected_features_for_fscore.txt"))
+    # write_tsv(all_selected_features, paste0(base_path,
+    # "selected_features_for_fscore.txt"))
 
     # all input features for f-score analysis for testing
     all_input_features <- unique(c(input_features_original,
     input_features_first, input_features_previous, input_features_pairwise))
     input_feature_df <- data.frame(input_features = all_input_features)
-    write_tsv(input_feature_df, paste0(base_path,
-    "input_features_for_fscore.txt"))
+
+    # write_tsv(input_feature_df, paste0(base_path,
+    # "input_features_for_fscore.txt"))
 
     # dynamically change plot height based on selected feature number
     decoded_feature_facets <- length(unique((df_join$important_features)))
@@ -274,13 +282,13 @@ main <- function(base_path) { # nolint
 
     # labels showing included features in each model
     geom_label(label.padding = unit(0.25, "lines"),
-    size = 2.2, label.size = 0.7, aes(color = is_model_input,
+    size = 1.9, label.size = 0.7, aes(color = is_model_input,
     label = is_model_input)) +
     scale_color_manual(values = c(" " = "#9e9c9c")) +
 
     # rectangular labels; white text w/ shap_values
     geom_label(color = "white", label.size = 0,
-    label.padding = unit(0.25, "lines"), size = 2.9) +
+    label.padding = unit(0.25, "lines"), size = 2.7) +
 
     scale_fill_manual(values = c("Original" = color_original,
     "First" = color_first, "Previous" = color_previous,
@@ -296,14 +304,14 @@ main <- function(base_path) { # nolint
           panel.grid.major.x = element_line(color = horizontal_lines),
           panel.grid.major.y = element_blank(),
           panel.spacing = unit(0, "lines"),
-          strip.text.y = element_text(size = 7, angle = 0),
-          axis.text.x = element_text(angle = 45, hjust = 0, size = 7,
+          strip.text.y = element_text(size = 6, angle = 0),
+          axis.text.x = element_text(angle = 30, hjust = 0, size = 8,
           face = "bold"),
           axis.text.y = element_text(size = 7)) +
     facet_grid(temp_label_decoded ~ ., scales = "free_y", space = "free")
 
     ggsave(filename = paste0(base_path, "important-feature-occurrences.svg"),
-    width = 6.5, height = height)
+    width = 9, height = height)
 
     # remove temporary truncated label names (for fig)
     df_join_long$temp_label <- NULL

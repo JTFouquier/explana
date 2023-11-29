@@ -1,12 +1,22 @@
 import json
 import os
 import sys
+import shutil
 
 from snakemake.io import load_configfile
 from snakemake import parse_config
 
+if not os.path.exists(config["out"]):
+    os.makedirs(config["out"])
 
-# TODO improve these path numbers
+index = sys.argv.index("--configfile")
+config_file = sys.argv[index + 1]
+out_dir = config["out"]
+
+# make a copy of the config file for repository
+new_filename = "analysis_config.yaml" 
+shutil.copy(config_file, os.path.join(out_dir, new_filename))
+
 config["path_dim_pca"] = "DIM-PCA/"
 config["path_dim_scnic"] = "DIM-SCNIC/"
 
@@ -18,9 +28,16 @@ config["path_pairwise"] = "SELECTED-FEATURES-pairwise/"
 
 config["version"] = "2023.11.0"
 
-out_dir = config["out"]
 
-# get the argument after the --configfile param
+rule all:
+    input:
+        original = f"{out_dir}SELECTED-FEATURES-original/original.pdf",
+        first = f"{out_dir}SELECTED-FEATURES-first/first.pdf",
+        previous = f"{out_dir}SELECTED-FEATURES-previous/previous.pdf",
+        pairwise = f"{out_dir}SELECTED-FEATURES-pairwise/pairwise.pdf",
+        md_doc = f"{out_dir}EXPLANA-report.html"
+
+
 index = sys.argv.index("--configfile")
 config_file = sys.argv[index + 1]
 cl_configfile = dict(load_configfile(config_file))
@@ -70,11 +87,6 @@ config["file_path_list"], config["ds_param_dict_list"], \
 config["pca_ds_list"], \
 config["scnic_ds_list"], input_datasets = dim_reduction()
 config["input_datasets"] = input_datasets
-
-
-rule all:
-    input:
-        md_doc = out_dir + "EXPLANA-report.html"
 
 
 def get_pca_in_file(wildcards):
@@ -158,7 +170,8 @@ rule make_delta_datasets:
                    "{reference}.txt"
     params:
         reference_time = "{reference}",
-        absolute_values = "no",
+        include_reference_values = config["include_reference_values"],
+        absolute_values = config["absolute_values"],
         distance_matrices = config["distance_matrices"],
     conda: "conda_envs/r_env.yaml",
     script:

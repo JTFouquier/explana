@@ -1,15 +1,9 @@
 
-#devtools::install_github("jbisanz/qiime2R")
-# library(qiime2R)
-
-build_datatable_viz <- NULL
 source("scripts/install.R")
-source("scripts/viz-datatable.R")
-
-package_list <- c("dplyr", "usedist", "utils")
+package_list <- c("usedist", "utils", "tidyverse")
 install_r_packages(package_list = package_list)
 
-library(dplyr)
+library(tidyverse)
 library(usedist)
 library(utils)
 
@@ -24,24 +18,37 @@ sample_id <- snakemake@config[["sample_id"]]
 input_timepoint <- "timepoint_explana"
 input_study_id <- snakemake@config[["random_effect"]]
 
+analyze_first <- snakemake@config[["analyze_first"]]
+analyze_previous <- snakemake@config[["analyze_previous"]]
+analyze_pairwise <- snakemake@config[["analyze_pairwise"]]
+include_reference_values <- snakemake@params[["include_reference_values"]]
+absolute_values <- snakemake@params[["absolute_values"]]
 
 # from input, output, and params
 in_file <- snakemake@input[["in_file"]]
 out_file <- snakemake@output[["out_file"]]
 
 reference_time <- snakemake@params[["reference_time"]]
-absolute_values <- snakemake@params[["absolute_values"]]
-build_datatable <- snakemake@params[["build_datatable"]]
 
-# get name of distance matrix in params for rule, then
+# get name of distance matrix in params for rule, then load by name
 distance_matrices <- eval(parse(text = snakemake@params[["distance_matrices"]]))
-distance_matrices <- lapply(distance_matrices, read.table, fill = TRUE)
+
+open_dms <- function(dm) {
+
+  dm <- read.table(dm, sep = "\t", header = TRUE, check.names = FALSE,
+  row.names = 1)
+  # dm is already in distance format, so load as matrix
+  dm <- as.matrix(dm, dimnames = colnames(df))
+  return(dm)
+}
+
+distance_matrices <- lapply(distance_matrices, open_dms)
 
 
 include_distance_matrices <- function(distance_matrices, ref_sample, # nolint
                                       current_sample, df_new_comparison) {
-  # add all distances (comparisons between sample timepoints); NA if none
     for (i in names(distance_matrices)){
+
       result <- tryCatch({
         result <-
           dist_subset(distance_matrices[[i]],
@@ -54,7 +61,7 @@ include_distance_matrices <- function(distance_matrices, ref_sample, # nolint
         return(result)
       })
       df_new_comparison <- df_new_comparison %>%
-        mutate({{i}} := result)
+        dplyr::mutate({{i}} := result)
     }
   return(df_new_comparison) # update the new comparison
 }
@@ -67,8 +74,7 @@ diffs_for_all_vars_per_subject <- function(delta_df, vars, sid_df,
     new_value <- sid_df[[var]][sid_df$timepoint_w_ == time]
     old_value <- sid_df[[var]][sid_df$timepoint_w_ == rt]
     if (typeof(sid_df[[var]]) != "character") {
-      if (reference_time == "pairwise" && absolute_values == "yes") {
-        # TODO convert to abs values at end? reduce computational time
+      if (absolute_values == "yes") {
         delta_df[[var]][delta_df$sid_delta == comparison] <-
         abs(new_value - old_value)
         delta_df[[paste0(var,
@@ -80,7 +86,8 @@ diffs_for_all_vars_per_subject <- function(delta_df, vars, sid_df,
         "_reference")]][delta_df$sid_delta == comparison] <- old_value
       }
     }
-    if (typeof(sid_df[[var]]) == "character" || var == "timepoint_w_" || var == sample_id) {
+    if (typeof(sid_df[[var]]) == "character"
+    || var == "timepoint_w_" || var == sample_id) {
       delta_df[[var]][delta_df$sid_delta == comparison] <-
         paste0(old_value, "__", new_value)
       delta_df[[paste0(var,
@@ -153,8 +160,17 @@ main <- function() {
   # use total_timepoints <- 1 to test if not longitudinal
   # If cross sectional, don't make deltas
 
-  rf_file_out <- paste0(output_folder, "04-SELECTED-FEATURES-",
+  # This could probably be simplified
+  rf_file_out <- paste0(output_folder, "SELECTED-FEATURES-",
   reference_time, "/", reference_time, ".pdf")
+
+  # TODO this should be reworded, but need to check all downstream uses
+  if ((analyze_first != "yes" && reference_time == "first") ||(analyze_previous != "yes" && reference_time == "previous") ||(analyze_pairwise != "yes" && reference_time == "pairwise")) {
+    writeLines("Failed Analysis", con = out_file)
+    writeLines("Failed Analysis", con = rf_file_out)
+    return()
+  }
+
   if (total_timepoints == 1) {
     if (reference_time == "first") {
     writeLines("Failed Analysis", con = out_file)
@@ -170,11 +186,6 @@ main <- function() {
       return()
     }
   }
-  # FOR NSHAP study
-  # df <- df %>% mutate(across(everything(), as.character))
-  # df <- df %>% mutate(across(c(weight_sel, weight_adj, stratum,
-  # drugs_count, np_count, cluster, gender, age, timepoint, happy), as.numeric))
-
 
   # if "timepoint_w_" or "study_id_w_" exist here, then can't go on
   if ("timepoint_w_" %in% colnames(df)) {
@@ -192,24 +203,11 @@ main <- function() {
   df[[sample_id]] <- as.character(df[[sample_id]])
   # get all variables/features, except ones used for script
   vars <- colnames(df %>% select(!study_id_w_))
-  # vars <- colnames(df)
-  # print(vars)
-  # vars <- vars[!names(vars) %in% list("study_id_w", "timepoint_original",sample_id)]
-  # print(vars)
-
   times <- unique(df$timepoint_w_)
 
   delta_df <- data.frame(sid_delta = character())
   # TODO ref_times are zero in 'previous' improve this.
-  # TODO make function for ref_times
-
-  # TODO add ability to use .QZA or TSV
-  #unweighted.unifrac.file <- "data/unweighted_unifrac_distance_matrix.qza"
-  #dm <- read_qza(unweighted.unifrac.file)
-  #dm <- dm$data
-
   # calculate all reference time comparisons, per var, per person
-
   for (studyid in unique(df$study_id_w_)){
     for (time in times) {
       time <- as.numeric(time)
@@ -232,28 +230,18 @@ main <- function() {
   }
 
   delta_df <- delta_df %>%
-    arrange(study_id_w_, timepoint_w_) %>%
-    select(!sid_delta)
+    dplyr::arrange(study_id_w_, timepoint_w_) %>%
+    dplyr::select(!sid_delta)
 
   colnames(delta_df)[colnames(delta_df) == "timepoint_w_"] <- input_timepoint
   colnames(delta_df)[colnames(delta_df) == "study_id_w_"] <- input_study_id
 
-  delta_df <- delta_df %>%
-    select(-ends_with("_reference"))
+  if (include_reference_values == "no") {
+    delta_df <- delta_df %>%
+      dplyr::select(-dplyr::ends_with("_reference"))
+  }
 
   write.table(delta_df, out_file, row.names = FALSE, sep = "\t")
-
-  # TODO optional create visualizer
-  # TODO change this to either df or load the dataframe
-  if (build_datatable %in% c("TRUE", "True")) {
-    input_file_name <-
-    paste0(output_folder, "04-SELECTED-FEATURES-", reference_time,
-           "/", reference_time, ".txt")
-    output_file_name <- paste0(output_folder, "04-SELECTED-FEATURES-",
-                               reference_time, "/vizualizer-", reference_time,
-                               ".html")
-    build_datatable_viz(input_file_name, output_file_name)
-  }
 }
 
 

@@ -13,8 +13,9 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 from merf.merf import MERF
 from BorutaShap import BorutaShap
-
 from boruta_shap_plot import _boruta_shap_plot
+
+from first_checks import first_checks
 
 # From config
 borutashap_trials = int(snakemake.config["borutashap_trials"])
@@ -30,6 +31,7 @@ include_time = str.lower(snakemake.params["include_time"])
 
 n_estimators = int(snakemake.params["n_estimators"])
 max_features = float(snakemake.params["max_features"])
+max_depth = 7  # depth recommended by BorutaSHAP; kept constant
 
 iterations = int(snakemake.params["iterations"])
 
@@ -76,6 +78,7 @@ def _build_result_pdf(out_file, out_file_prefix, plot_list,
         pp.savefig(i)
     pp.close()
 
+
 # placeholder dataframe for creating figure
 def no_features_selected():
     _df = pd.DataFrame({"important_features": ["no_selected_features"],
@@ -105,7 +108,7 @@ def percent_var_statement(step, oob):
 
     if step == "shap_rerun":
         print("Out-of-bag (OOB) score (% variation explained) excluding "
-              + "Boruta rejected features only for" +
+              + "Boruta rejected features only for " +
               "visualization/interpretation): " + oob + "%")
 
 
@@ -223,15 +226,14 @@ def train_rf_model(x, y, rf_regressor, step):
 def graphic_handling(plt, plot_file_name, p_title, width,
                      height, tick_size, title_size, is_shap, shap_statement):
     plot_file_name_list.append(plot_file_name)
-    shap_annotation = ""
 
-    top_adjustment = 0.82 if is_shap else 0.95
-    plt.subplots_adjust(top=top_adjustment)
+    top_adjustment = 0.80 if is_shap else 0.95
 
     plt.title(p_title, fontdict={"fontsize": title_size})
     plt.tick_params(axis="both", labelsize=tick_size)
-    plt.annotate(shap_annotation, xy=(0.80, 1.12), xycoords='axes fraction',
-                 fontsize=7, ha='center', va='center')
+    plt.annotate(shap_statement, xy=(top_adjustment, 1.08),
+                 xycoords='axes fraction', fontsize=6, ha='center',
+                 va='center')
     p = plt.gcf()
     p.set_size_inches(width, height)
     plt.close("all")
@@ -248,18 +250,17 @@ def my_shap_summary_plots(feature_index_list, shap_values, x, list_num,
                           group_size, shap_statement):
     plt_s = shap_values[:, feature_index_list]
     plt_x = x.iloc[:, feature_index_list]
-    ax_sz = 11
-    title_sz = 11
+    ax_sz = 8
+    title_sz = 8
     tick_sz = 6
     is_shap = True
 
     # beeswarm
     plt.figure(figsize=(_width, _height))
-    t = str.capitalize(response_var) + " prediction with selected features " \
-        + "(" + str.capitalize(dataset) + " dataset)"
+    d = str.capitalize(dataset)
+    t = f"Features related to {response_var} ({d} dataset)"
     shap.summary_plot(shap_values=plt_s, features=plt_x, show=False,
-                      sort=True, max_display=group_size,
-                      color_bar_label='Selected Feature Value',
+                      sort=True, max_display=group_size, color_bar=False,
                       plot_size=(0.8*_width, 0.7*_height))
     plt.ylabel("Selected Features\n", fontsize=ax_sz)
     plt.xlabel("SHAP value (impact on response)\nLeft of zero is " +
@@ -354,7 +355,7 @@ def run_boruta_shap(forest, x, y, shap_statement):
                                          which_features=feature_group)
         graphic_handling(plt, "-boruta-" + feature_group + "-features",
                          "Boruta " + feature_group + " features",
-                         boruta_width, _height, 6, 9, is_shap,
+                         boruta_width, _height + 3, 5, 9, is_shap,
                          shap_statement)
     return feature_selector
 
@@ -388,8 +389,16 @@ def summary_stats_table(x, df_boruta):
 
 def main(df_input, out_file, random_effect, sample_id, response_var,
          join_flag):
+
     # make a log for printed information and a dataframe
     sys.stdout = Logger()
+
+    first_checks(snakemake.config, dataset)
+
+    # TODO this should not need to happen... should not have to initiate
+    # the environment just to find out the user didn't want to build model
+    if snakemake.config["analyze_" + dataset] == "no":
+        return
 
     # for log
     model_evaluation = "NA"
@@ -400,13 +409,17 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
     accepted_features = "NA"
     tentative_features = "NA"
     rejected_features = "NA"
+    merf_iters = "NA"
 
     log_df = {
-        "Data": ["Model Type/Evaluation", "% Variance Explained",
-                 "N (Study ID)", "N (Samples)", "Input features",
+        "Data": ["Model Type (Evaluation)", "% Variance Explained", "N Trees",
+                 "Feature fraction/split", "Max Depth", "MERF Iters.",
+                 "BorutaSHAP Trials", "BorutaSHAP Threshold", "P-value",
+                 "N Study IDs", "N Samples", "Input Features",
                  "Accepted Features", "Tentative Features",
                  "Rejected Features"],
         str.capitalize(dataset): ["NA", "NA", "NA", "NA", "NA", "NA", "NA",
+                                  "NA", "NA", "NA", "NA", "NA", "NA", "NA",
                                   "NA"]
     }
     log_df = pd.DataFrame(log_df)
@@ -425,10 +438,12 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
 
         if len(np.unique(df[random_effect])) != len(df[random_effect]):
             rf_type = "MERF"
+            merf_iters = str(int(iterations))
             print("MODEL TYPE: Mixed Effects Random Forest (MERF) Regressor ")
         else:
             print("MODEL TYPE: Random Forest (RF) Regressor")
             rf_type = "RF"
+            merf_iters = "NA"
 
         x, z, c, y, df_features_in, study_n, shap_statement = \
             setup_df_do_encoding(df=df, random_effect=random_effect,
@@ -441,7 +456,7 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
                 RandomForestRegressor(n_jobs=-1, n_estimators=n_estimators,
                                       oob_score=True,
                                       max_features=max_features,
-                                      max_depth=7)  # for BorutaSHAP complexity
+                                      max_depth=max_depth)
             return (rf_regressor)
 
         # Run either mixed effects or fixed effects RF models
@@ -552,12 +567,18 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
                               plot_file_name_list)
             model_evaluation = "Pass"
 
-    model_evaluation = rf_type + " " + model_evaluation
-    log_df[str.capitalize(dataset)] = [model_evaluation, var_explained,
-                                       study_n, sample_n, input_features,
-                                       accepted_features, tentative_features,
-                                       rejected_features]
-    log_df.to_csv(out_prefix + "-log-df.txt", index=False, sep="\t")
+        # Make log table dataframe for final report summary
+        model_evaluation = rf_type + " " + model_evaluation
+        log_df[str.capitalize(dataset)] = [model_evaluation, var_explained,
+                                           n_estimators, max_features,
+                                           max_depth, merf_iters,
+                                           borutashap_trials,
+                                           borutashap_threshold, borutashap_p,
+                                           study_n, sample_n,
+                                           input_features, accepted_features,
+                                           tentative_features,
+                                           rejected_features]
+        log_df.to_csv(out_prefix + "-log-df.txt", index=False, sep="\t")
 
     out_path = snakemake.config["out"] + snakemake.config["path_" + dataset]
     files_in_folder = os.listdir(out_path)

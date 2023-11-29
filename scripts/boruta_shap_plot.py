@@ -71,13 +71,13 @@ def _make_box_plot(self, data, X_rotation, X_size, y_scale, figsize,
         new_label = new_label.replace("'", "")
 
     ax.set_title(which_features.capitalize() + " Features from BorutaShap",
-                 fontsize=8)
-    ax.set_ylabel('Z-Score', fontsize=7)
-    ax.set_xlabel('Features', fontsize=7)
+                 fontsize=7)
+    ax.set_ylabel('Z-Score', fontsize=X_size)
+    ax.set_xlabel('Features', fontsize=X_size)
     return boruta_width
 
 
-def _boruta_shap_plot(self, X_rotation=90, X_size=5, figsize=(11, 11),
+def _boruta_shap_plot(self, X_rotation=90, X_size=5, figsize=(11, 13),
                       y_scale='log', which_features='all'):
     """
     creates a boxplot of the feature importances
