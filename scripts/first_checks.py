@@ -23,20 +23,12 @@ def _first_checks(config):
         print("Missing arguments in config file")
 
 
-def write_files(path, dataset, config):
+def write_files(path, dataset, config, summary_table_items):
 
+    repeat_na = len(summary_table_items) - 1
     blank = {
-        "Data": [
-            "Model Type (Evaluation)", "% Variance Explained", "N Trees",
-            "Feature fraction/split", "Max Depth", "MERF Iters.",
-            "BorutaSHAP Trials", "BorutaSHAP Threshold", "P-value",
-            "N Study IDs", "N Samples", "Input Features", "Accepted Features",
-            "Tentative Features", "Rejected Features"
-        ],
-        str.capitalize(dataset): [
-            "Not performed", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA",
-            "NA", "NA", "NA", "NA", "NA", "NA"
-        ]
+        "Data": summary_table_items,
+        str.capitalize(dataset):  ["Not performed"] + (["NA"] * repeat_na)
     }
     blank_df = pd.DataFrame(blank)
 
@@ -63,7 +55,7 @@ def write_files(path, dataset, config):
         content.to_csv(out_file, index=False, sep="\t")
 
 
-def main(config, dataset):
+def main(config, dataset, summary_table_items):
     config = config
 
     dataset_path = "path_" + dataset
@@ -75,10 +67,10 @@ def main(config, dataset):
     analyze_current_dataset = config["analyze_" + dataset]
 
     if analyze_current_dataset == "no":
-        write_files(dataset_path, dataset, config)
+        write_files(dataset_path, dataset, config, summary_table_items)
 
     # _first_checks(config) # use to check for required items
 
 
-def first_checks(config, dataset):
-    main(config, dataset)
+def first_checks(config, dataset, summary_table_items):
+    main(config, dataset, summary_table_items)

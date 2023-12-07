@@ -43,19 +43,28 @@ dataset = snakemake.params["dataset"]
 _width = 10
 _height = 6
 
-# TODO review this
 join_flag = True
 
-out_prefix = snakemake.config["out"] + snakemake.config["path_" + dataset] + dataset
+ds_out_path = snakemake.config["out"] + snakemake.config["path_" + dataset]
 
-plot_list = []
-plot_file_name_list = []
+plot_list_shap = []
+plot_file_name_list_shap = []
+
+plot_list_boruta = []
+plot_file_name_list_boruta = []
+
+summary_table_items = ["Model Type (Evaluation)", "% Variance Explained",
+                       "N Trees", "Feature fraction/split", "Max Depth",
+                       "MERF Iters.", "BorutaSHAP Trials",
+                       "BorutaSHAP Threshold", "P-value", "N Study IDs",
+                       "N Samples", "Input Features", "Accepted Features",
+                       "Tentative Features", "Rejected Features"]
 
 
 # saves to log file; does not print to screen
 class Logger(object):
     def __init__(self):
-        self.log = open(out_prefix + "-log.txt", "a")
+        self.log = open(ds_out_path + dataset + "-log.txt", "a")
 
     def write(self, message):
         self.log.write(message)
@@ -84,7 +93,8 @@ def no_features_selected():
     _df = pd.DataFrame({"important_features": ["no_selected_features"],
                         "decoded_features": ["NA"],
                         "feature_importance_vals": [-100]})
-    _df.to_csv(out_prefix + "-boruta-important.txt", index=False, sep="\t")
+    _df.to_csv(ds_out_path + dataset + "-boruta-important.txt", index=False,
+               sep="\t")
 
 
 def fail_analysis(out_file):
@@ -209,7 +219,8 @@ def setup_df_do_encoding(df, random_effect, response_var, join_flag,
     c = df[random_effect]
     y = df[response_var]
 
-    x.to_csv(out_prefix + "-input-model-df.txt", index=False, sep="\t")
+    x.to_csv(ds_out_path + dataset + "-input-model-df.txt", index=False,
+             sep="\t")
     df_features_in = pd.DataFrame(x.columns, columns=["input_features"])
 
     return x, z, c, y, df_features_in, study_n, shap_statement
@@ -225,7 +236,10 @@ def train_rf_model(x, y, rf_regressor, step):
 
 def graphic_handling(plt, plot_file_name, p_title, width,
                      height, tick_size, title_size, is_shap, shap_statement):
-    plot_file_name_list.append(plot_file_name)
+    if is_shap:
+        plot_file_name_list_shap.append(plot_file_name)
+    else:
+        plot_file_name_list_boruta.append(plot_file_name)
 
     top_adjustment = 0.80 if is_shap else 0.95
 
@@ -237,7 +251,11 @@ def graphic_handling(plt, plot_file_name, p_title, width,
     p = plt.gcf()
     p.set_size_inches(width, height)
     plt.close("all")
-    plot_list.append(p)
+
+    if is_shap:
+        plot_list_shap.append(p)
+    else:
+        plot_list_boruta.append(p)
 
 
 def list_split(input_list, group_size):
@@ -260,7 +278,7 @@ def my_shap_summary_plots(feature_index_list, shap_values, x, list_num,
     d = str.capitalize(dataset)
     t = f"Features related to {response_var} ({d} dataset)"
     shap.summary_plot(shap_values=plt_s, features=plt_x, show=False,
-                      sort=True, max_display=group_size, color_bar=False,
+                      sort=True, max_display=group_size, color_bar=True,
                       plot_size=(0.8*_width, 0.7*_height))
     plt.ylabel("Selected Features\n", fontsize=ax_sz)
     plt.xlabel("SHAP value (impact on response)\nLeft of zero is " +
@@ -269,20 +287,6 @@ def my_shap_summary_plots(feature_index_list, shap_values, x, list_num,
     graphic_handling(plt, "-accepted-SHAP-summary-beeswarm-" +
                      str(list_num), t, _width, _height, tick_sz,
                      title_sz, is_shap, shap_statement)
-
-    # beeswarm bar
-    plt.figure(figsize=(_width, _height))
-    t = "Average impact on " + str.capitalize(response_var) \
-        + " (absolute values; " + str.capitalize(dataset) + " dataset)"
-    shap.summary_plot(shap_values=plt_s, features=plt_x, show=False, sort=True,
-                      plot_type="bar", max_display=group_size,
-                      plot_size=(0.8*_width, 0.7*_height))
-    plt.ylabel("Selected Features\n", fontsize=ax_sz)
-    plt.xlabel("Mean |SHAP value| (avg impact on model output magnitude)",
-               fontsize=ax_sz)
-    graphic_handling(plt, "-accepted-SHAP-summary-bar-" + str(list_num), t,
-                     _width, _height, tick_sz, title_sz, is_shap,
-                     shap_statement)
 
 
 def shap_plots(shap_values, x, boruta_accepted, feature_importance,
@@ -298,7 +302,7 @@ def shap_plots(shap_values, x, boruta_accepted, feature_importance,
     lists_to_graph = list_split(index_list_accepted, group_size=group_size)
 
     shap_values_df = pd.DataFrame(shap_values, columns=list(x.columns.values))
-    shap_values_df.to_csv(out_prefix + "-SHAP-values-df.txt",
+    shap_values_df.to_csv(ds_out_path + dataset + "-SHAP-values-df.txt",
                           index=False, sep="\t")
     # graph each list of important features after
     for i in range(0, len(lists_to_graph)):
@@ -315,11 +319,11 @@ def shap_plots(shap_values, x, boruta_accepted, feature_importance,
         plt.ylabel("SHAP value for\n" + str(col), fontsize=8)
         plt.xlabel(str(col), fontsize=8)
         graphic_handling(plt, "-SHAP-dependence-plot-interaction-" +
-                         str(col_count) + "-" + str(col),
+                         str(col_count),
                          "Dependence plot showing feature impact on\n " +
                          response_var + " (" + str.capitalize(dataset) +
-                         " dataset)", _width, _height, 7, 8, is_shap,
-                         shap_statement)
+                         " dataset)", _width, _height, 7, 8,
+                         is_shap, shap_statement)
         col_count += 1
 
 
@@ -343,6 +347,7 @@ def run_shap(trained_forest_model, x):
 
 
 def run_boruta_shap(forest, x, y, shap_statement):
+    boruta_height = 10
     is_shap = False
     feature_selector = \
         BorutaShap(model=forest, importance_measure="shap",
@@ -355,7 +360,7 @@ def run_boruta_shap(forest, x, y, shap_statement):
                                          which_features=feature_group)
         graphic_handling(plt, "-boruta-" + feature_group + "-features",
                          "Boruta " + feature_group + " features",
-                         boruta_width, _height + 3, 5, 9, is_shap,
+                         boruta_width, boruta_height, 5, 9, is_shap,
                          shap_statement)
     return feature_selector
 
@@ -384,7 +389,8 @@ def summary_stats_table(x, df_boruta):
     my_order = first + [col for col in merged_df if col not in first]
     merged_df = merged_df[my_order]
 
-    merged_df.to_csv(out_prefix + "-feature-stats.txt", index=False, sep="\t")
+    merged_df.to_csv(ds_out_path + dataset + "-feature-stats.txt", index=False,
+                     sep="\t")
 
 
 def main(df_input, out_file, random_effect, sample_id, response_var,
@@ -393,7 +399,7 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
     # make a log for printed information and a dataframe
     sys.stdout = Logger()
 
-    first_checks(snakemake.config, dataset)
+    first_checks(snakemake.config, dataset, summary_table_items)
 
     # TODO this should not need to happen... should not have to initiate
     # the environment just to find out the user didn't want to build model
@@ -412,15 +418,8 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
     merf_iters = "NA"
 
     log_df = {
-        "Data": ["Model Type (Evaluation)", "% Variance Explained", "N Trees",
-                 "Feature fraction/split", "Max Depth", "MERF Iters.",
-                 "BorutaSHAP Trials", "BorutaSHAP Threshold", "P-value",
-                 "N Study IDs", "N Samples", "Input Features",
-                 "Accepted Features", "Tentative Features",
-                 "Rejected Features"],
-        str.capitalize(dataset): ["NA", "NA", "NA", "NA", "NA", "NA", "NA",
-                                  "NA", "NA", "NA", "NA", "NA", "NA", "NA",
-                                  "NA"]
+        "Data": summary_table_items,
+        str.capitalize(dataset): ["NA"] * len(summary_table_items)
     }
     log_df = pd.DataFrame(log_df)
 
@@ -523,7 +522,8 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
             df_boruta = df_boruta.sort_values(by=["feature_importance_vals"],
                                               ascending=False)
 
-            df_boruta.to_csv(out_prefix + "-boruta-all-features.txt",
+            df_boruta.to_csv(ds_out_path + dataset +
+                             "-boruta-all-features.txt",
                              index=False, sep="\t")
 
             # check if input feature was selected or not
@@ -541,13 +541,15 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
                                                                   axis=1)
             df_features_in = df_features_in.drop(["important_features"],
                                                  axis=1)
-            df_features_in.to_csv(out_prefix + "-input-features.txt", sep="\t",
+            df_features_in.to_csv(ds_out_path + dataset +
+                                  "-input-features.txt", sep="\t",
                                   index=False)
 
             if df_boruta.empty:
                 no_features_selected()
             else:
-                df_boruta.to_csv(out_prefix + "-boruta-important.txt",
+                df_boruta.to_csv(ds_out_path + dataset +
+                                 "-boruta-important.txt",
                                  index=False, sep="\t")
 
                 summary_stats_table(x, df_boruta)
@@ -563,8 +565,11 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
             print("Tentative: " + tentative_features)
             print("Rejected: " + rejected_features)
             plt.close("all")
-            _build_result_pdf(out_file, out_prefix, plot_list,
-                              plot_file_name_list)
+            _build_result_pdf(out_file, ds_out_path + dataset, plot_list_shap,
+                              plot_file_name_list_shap)
+            _build_result_pdf(ds_out_path + dataset + "-boruta.pdf",
+                              ds_out_path + dataset, plot_list_boruta,
+                              plot_file_name_list_boruta)
             model_evaluation = "Pass"
 
         # Make log table dataframe for final report summary
@@ -578,14 +583,15 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
                                            input_features, accepted_features,
                                            tentative_features,
                                            rejected_features]
-        log_df.to_csv(out_prefix + "-log-df.txt", index=False, sep="\t")
+        log_df.to_csv(ds_out_path + dataset + "-log-df.txt", index=False,
+                      sep="\t")
 
     out_path = snakemake.config["out"] + snakemake.config["path_" + dataset]
     files_in_folder = os.listdir(out_path)
 
     # remove some svgs because they're saved in PDF
     for file_name in files_in_folder:
-        for n in ["SHAP-dependence-plot", "features.svg", "SHAP-summary-bar"]:
+        for n in ["SHAP-dependence-plot", "features.svg"]:
             if n in file_name:
                 fp = os.path.join(out_path, file_name)
                 os.remove(fp)

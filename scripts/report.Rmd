@@ -88,6 +88,9 @@ url_tables <- function(df_path) {
     )
   }
 }
+
+url_statement = "The following links can help with hypothesis generation. Names of variables likely need modification."
+
 ```
 
 ```{r include = FALSE }
@@ -149,15 +152,15 @@ shap_description <- function(fig_flag){
 
 #### EXPLANA Description
 
-EXPLANA assists with selecting which features, out of many input features, that are best related to a response variable by using well-known machine-learning algorithms combined with novel methods.
+EXPLANA uses established machine-learning methods combined with innovative techniques to identify the most relevant features, from a variety of input features, that correlate with a response variable.
 
-Input features and response variables can be numerical, categorical, or from non-normal data distributions. The relationships between selected features and the response can be linear, or complex, non-linear relationships. A report is generated that textually and graphically summarizes results for streamlined exploratory analysis and hypothesis generation.
+Input features and response variables can be numerical, categorical, or from non-normal data distributions. The relationships between selected features and the response can be linear or complex, non-linear relationships.
 
-For longitudinal datasets, changes in features for each study identifier, often subjects, are calculated using different reference points to obtain delta datasets (*First*, *Previous* and *Pairwise* delta datasets). This is important because features in longitudinal studies can carry varying degrees of importance between models built using different reference points. This workflow automates feature selection from several models built from these datasets.
+For longitudinal datasets, changes in features for each study identifier, often subjects, are calculated using different reference points to obtain delta datasets (*First*, *Previous* and *Pairwise* delta datasets). This is important because features in longitudinal studies can carry varying degrees of importance between models built using different reference points. EXPLANA automates feature selection from several models built using these datasets. This report was generated to textually and graphically summarize exploratory analysis and aid hypothesis generation.
 
-Please ensure you understand the workflow and that the percent variation explained (using out-of-bag (OOB) scores) is adequate for your purposes.
+Please ensure you understand the workflow, parameters/decisions, and that the percent variation explained (using out-of-bag (OOB) scores) is adequate for your purposes.
 
-When you are using data without prior hypotheses, you are performing *exploratory analysis* and should make this clear.
+When you are using data without prior hypotheses, you are performing *exploratory analysis* and should make this clear when communicating results.
 
 ***
 
@@ -188,9 +191,9 @@ Feel free to use the following text, including citation information, for use in 
 EXPLANA was used for exploratory analysis to identify important features related to the response variable, **``r response_var``**.
 
 A random effect of **``r random_effect``** was used to adjust for non-independence (repeated measurements) if needed. There were **``r n_estimators``** trees used per Random Forest model with a max feature fraction of **``r max_features``**  of the input features for each split per decision tree in the forest. If mixed effects Random Forests were needed,
-**``r iterations``** iterations were performed. BorutaSHAP was used to find features that perform repeatedly better than shuffled versions of all input features. Features were considered important if they performed better than **``r borutashap_threshold``****%** of the importance score of the best shuffled feature using **``r borutashap_trials``** trials, p=**``r borutashap_p``**. Categorical variables were binary encoded and **``r enc_percent_threshold_print``**.
+**``r iterations``** iterations were performed. BorutaSHAP was used to find features that perform repeatedly better than shuffled versions of all input features. Features were considered important if they performed better than **``r borutashap_threshold``****%** of the SHAP importance score of the best shuffled feature using **``r borutashap_trials``** trials, p=**``r borutashap_p``**. Categorical variables were binary encoded and **``r enc_percent_threshold_print``**.
 
-These methods are taken from an EXPLANA feature selection report (version: **``r version``**) created on **``r Sys.Date()``**. See github.com for code and additional documentation. Copyright 2023 Regents of the University of Colorado. All rights reserved.
+These methods are from an EXPLANA feature selection report (version: **``r version``**) created on **``r Sys.Date()``**. See github.com for code and additional documentation. Copyright 2023 Regents of the University of Colorado. All rights reserved.
 
 ***
 
@@ -223,14 +226,18 @@ pretty_table("", "summary-log-table.txt")
 
 ***
 
+**Selected feature ranks from models built using *Original* and, for longitudinal analyses, *First*, *Previous* and *Pairwise* delta datasets.** Selected features are shown in black and labeled with feature rank. For true/positive instances of categorical variables (indicated with "ENC" after encoding), average impact on response is shown after the rank. For numerical features, impact is not shown because the feature relationship to response can be complex, requiring further post-hoc tests or inspection of SHAP dependence plots for additional insight. Empty grey boxes indicate features included in the model for a dataset, but not selected. Long feature names may be truncated and indicated with ellipses. A comprehensive list of input features can be found in model details below.
+
 ```{r fig.align = "center"}
 setwd(snakemake@config[["out"]])
 include_graphics("important-feature-occurrences.svg")
 ```
 
-**Selected features from models built with *Original* and, for longitudinal analyses, *First*, *Previous* and *Pairwise* delta datasets.** Average impact on response is displayed for positive instances of encoded variables (indicated with "ENC"). For numerical variables, the relationship to the response variable is more complex to determine, and indicated with "+/-". Grey boxes indicate features included in the model for each dataset. Long feature names may be truncated and indicated with ellipses. For comprehensive list of input features, see model details.
-
 #### Interpretation/Literature Search
+
+```{r comment=""}
+cat(url_statement)
+```
 
 ```{r}
 url_tables("urls.txt")
@@ -293,6 +300,10 @@ include_graphics(paste0(original_path, "original.pdf"))
 ```
 
 ### Interpretation/Literature Search
+
+```{r comment=""}
+cat(url_statement)
+```
 
 ```{r}
 url_tables(paste0(original_path, "original-urls.txt"))
@@ -363,6 +374,10 @@ include_graphics(paste0(first_path, "first.pdf"))
 
 ### Interpretation/Literature Search
 
+```{r comment=""}
+cat(url_statement)
+```
+
 ```{r}
 url_tables(paste0(first_path, "first-urls.txt"))
 ```
@@ -432,6 +447,10 @@ include_graphics(paste0(previous_path, "previous.pdf"))
 
 ### Interpretation/Literature Search
 
+```{r comment=""}
+cat(url_statement)
+```
+
 ```{r}
 url_tables(paste0(previous_path, "previous-urls.txt"))
 ```
@@ -500,6 +519,10 @@ include_graphics(paste0(pairwise_path, "pairwise.pdf"))
 ```
 
 ### Interpretation/Literature Search
+
+```{r comment=""}
+cat(url_statement)
+```
 
 ```{r}
 url_tables(paste0(pairwise_path, "pairwise-urls.txt"))

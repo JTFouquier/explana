@@ -74,7 +74,7 @@ def dim_reduction():
                     "/SCNIC-dim-reduction-for-workflow.txt"
             scnic_ds_list.append(ds_name)
 
-        elif dim_method == "None":
+        elif dim_method == "None" or dim_method == "":
             f_out = input_datasets[ds_name]["file_path"]
 
         file_path_list.append(f_out)
@@ -105,7 +105,6 @@ def get_scnic_in_file(wildcards):
 def get_scnic_method(wildcards):
     method = input_datasets[wildcards.scnic_ds_name]["dim_param_dict"]["method"]
     return method
-
 
 def get_scnic_min_r(wildcards):
     min_r = input_datasets[wildcards.scnic_ds_name]["dim_param_dict"]["min_r"]

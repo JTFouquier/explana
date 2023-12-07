@@ -66,7 +66,7 @@ add_average_shap_values <- function(df, ds) {
         shap_instances <- shap_instances %>%
             dplyr::select(dplyr::all_of({{i}}))
 
-        avg_shap <- round(mean(shap_instances[[i]]), digits = 2)
+        avg_shap <- round(mean(shap_instances[[i]]), digits = 3)
 
         df <- df %>%
             dplyr::mutate(shap_val = dplyr::case_when(
@@ -184,11 +184,11 @@ main <- function(base_path) { # nolint
     "First", "Previous", "Pairwise"), names_to = "variable",
     values_to = "value")
 
+    # Provide average SHAP value for positive instances of binary vars
     df_join_long <- df_join_long %>%
         dplyr::rowwise() %>%
         dplyr::mutate(figure_labels = dplyr::case_when(value == 1 &
-        shap_val == 0 ~ paste0(toString(ranked_importance),
-            ": +\\-"),
+        shap_val == 0.000 ~ paste0(toString(ranked_importance), ""),
             value == 1 ~ paste0(toString(ranked_importance), ": ",
             toString(shap_val)),
             value == 0 ~ ""
@@ -294,9 +294,10 @@ main <- function(base_path) { # nolint
     "First" = color_first, "Previous" = color_previous,
     "Pairwise" = color_pairwise)) +
     scale_alpha_identity(guide = "none") +
-    labs(y = expression(atop("Important Features",
-    atop("(Categorical variable values are encoded)"))),
-    x = "Dataset") +
+    labs(y = "Selected Features", x = "Model Comparison") +
+    # labs(y = expression(atop("Important Features",
+    # atop("(Categorical feature values are encoded)"))),
+    # x = "Model Comparison") +
     scale_x_discrete(position = "top", labels = custom_labels) +
     theme_bw() +
     theme(legend.position = "none",
@@ -304,7 +305,7 @@ main <- function(base_path) { # nolint
           panel.grid.major.x = element_line(color = horizontal_lines),
           panel.grid.major.y = element_blank(),
           panel.spacing = unit(0, "lines"),
-          strip.text.y = element_text(size = 6, angle = 0),
+          strip.text.y = element_text(size = 7, angle = 0),
           axis.text.x = element_text(angle = 30, hjust = 0, size = 8,
           face = "bold"),
           axis.text.y = element_text(size = 7)) +
