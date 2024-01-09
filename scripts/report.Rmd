@@ -235,9 +235,7 @@ include_graphics("important-feature-occurrences.svg")
 
 #### Interpretation/Literature Search
 
-```{r comment=""}
-cat(url_statement)
-```
+``r url_statement``
 
 ```{r}
 url_tables("urls.txt")
@@ -301,9 +299,7 @@ include_graphics(paste0(original_path, "original.pdf"))
 
 ### Interpretation/Literature Search
 
-```{r comment=""}
-cat(url_statement)
-```
+``r url_statement``
 
 ```{r}
 url_tables(paste0(original_path, "original-urls.txt"))
@@ -374,9 +370,7 @@ include_graphics(paste0(first_path, "first.pdf"))
 
 ### Interpretation/Literature Search
 
-```{r comment=""}
-cat(url_statement)
-```
+``r url_statement``
 
 ```{r}
 url_tables(paste0(first_path, "first-urls.txt"))
@@ -447,9 +441,7 @@ include_graphics(paste0(previous_path, "previous.pdf"))
 
 ### Interpretation/Literature Search
 
-```{r comment=""}
-cat(url_statement)
-```
+``r url_statement``
 
 ```{r}
 url_tables(paste0(previous_path, "previous-urls.txt"))
@@ -520,9 +512,7 @@ include_graphics(paste0(pairwise_path, "pairwise.pdf"))
 
 ### Interpretation/Literature Search
 
-```{r comment=""}
-cat(url_statement)
-```
+``r url_statement``
 
 ```{r}
 url_tables(paste0(pairwise_path, "pairwise-urls.txt"))

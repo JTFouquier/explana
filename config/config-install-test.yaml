@@ -1,0 +1,57 @@
+analyst: "Jennifer Fouquier"
+
+response_var: "happiness"
+include_time: "yes"
+
+random_effect: "study_id" 
+sample_id: "sample_id"
+timepoint: "timepoint"
+out: "workflow-results/EXPLANA-install-test2/"
+
+iterations: "5"
+n_estimators: "150"
+max_features: "0.5"
+
+borutashap_trials: "50"
+borutashap_threshold: "100"
+borutashap_p: "0.05"
+
+analyze_original: "yes"
+analyze_first: "yes"
+analyze_previous: "yes"
+analyze_pairwise: "yes"
+
+absolute_values: "no"
+include_reference_values: "no"
+
+analysis_notes: "EXAMPLE analysis using very small dataset (for sharing)"
+enc_percent_threshold: "0"
+
+distance_matrices: "list(aitchison='data/simulation/simulation-small-aitchison-dm.txt')"
+
+input_datasets:
+  metadata:
+    file_path: "data/simulation/simulation-small.txt"
+    df_mod: |
+      df <- df %>% 
+        select(
+          -sunshine
+        )
+    dim_method: "None"
+    dim_param_dict: ""
+  microbiome:
+    file_path: "data/simulation/simulation-small-biom.biom"
+    df_mod: ""
+    dim_method: "SCNIC"
+    dim_param_dict:
+      method: "spearman"
+      min_r: ".4"
+
+
+
+
+
+
+
+
+
