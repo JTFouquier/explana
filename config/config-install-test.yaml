@@ -6,7 +6,7 @@ include_time: "yes"
 random_effect: "study_id" 
 sample_id: "sample_id"
 timepoint: "timepoint"
-out: "workflow-results/EXPLANA-install-test2/"
+out: "workflow-results/EXPLANA-install-test/"
 
 iterations: "5"
 n_estimators: "150"
@@ -24,7 +24,7 @@ analyze_pairwise: "yes"
 absolute_values: "no"
 include_reference_values: "no"
 
-analysis_notes: "EXAMPLE analysis using very small dataset (for sharing)"
+analysis_notes: "EXAMPLE analysis with 3 different dataset files for testing installation"
 enc_percent_threshold: "0"
 
 distance_matrices: "list(aitchison='data/simulation/simulation-small-aitchison-dm.txt')"
