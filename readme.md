@@ -2,7 +2,9 @@
 
 Authored by Jennifer Therese Fouquier
 
-This project is under active development. Please contact me with any issues, suggestions or questions at jennietf@gmail.com.
+**Free for academic use.** For other licensing information and user guide can be found at [explana.io](https://www.explana.io)
+
+Please contact me with any issues, suggestions or questions at jennifer@explana.io
 
 ## EXPLANA: A user-friendly workflow for EXPLoratory ANAlysis and feature selection in longitudinal and cross-sectional microbiome studies
 

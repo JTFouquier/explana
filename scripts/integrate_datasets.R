@@ -30,22 +30,9 @@ check_duplicate_colnames <- function(df, df_file_name) {
 }
 
 
-filter_dataframe <- function(df, df_mod_list, df_complete_flag) {
-
-  # For complete/full/merged dataframe, get modification information from
-  # Config file. For individual datasets, get from yaml
-  if (df_complete_flag == TRUE) {
-
-    # if no filtering intended on df, then df_mod might not be provided
-    df_mod <- snakemake@config[["df_mod"]]
-    if (is.null(df_mod)) {
-    } else {
-      eval(parse(text = df_mod))
-    }
-  } else if (df_complete_flag == FALSE) {
-    eval(parse(text = df_mod_list))
-  }
-
+filter_dataframe <- function(df, df_mod_list) {
+  df_mod <- snakemake@config[["df_mod"]]
+  eval(parse(text = df_mod))
   check_duplicate_colnames(df, df_file_name)
   return(df)
 }
@@ -56,23 +43,17 @@ main <- function(file_path_list, ds_param_dict_list) {
     print(print(paste0("WORKFLOW WARNING: Dataset count does not equal
     dataset parameter dictionary count")))
   }
-  print(file_path_list)
   df_list <- list()
-  df_complete_flag <- TRUE  # before datasets are all integrated
   for (i in 1:length(file_path_list)) {
     # For each dataset, get the parameter dict (drop, constrain, etc)
     ds_param_dict <- ds_param_dict_list[[i]]
     df_mod_list <- ds_param_dict
-    df_complete_flag <- FALSE
     df <- as.data.frame(readr::read_tsv(file_path_list[[i]]))
-    df <- filter_dataframe(df, df_mod_list, df_complete_flag)
     df_list <- append(df_list, list(df))
   }
-  df_complete_flag <- TRUE
-  # TODO document this
-  # consider option to join by first dataset (most important?)
-  df_complete <- df_list %>% purrr::reduce(left_join, by = sample_id)
-  df_complete <- filter_dataframe(df_complete, df_mod_list, df_complete_flag)
+
+  df_complete <- df_list %>% purrr::reduce(inner_join, by = sample_id)
+  df_complete <- filter_dataframe(df_complete, df_mod_list)
 
   # make sure the timepoint column is ranked (ordered)
   df_complete$timepoint_original <- df_complete[[timepoint_config]]

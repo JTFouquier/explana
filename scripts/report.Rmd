@@ -7,7 +7,6 @@ output:
 
 ```{r setup, include=FALSE}
 source("scripts/install.R")
-source("scripts/colors.R")
 package_list <- c("knitr", "kableExtra", "htmltools", "tidyverse",
 "Hmisc", "jsonlite")
 install_r_packages(package_list = package_list)
@@ -22,10 +21,20 @@ knitr::opts_chunk$set(echo = FALSE, eval = TRUE, error = FALSE,
                       warning = FALSE, message = FALSE,
                       comment = "")
 options(warn = -1)
+
+# Colors for report and figures
+color_summary <- "#9E9AC8"
+square_border <- "#f5f5f5"
+horizontal_lines <- "#f2f2f2"
+grid_color <- "#bfbfbf"
+
+color_original <- "#9EBCDA"
+color_first <- "#CBC9E2"
+color_previous <- "#9E9AC8"
+color_pairwise <- "#756BB1"
 ```
 
 ```{r comment="", echo = FALSE}
-
 response_var <- snakemake@config[["response_var"]]
 random_effect <- snakemake@config[["random_effect"]]
 
@@ -193,7 +202,7 @@ EXPLANA was used for exploratory analysis to identify important features related
 A random effect of **``r random_effect``** was used to adjust for non-independence (repeated measurements) if needed. There were **``r n_estimators``** trees used per Random Forest model with a max feature fraction of **``r max_features``**  of the input features for each split per decision tree in the forest. If mixed effects Random Forests were needed,
 **``r iterations``** iterations were performed. BorutaSHAP was used to find features that perform repeatedly better than shuffled versions of all input features. Features were considered important if they performed better than **``r borutashap_threshold``****%** of the SHAP importance score of the best shuffled feature using **``r borutashap_trials``** trials, p=**``r borutashap_p``**. Categorical variables were binary encoded and **``r enc_percent_threshold_print``**.
 
-These methods are from an EXPLANA feature selection report (version: **``r version``**) created on **``r Sys.Date()``**. See github.com for code and additional documentation. Copyright 2023 Regents of the University of Colorado. All rights reserved.
+These methods are from an EXPLANA feature selection report (version: **``r version``**) created on **``r Sys.Date()``**. Additional information can be found at https://github.com/JTFouquier/explana/.
 
 ***
 

@@ -8,11 +8,11 @@ sample_id: "sample_id"
 timepoint: "timepoint"
 out: "workflow-results/EXPLANA-install-test/"
 
-iterations: "5"
+iterations: "3"
 n_estimators: "150"
-max_features: "0.5"
+max_features: "0.2"
 
-borutashap_trials: "50"
+borutashap_trials: "20"
 borutashap_threshold: "100"
 borutashap_p: "0.05"
 
@@ -24,30 +24,57 @@ analyze_pairwise: "yes"
 absolute_values: "no"
 include_reference_values: "no"
 
-analysis_notes: "EXAMPLE analysis with 3 different dataset files for testing installation"
+analysis_notes: "EXAMPLE analysis"
 enc_percent_threshold: "0"
 
-distance_matrices: "list(aitchison='data/simulation/simulation-small-aitchison-dm.txt')"
+distance_matrices: "list(aitchison='data/install-test/simulation-small-aitchison-dm.txt')"
 
 input_datasets:
   metadata:
-    file_path: "data/simulation/simulation-small.txt"
+    file_path: "data/install-test/simulation-small.txt"
     df_mod: |
       df <- df %>% 
         select(
           -sunshine
         )
-    dim_method: "None"
-    dim_param_dict: ""
+    dim_method: ""
+    dim_param_dict:
+      method: "none"
   microbiome:
-    file_path: "data/simulation/simulation-small-biom.biom"
+    file_path: "data/install-test/simulation-small-biom.biom"
     df_mod: ""
     dim_method: "SCNIC"
     dim_param_dict:
       method: "spearman"
       min_r: ".4"
-
-
+  clr_test:
+    file_path: "data/install-test/simulation-small-rel-abundance-clr.txt"
+    df_mod: ""
+    dim_method: ""
+    dim_param_dict:
+      method: "clr"
+  comp_test:
+    file_path: "data/install-test/simulation-small-rel-abundance.txt"
+    df_mod: |
+      df <- df %>% 
+        select(
+          -da_microbe1_comp,
+          -da_microbe2_comp,
+          -da_microbe3_comp,
+          -da_microbe4_comp
+        )
+    dim_method: ""
+    dim_param_dict:
+      method: ""
+  PCA_test:
+    file_path: "data/install-test/simulation-small-rel-abundance.txt"
+    df_mod: ""
+    dim_method: "PCA"
+    dim_param_dict:
+      pca_list:
+        pca_microbes:
+          feature_list: "c('da_microbe1_comp', 'da_microbe2_comp','da_microbe3_comp','da_microbe4_comp')"
+          cum_var_thres: "70"
 
 
 

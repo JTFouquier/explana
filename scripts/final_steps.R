@@ -1,8 +1,5 @@
-"value" <- "variable" <- "important_features" <- NULL
-"square_border" <- "dataset" <- "horizontal_lines" <- "grid_color" <- NULL
 
 source("scripts/install.R")
-source("scripts/colors.R")
 package_list <- c("ggplot2", "reshape2", "tidyverse", "readr")
 install_r_packages(package_list = package_list)
 library(ggplot2)
@@ -20,6 +17,19 @@ base_path <- snakemake@config[["out"]]
 
 out_file <- snakemake@output[["out_file"]]
 
+# Colors for report and figures
+color_summary <- "#9E9AC8"
+square_border <- "#f5f5f5"
+horizontal_lines <- "#f2f2f2"
+grid_color <- "#bfbfbf"
+
+color_original <- "#9EBCDA"
+color_first <- "#CBC9E2"
+color_previous <- "#9E9AC8"
+color_pairwise <- "#756BB1"
+
+"value" <- "variable" <- "important_features" <- NULL
+"square_border" <- "dataset" <- "horizontal_lines" <- "grid_color" <- NULL
 
 add_average_shap_values <- function(df, ds) {
     # Encoded features are either yes or no (1 or 0); so the average
@@ -155,6 +165,11 @@ main <- function(base_path) { # nolint
 
     df_join[is.na(df_join)] <- 0
 
+    num_failed_models <- df_join %>%
+        filter(important_features == "no_selected_features")
+
+    num_failed_models <- dim(num_failed_models)[1]
+
     df <- df_join %>%
         select(dataset, important_features) %>% # nolint
         dplyr::filter(important_features != "Failed Analysis") %>%
@@ -184,6 +199,7 @@ main <- function(base_path) { # nolint
     "First", "Previous", "Pairwise"), names_to = "variable",
     values_to = "value")
 
+
     # Provide average SHAP value for positive instances of binary vars
     df_join_long <- df_join_long %>%
         dplyr::rowwise() %>%
@@ -204,8 +220,14 @@ main <- function(base_path) { # nolint
             value == 0 & variable == "Pairwise"
             & important_features %in% input_features_pairwise ~ " "
         )) %>%
-        dplyr::filter(important_features != "no_selected_features") %>%
+        # dplyr::filter(important_features != "no_selected_features") %>%
         dplyr::ungroup()
+
+    if (num_failed_models != 4) {
+        df_join_long <- df_join_long %>%
+            dplyr::filter(important_features != "no_selected_features")
+    }
+
 
     # get the total number of features selected by dataset for figure
     original_n <- df_join_long %>% dplyr::filter(dataset == "Original")

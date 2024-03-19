@@ -1,4 +1,4 @@
-name: feature-selection-workflow
+name: explana
 channels:
   - bioconda
   - conda-forge

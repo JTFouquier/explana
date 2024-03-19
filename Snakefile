@@ -19,6 +19,7 @@ shutil.copy(config_file, os.path.join(out_dir, new_filename))
 
 config["path_dim_pca"] = "DIM-PCA/"
 config["path_dim_scnic"] = "DIM-SCNIC/"
+config["path_dim_preprocess"] = "DIM-preprocess/"
 
 # can simplifity this code
 config["path_original"] = "SELECTED-FEATURES-original/"
@@ -26,7 +27,7 @@ config["path_first"] = "SELECTED-FEATURES-first/"
 config["path_previous"] = "SELECTED-FEATURES-previous/"
 config["path_pairwise"] = "SELECTED-FEATURES-pairwise/"
 
-config["version"] = "2023.11.0"
+config["version"] = "2024.03.0"
 
 
 rule all:
@@ -52,6 +53,7 @@ path_pairwise = out_dir + config["path_pairwise"]
 
 path_dim_pca = out_dir + config["path_dim_pca"]
 path_dim_scnic = out_dir + config["path_dim_scnic"]
+path_dim_preprocess = out_dir + config["path_dim_preprocess"]
 
 
 def dim_reduction():
@@ -60,39 +62,62 @@ def dim_reduction():
     ds_param_dict_list = []
     pca_ds_list = []
     scnic_ds_list = []
+    preprocess_ds_list = []
 
     for ds_name in input_datasets:
         dim_method = input_datasets[ds_name]["dim_method"]
         ds_param_dict_list.append(input_datasets[ds_name]["df_mod"])
-        if dim_method == "pca" or dim_method == "PCA":
+
+        dim_method = dim_method.lower()
+        if dim_method == "pca":
             f_out = path_dim_pca + ds_name + "/PCA-dim-reduction-" \
                                              "for-workflow.txt"
             pca_ds_list.append(ds_name)
 
-        elif dim_method == "scnic" or dim_method == "SCNIC":
+        elif dim_method == "scnic":
             f_out = path_dim_scnic + ds_name + \
                     "/SCNIC-dim-reduction-for-workflow.txt"
             scnic_ds_list.append(ds_name)
 
-        elif dim_method == "None" or dim_method == "":
+        elif dim_method == "preprocess" or dim_method == "":
+            f_out = path_dim_preprocess + ds_name + \
+            "/preprocess-for-workflow.txt"
+            preprocess_ds_list.append(ds_name)
+
+        elif dim_method == "none":
             f_out = input_datasets[ds_name]["file_path"]
 
         file_path_list.append(f_out)
 
     return file_path_list, ds_param_dict_list, \
            pca_ds_list, \
-           scnic_ds_list, input_datasets
+           scnic_ds_list, preprocess_ds_list, input_datasets
 
 config["file_path_list"], config["ds_param_dict_list"], \
 config["pca_ds_list"], \
-config["scnic_ds_list"], input_datasets = dim_reduction()
+config["scnic_ds_list"], config["preprocess_ds_list"], input_datasets = dim_reduction()
 config["input_datasets"] = input_datasets
 
+
+def get_preprocess_df_mod(wildcards):
+    df_mod = input_datasets[wildcards.preprocess_ds_name]["df_mod"]
+    return df_mod
+
+def get_preprocess_in_file(wildcards):
+    in_file = input_datasets[wildcards.preprocess_ds_name]["file_path"]
+    return in_file
+
+def get_preprocess_method(wildcards):
+    method = input_datasets[wildcards.preprocess_ds_name]["dim_param_dict"]["method"]
+    return method
+
+# def get_pca_df_mod(wildcards):
+#     df_mod = input_datasets[wildcards.pca_ds_name]["df_mod"]
+#     return df_mod
 
 def get_pca_in_file(wildcards):
     in_file = input_datasets[wildcards.pca_ds_name]["file_path"]
     return in_file
-
 
 def get_pca_list(wildcards):
     pca_list = input_datasets[wildcards.pca_ds_name]["dim_param_dict"]["pca_list"]
@@ -109,6 +134,22 @@ def get_scnic_method(wildcards):
 def get_scnic_min_r(wildcards):
     min_r = input_datasets[wildcards.scnic_ds_name]["dim_param_dict"]["min_r"]
     return min_r
+
+
+rule preprocess:
+    input:
+        in_file = get_preprocess_in_file,
+    output:
+        out_file = path_dim_preprocess + "{preprocess_ds_name}" +
+        "/preprocess-for-workflow.txt"
+    params:
+        dataset_name = expand("{preprocess_ds_name}",
+            preprocess_ds_name=config["preprocess_ds_list"]),
+        method = get_preprocess_method,
+        df_mod = get_preprocess_df_mod
+    conda: "conda_envs/r_env.yaml",
+    script:
+        "scripts/preprocess.R"
 
 
 # Perform dimensionality reduction using principal coordinates analysis (PCA)

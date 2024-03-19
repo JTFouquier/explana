@@ -92,7 +92,8 @@ perform_pca <- function(pca_list, pca_name, df, final_output_folder) {
   write_table_special(var_cos2, output_folder, file_name = "var_cos2.txt")
 
   # Get pcs that are over a threshold
-  bool_important <- eig_val$cumulative_variance_percent < cum_var_thres
+  bool_important <- eig_val$cumulative.variance.percent < cum_var_thres
+
   pcs_over_threshold <- sum(bool_important, na.rm = TRUE) + 1
   pc_name_list <- rownames(eig_val)[1:pcs_over_threshold]
 
