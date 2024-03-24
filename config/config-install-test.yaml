@@ -8,8 +8,8 @@ sample_id: "sample_id"
 timepoint: "timepoint"
 out: "workflow-results/EXPLANA-install-test/"
 
-iterations: "3"
-n_estimators: "150"
+iterations: "5"
+n_estimators: "200"
 max_features: "0.2"
 
 borutashap_trials: "20"
@@ -40,32 +40,12 @@ input_datasets:
     dim_method: ""
     dim_param_dict:
       method: "none"
-  microbiome:
-    file_path: "data/install-test/simulation-small-biom.biom"
-    df_mod: ""
-    dim_method: "SCNIC"
-    dim_param_dict:
-      method: "spearman"
-      min_r: ".4"
-  clr_test:
+  clr_microbiome:
     file_path: "data/install-test/simulation-small-rel-abundance-clr.txt"
     df_mod: ""
     dim_method: ""
     dim_param_dict:
       method: "clr"
-  comp_test:
-    file_path: "data/install-test/simulation-small-rel-abundance.txt"
-    df_mod: |
-      df <- df %>% 
-        select(
-          -da_microbe1_comp,
-          -da_microbe2_comp,
-          -da_microbe3_comp,
-          -da_microbe4_comp
-        )
-    dim_method: ""
-    dim_param_dict:
-      method: ""
   PCA_test:
     file_path: "data/install-test/simulation-small-rel-abundance.txt"
     df_mod: ""
