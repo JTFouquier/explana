@@ -50,6 +50,9 @@ ds_out_path = snakemake.config["out"] + snakemake.config["path_" + dataset]
 plot_list_shap = []
 plot_file_name_list_shap = []
 
+plot_list_dependence = []
+plot_file_name_list_dependence = []
+
 plot_list_boruta = []
 plot_file_name_list_boruta = []
 
@@ -235,13 +238,15 @@ def train_rf_model(x, y, rf_regressor, step):
 
 
 def graphic_handling(plt, plot_file_name, p_title, width,
-                     height, tick_size, title_size, is_shap, shap_statement):
-    if is_shap:
+                     height, tick_size, title_size, plot_group, shap_statement):
+    if plot_group == "shap" or plot_group == "dependence":
         plot_file_name_list_shap.append(plot_file_name)
-    else:
+    if plot_group == "boruta":
         plot_file_name_list_boruta.append(plot_file_name)
+    if plot_group == "dependence":
+        plot_file_name_list_dependence.append(plot_file_name)
 
-    top_adjustment = 0.80 if is_shap else 0.95
+    top_adjustment = 0.80 if plot_group == "shap" else 0.95
 
     plt.title(p_title, fontdict={"fontsize": title_size})
     plt.tick_params(axis="both", labelsize=tick_size)
@@ -252,10 +257,12 @@ def graphic_handling(plt, plot_file_name, p_title, width,
     p.set_size_inches(width, height)
     plt.close("all")
 
-    if is_shap:
+    if plot_group == "shap" or plot_group == "dependence":
         plot_list_shap.append(p)
-    else:
+    if plot_group == "boruta":
         plot_list_boruta.append(p)
+    if plot_group == "dependence":
+        plot_list_dependence.append(p)
 
 
 def list_split(input_list, group_size):
@@ -271,7 +278,6 @@ def my_shap_summary_plots(feature_index_list, shap_values, x, list_num,
     ax_sz = 8
     title_sz = 8
     tick_sz = 6
-    is_shap = True
 
     # beeswarm
     plt.figure(figsize=(_width, _height))
@@ -279,6 +285,7 @@ def my_shap_summary_plots(feature_index_list, shap_values, x, list_num,
     t = f"Features related to {response_var} ({d} dataset)"
     shap.summary_plot(shap_values=plt_s, features=plt_x, show=False,
                       sort=True, max_display=group_size, color_bar=True,
+                      color_bar_label='Selected feature value',
                       plot_size=(0.8*_width, 0.7*_height))
     plt.ylabel("Selected Features\n", fontsize=ax_sz)
     plt.xlabel("SHAP value (impact on response)\nLeft of zero is " +
@@ -286,7 +293,7 @@ def my_shap_summary_plots(feature_index_list, shap_values, x, list_num,
                fontsize=ax_sz)
     graphic_handling(plt, "-accepted-SHAP-summary-beeswarm-" +
                      str(list_num), t, _width, _height, tick_sz,
-                     title_sz, is_shap, shap_statement)
+                     title_sz, "shap", shap_statement)
 
 
 def shap_plots(shap_values, x, boruta_accepted, feature_importance,
@@ -311,19 +318,19 @@ def shap_plots(shap_values, x, boruta_accepted, feature_importance,
 
     col_count = 1
     # TODO save the dataframe and get vals 1
-    is_shap = True
     for col in boruta_accepted:
+        # Dependence plots
         plt.figure(figsize=(_width, _height))
         shap.dependence_plot(col, shap_values, x, show=False, x_jitter=0.03,
-                             interaction_index=None)
-        plt.ylabel("SHAP value for\n" + str(col), fontsize=8)
-        plt.xlabel(str(col), fontsize=8)
+                             interaction_index="auto")
+        plt.ylabel("SHAP value for\n" + str(col), fontsize=9)
+        plt.xlabel(str(col), fontsize=9)
         graphic_handling(plt, "-SHAP-dependence-plot-interaction-" +
                          str(col_count),
                          "Dependence plot showing feature impact on\n " +
                          response_var + " (" + str.capitalize(dataset) +
                          " dataset)", _width, _height, 7, 8,
-                         is_shap, shap_statement)
+                         "dependence", shap_statement)
         col_count += 1
 
 
@@ -348,7 +355,6 @@ def run_shap(trained_forest_model, x):
 
 def run_boruta_shap(forest, x, y, shap_statement):
     boruta_height = 10
-    is_shap = False
     feature_selector = \
         BorutaShap(model=forest, importance_measure="shap",
                    classification=False, percentile=borutashap_threshold,
@@ -360,7 +366,7 @@ def run_boruta_shap(forest, x, y, shap_statement):
                                          which_features=feature_group)
         graphic_handling(plt, "-boruta-" + feature_group + "-features",
                          "Boruta " + feature_group + " features",
-                         boruta_width, boruta_height, 5, 9, is_shap,
+                         boruta_width, boruta_height, 5, 9, "boruta",
                          shap_statement)
     return feature_selector
 
@@ -484,7 +490,13 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
             # for understanding feature impact on response
             # z, c, and y are the same as before
 
-            x = x.drop(boruta_explainer.rejected, axis=1)
+            rejected_cols = boruta_explainer.rejected
+
+            if "timepoint_explana" in boruta_explainer.rejected:
+                rejected_cols.remove("timepoint_explana")
+
+            x = x.drop(rejected_cols, axis=1)
+
 
             if rf_type == "MERF":
                 forest, oob_rerun = train_merf_model(x=x, z=z, c=c, y=y,
@@ -565,11 +577,17 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
             print("Tentative: " + tentative_features)
             print("Rejected: " + rejected_features)
             plt.close("all")
+            # PDF; Primary figures (SHAP)
             _build_result_pdf(out_file, ds_out_path + dataset, plot_list_shap,
                               plot_file_name_list_shap)
+            # PDF; Boruta figures
             _build_result_pdf(ds_out_path + dataset + "-boruta.pdf",
                               ds_out_path + dataset, plot_list_boruta,
                               plot_file_name_list_boruta)
+            # 
+            _build_result_pdf(ds_out_path + dataset + "-dependence.pdf",
+                              ds_out_path + dataset, plot_list_dependence,
+                              plot_file_name_list_dependence)
             model_evaluation = "Pass"
 
         # Make log table dataframe for final report summary

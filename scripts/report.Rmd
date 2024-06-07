@@ -321,6 +321,15 @@ setwd(snakemake@config[["out"]])
 cat(readLines(paste0(original_path, "original-log.txt")), sep = "\n")
 ```
 
+### BorutaSHAP Figures
+
+[⇨ Open PDF in new window](./`r original_path`original-boruta.pdf){target="_blank"}
+
+```{r out.width = 1000, out.height = 600, comment=""}
+setwd(snakemake@config[["out"]])
+include_graphics(paste0(original_path, "original-boruta.pdf"))
+```
+
 ##
 
 ***
@@ -390,6 +399,15 @@ url_tables(paste0(first_path, "first-urls.txt"))
 ```{r comment=""}
 setwd(snakemake@config[["out"]])
 cat(readLines(paste0(first_path, "first-log.txt")), sep = "\n")
+```
+
+### BorutaSHAP Figures
+
+[⇨ Open PDF in new window](./`r first_path`first-boruta.pdf){target="_blank"}
+
+```{r out.width = 1000, out.height = 600, comment=""}
+setwd(snakemake@config[["out"]])
+include_graphics(paste0(first_path, "first-boruta.pdf"))
 ```
 
 ##
@@ -463,6 +481,15 @@ setwd(snakemake@config[["out"]])
 cat(readLines(paste0(previous_path, "previous-log.txt")), sep = "\n")
 ```
 
+### BorutaSHAP Figures
+
+[⇨ Open PDF in new window](./`r previous_path`previous-boruta.pdf){target="_blank"}
+
+```{r out.width = 1000, out.height = 600, comment=""}
+setwd(snakemake@config[["out"]])
+include_graphics(paste0(previous_path, "previous-boruta.pdf"))
+```
+
 ##
 
 ***
@@ -532,6 +559,15 @@ url_tables(paste0(pairwise_path, "pairwise-urls.txt"))
 ```{r comment=""}
 setwd(snakemake@config[["out"]])
 cat(readLines(paste0(pairwise_path, "pairwise-log.txt")), sep = "\n")
+```
+
+### BorutaSHAP Figures
+
+[⇨ Open PDF in new window](./`r pairwise_path`pairwise-boruta.pdf){target="_blank"}
+
+```{r out.width = 1000, out.height = 600, comment=""}
+setwd(snakemake@config[["out"]])
+include_graphics(paste0(pairwise_path, "pairwise-boruta.pdf"))
 ```
 
 ##

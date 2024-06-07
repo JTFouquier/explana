@@ -31,7 +31,7 @@ preprocess_dataframe <- function(in_file, method) {
 
     if (method %in% c("clr", "arcsin")) {
 
-      s <- df$`sample_id`
+      s <- df[sample_id]
       df <- df %>% dplyr::select(-`sample_id`)
 
       if (method == "clr") {
@@ -44,7 +44,7 @@ preprocess_dataframe <- function(in_file, method) {
           }
           df <- as.data.frame(apply(df, MARGIN = 2, FUN = transform))
       }
-      df$`sample_id` <- s
+      df[sample_id] <- s
     }
     return(df)
 }
