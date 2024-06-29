@@ -181,19 +181,7 @@ When you are using data without prior hypotheses, you are performing *explorator
 
 ### {.tabset}
 
-#### Analysis Summary
-
-**Random effect:** ``r random_effect``
-
-**Dataset Modifications:**
-
-```{r results='asis'}
-cat(df_mod)
-```
-
-***
-
-##### Methods
+#### Methods
 
 Feel free to use the following text, including citation information, for use in methods to ensure reproducibility:
 
@@ -206,13 +194,12 @@ These methods are from an EXPLANA feature selection report (version: **``r versi
 
 ***
 
-#### Input Datasets
+#### Config File
 
 ```{r comment=""}
-ds_print <- snakemake@config[["input_datasets"]] %>%
-  toJSON %>%
-  prettify()
-cat(ds_print)
+yaml_file <- paste0(snakemake@config[["out"]], "analysis_config.yaml")
+yaml_contents <- yaml::read_yaml(yaml_file)
+cat(yaml::as.yaml(yaml_contents))
 ```
 
 ### Directory Links
@@ -244,7 +231,7 @@ include_graphics("important-feature-occurrences.svg")
 
 #### Interpretation/Literature Search
 
-``r url_statement``
+`r url_statement`
 
 ```{r}
 url_tables("urls.txt")
@@ -308,7 +295,7 @@ include_graphics(paste0(original_path, "original.pdf"))
 
 ### Interpretation/Literature Search
 
-``r url_statement``
+`r url_statement`
 
 ```{r}
 url_tables(paste0(original_path, "original-urls.txt"))
@@ -388,7 +375,7 @@ include_graphics(paste0(first_path, "first.pdf"))
 
 ### Interpretation/Literature Search
 
-``r url_statement``
+`r url_statement`
 
 ```{r}
 url_tables(paste0(first_path, "first-urls.txt"))
@@ -468,7 +455,7 @@ include_graphics(paste0(previous_path, "previous.pdf"))
 
 ### Interpretation/Literature Search
 
-``r url_statement``
+`r url_statement`
 
 ```{r}
 url_tables(paste0(previous_path, "previous-urls.txt"))
@@ -548,7 +535,7 @@ include_graphics(paste0(pairwise_path, "pairwise.pdf"))
 
 ### Interpretation/Literature Search
 
-``r url_statement``
+`r url_statement`
 
 ```{r}
 url_tables(paste0(pairwise_path, "pairwise-urls.txt"))

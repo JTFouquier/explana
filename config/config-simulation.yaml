@@ -1,0 +1,37 @@
+analyst: "Jennifer Fouquier"
+
+response_var: "happiness"
+include_time: "yes"
+
+random_effect: "study_id"
+sample_id: "sample_id"
+timepoint: "timepoint"
+out: "workflow-results/EXPLANA-simulation/"
+
+iterations: "10"
+n_estimators: "300"
+max_features: "0.3"
+
+borutashap_trials: "100"
+borutashap_threshold: "100"
+borutashap_p: "0.05"
+
+analyze_original: "yes"
+analyze_first: "yes"
+analyze_previous: "yes"
+analyze_pairwise: "yes"
+
+absolute_values: "no"
+include_reference_values: "no"
+
+analysis_notes: "SimFeaturesMicrobiome0 (simulation study with categorical and numerical variables for demonstration purposes)"
+enc_percent_threshold: "0"
+
+distance_matrices: "list()"
+
+input_datasets:
+  metadata:
+    file_path: "data/simulation/simulation-updated-microbiome-clr.txt"
+    df_mod: ""
+    dim_method: "none"
+    dim_param_dict: ""

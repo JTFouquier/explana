@@ -29,14 +29,16 @@ enc_percent_threshold: "0"
 
 distance_matrices: "list(aitchison='data/install-test/simulation-small-aitchison-dm.txt')"
 
-input_datasets:
-  metadata:
-    file_path: "data/install-test/simulation-small.txt"
-    df_mod: |
+df_mod: |
       df <- df %>% 
         select(
           -sunshine
         )
+
+input_datasets:
+  metadata:
+    file_path: "data/install-test/simulation-small.txt"
+    df_mod: ""
     dim_method: ""
     dim_param_dict:
       method: "none"
