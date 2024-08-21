@@ -29,7 +29,8 @@ def build_url_list(feature_file, out_file, compiled_flag):
         return
 
     def make_url(x):
-
+        # if people use numbers in column names convert to string; fix earlier
+        x = str(x)
         try:
             feature = re.split("_is_", x)[0]
             feature = re.split("ENC_", feature)[1]

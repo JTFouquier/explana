@@ -1461,14 +1461,19 @@ border-radius: 0px;
 <div id="explana-user-guide-and-other-resources" class="section level1 tabset tabset-fade tabset-pills">
 <h1 class="tabset tabset-fade tabset-pills">EXPLANA User Guide and Other
 Resources</h1>
-<p>3/19/2024: More documentation on use will be coming after my PhD
-defense on 4/1. :) Thank you!</p>
-<p>See <a href="https://github.com/JTFouquier/explana" class="uri">https://github.com/JTFouquier/explana</a> for more install
-information.</p>
+<p>EXPLANA is intended to be user-friendly for analysts with computer
+science and bioinformatics skills. Code is under active development, so
+please check for updates.</p>
+<p>Contact me with any questions or comments at <a href="mailto:jennifer@explana.io" class="email">jennifer@explana.io</a>.</p>
+<p>See <a href="https://github.com/JTFouquier/explana" class="uri">https://github.com/JTFouquier/explana</a> for install
+information, feature requests or issues. If unsure, please email me.
+Installation has been successfully peformed by many people, but I know
+it’s been difficult for some. Please let me know if you have any
+issues.</p>
 <p>This documentation includes directions for using EXPLANA and to serve
-as a location for additional educational resources. For efficiency and
-convenience, this documentation, with the exception of the “User Guide”
-section, is from ChatGPT 4.0 and verified for accuracy.</p>
+as a location for additional resources related to the tool or results.
+The user guide is written by myself, and additional reading is from
+ChatGPT for convenience, and verified for accuracy.</p>
 </div>
 <div id="using-explana" class="section level1 tabset tabset-fade tabset-pills">
 <h1 class="tabset tabset-fade tabset-pills">Using EXPLANA</h1>
@@ -1477,34 +1482,46 @@ section, is from ChatGPT 4.0 and verified for accuracy.</p>
 <div id="section" class="section level4">
 <h4>⇨</h4>
 </div>
-<div id="requirements-for-use" class="section level4">
-<h4>Requirements for Use</h4>
-<p>Requirements for using EXPLANA:</p>
+<div id="please-read-prior-to-using-explana" class="section level4">
+<h4>Please read prior to using EXPLANA</h4>
 <ul>
+<li><p>EXPLANA helps find linear and non-linear variables that are
+related to an outcome/response variable of interest, also considered the
+dependent variable. Because you are explaining known outcome values,
+this is a ‘supervised’ machine learning method, so you should have a
+numerical outcome (weight, inflammation, mood, counts, etc.) or binary
+categorical outcome (treated/untreated, disease/no disease,
+before/after, etc). EXPLANA will then tell you which features are the
+most important for explaining those values. I have not tested how it
+works with multi-class categorical values too much because it makes
+confusing to interpret the results of the selected important features.
+It might work though!</p></li>
 <li><p>EXPLANA is designed to be <strong>used with a configuration
 file</strong> (see “Configuration File” tab) in .yaml format, not
-through individual command line arguments.</p></li>
-<li><p>You <strong>must have a timepoint column</strong></p></li>
-<li><p>Do not change folder names or delete files, or you can break
-links used to generate the html report.</p></li>
-<li><p>You should inspect the files original.txt, first.txt,
-previous.txt and pairwise.txt to ensure that the intended calculations
-were performed for your data. Inspect Original to ensure
-merge/integration occurred properly. These do take up extra space and
-can be deleted.</p></li>
+through individual command line arguments. This is basically one
+file/script that you use to organize and make decisions about your
+analysis.</p></li>
+<li><p>You <strong>must have a timepoint column</strong> even if you are
+doing a cross-sectional analysis.</p></li>
+<li><p>For categorical variables you do not want to code values as 0 or
+1 because they will be treated as numeric. Convert to yes/no,
+true/false, or even one/two/three for efficiency.</p></li>
+<li><p>Files must be in .txt format for now. I’ll update later for
+flexibility.</p></li>
 </ul>
 </div>
-<div id="configuration-file-with-comments" class="section level4">
-<h4>Configuration File with Comments</h4>
+<div id="configuration-file-with-detailed-information-about-parameters" class="section level4">
+<h4>Configuration File with Detailed Information about Parameters</h4>
 <p>The configuration file is in .yaml format. Users fill out this file
 and run it with snakemake. See github for additional information.</p>
 <p>Be <strong>very</strong> careful with indentation consistency and use
 of single and double quotes.</p>
-<p>Due to the nature of the workflow, Python and R are used, which is
-why you will see different syntax. This is not because I randomly wrote
-things in different languages. It is because I am using existing
-packages and scripts in different languages and to add my own features,
-I needed to write in R and Python.</p>
+<p>Due to the nature of the workflow and its use of different packages
+in both Python and R, you will see different syntax in the configuration
+file. Basically if I used a package with an R script, the code in that
+part of the configuration file must be in R. I realize this is
+inconvenient, and I plan to address this soon.</p>
+<p><strong>Configuration File:</strong></p>
 <p>Put your name here. Date is automatically recorded in the report.</p>
 <pre><code>analyst: &quot;Jennifer Fouquier&quot;</code></pre>
 <p>Response, which should be a continuous value OR a binary categorical.
@@ -1525,18 +1542,33 @@ cross-sectional everything would be the same number. NOTE: if there are
 random skips in time, such as 1,4,8, etc they get ranked as 1, 2, 3.</p>
 <pre><code>timepoint: &quot;timepoint&quot;
 out: &quot;workflow-results/EXPLANA-install-test/&quot;</code></pre>
+<hr />
 <p>Number of interations of mixed-effects Random Forests (MERFs) if
-needed</p>
-<pre><code>iterations: &quot;5&quot;</code></pre>
+needed; 10-20 works well. 20 is better.</p>
+<pre><code>iterations: &quot;20&quot;</code></pre>
+<hr />
 <p>Total number of trees/estimators</p>
 <pre><code>n_estimators: &quot;200&quot;</code></pre>
-<p>Fraction of features the algorithm uses per split. For feature
-selection, you don’t want this to be very close to one if you want to
-see lower performing features. If you choose one, then 100% of your
-features will be used and the best performers will always win,
-preventing the others from having their “shot” to help explain the
-response values.</p>
+<hr />
+<p>Fraction of features the algorithm uses per split during feature
+evaluation:</p>
+<p>For feature selection, you don’t want this to be very close to one if
+you want to see slightly lower performing features. If you choose 1.0,
+then 100% of your features will be used and the best performers will
+always win, preventing the others from having their “shot” to help
+explain the outcome values. For example, we know that sex and height are
+predictive of weight, so we do not want those to always outperform an
+interesting feature, such as a bacterial species that might be related
+to weight. Afterall, our goal is for hypothesis generation, not to just
+find the obvious features.</p>
+<p>You also do not want to go too because then only a very small number
+of features will be evaluated at each step. In many datasets, a lot of
+variables are not predictive or essentially meaningless, so you’re only
+evaluating junk variables at each step. So you should try different
+values here, but understand that too low and you will get a lot of false
+positives.</p>
 <pre><code>max_features: &quot;0.2&quot;</code></pre>
+<hr />
 <p>The following are all for BorutaSHAP. BorutaSHAP duplicates the
 dataset and shuffles the features so that randomness is included for
 comparison to original feature values. You should typically do 100
@@ -1547,6 +1579,7 @@ dropping this but you will start to get more false positives.</p>
 <pre><code>borutashap_trials: &quot;20&quot;
 borutashap_threshold: &quot;100&quot;
 borutashap_p: &quot;0.05&quot;</code></pre>
+<hr />
 <p>Which analyses do you want to do? All must say yes or no. For two
 timepoints (pre-post studies) you will likely just want original and
 first.</p>
@@ -1554,21 +1587,25 @@ first.</p>
 analyze_first: &quot;yes&quot;
 analyze_previous: &quot;yes&quot;
 analyze_pairwise: &quot;yes&quot;</code></pre>
+<hr />
 <p>These are pretty experimental for now. Please contact me if you are
 interested in these features.</p>
 <pre><code>absolute_values: &quot;no&quot;
 include_reference_values: &quot;no&quot;</code></pre>
+<hr />
 <p>If you want to include notes about why you performed the analysis, or
 decisions you made, include it here. I think this can get hard to
 remember to fill out though. A copy of each configuration file is
 included in the output directory so you know exactly what you did.</p>
 <pre><code>analysis_notes: &quot;EXAMPLE analysis&quot;
 enc_percent_threshold: &quot;0&quot;</code></pre>
+<hr />
 <p>Do you have distance matrices to include? These get incorporated into
 the delta datasets</p>
 <pre><code>distance_matrices: &quot;list(aitchison=&#39;data/install-test/simulation-small-aitchison-dm.txt&#39;)&quot;</code></pre>
 <p>This is a YAML format list that tells the workflow how many files you
 have.</p>
+<hr />
 <p>Must say “input_datasets”</p>
 <pre><code>input_datasets:</code></pre>
 <hr />
@@ -1578,8 +1615,7 @@ have.</p>
 <strong><code>metadata</code></strong> dataset and provide the
 <strong><code>file_path</code></strong></p>
 <pre><code>  metadata:
-    file_path: &quot;data/install-test/simulation-small.txt&quot;
-    </code></pre>
+    file_path: &quot;data/install-test/simulation-small.txt&quot;</code></pre>
 <p>This is the modification script you can perform.</p>
 <p>If you modify the script YOU MUST keep all the variables you need in
 them (timepoint, study_id, sample_id, etc). For more details about
@@ -1593,28 +1629,24 @@ intended.</p>
       df &lt;- df %&gt;% 
         select(
           -sunshine
-        )
-        </code></pre>
+        )</code></pre>
 <p><strong><code>dim_method</code></strong> can be “PCA” or “SCNIC”
 dimensionality reduction methods, which both have different parameters
 required. Another option is preprocess where you can transform using
 “clr” or “arcsin”.</p>
-<pre><code>    dim_method: &quot;&quot;   # &quot;PCA&quot;, &quot;SCNIC&quot;, or &quot;preprocess&quot;
-    </code></pre>
+<pre><code>    dim_method: &quot;&quot;   # &quot;PCA&quot;, &quot;SCNIC&quot;, or &quot;preprocess&quot;</code></pre>
 <p><strong><code>dim_param_dict</code></strong> is the parameter
 dictionary for the dimensionality reduction method you’re using.</p>
 <pre><code>    dim_param_dict:
-      method: &quot;none&quot;  # For preprocess use &quot;arcsin&quot; or &quot;clr&quot; 
-      </code></pre>
+      method: &quot;none&quot;  # For preprocess use &quot;arcsin&quot; or &quot;clr&quot; </code></pre>
 <hr />
-<p><strong>PCA_test dataset details</strong></p>
+<p>PCA_test dataset details:</p>
 <hr />
 <p>Name of dataset is <strong><code>PCA_test</code></strong></p>
 <pre><code>  PCA_test:
     file_path: &quot;data/install-test/simulation-small-rel-abundance.txt&quot;
     df_mod: &quot;&quot;
-    dim_method: &quot;PCA&quot;
-    </code></pre>
+    dim_method: &quot;PCA&quot;</code></pre>
 <p><strong><code>dim_param_dict</code></strong> is a special parameter
 dictionary for PCA dim_method.</p>
 <p><strong><code>pca_list</code></strong> will be all the PCA analyses
@@ -1625,8 +1657,7 @@ threshold will replace these four microbes.</p>
       pca_list:
         pca_microbes:
           feature_list: &quot;c(&#39;da_microbe1_comp&#39;, &#39;da_microbe2_comp&#39;,&#39;da_microbe3_comp&#39;,&#39;da_microbe4_comp&#39;)&quot;
-          cum_var_thres: &quot;70&quot;
-          </code></pre>
+          cum_var_thres: &quot;70&quot;</code></pre>
 <hr />
 <p><strong><code>input_datasets</code></strong> altogether without
 comments:</p>
@@ -1662,7 +1693,7 @@ comments:</p>
 <h4>Configuration File Example</h4>
 <p>This is just a test analysis for <strong>installation</strong> and
 <strong>functionality</strong>.</p>
-<p>It does not have enough data for good results!</p>
+<p>It is not the best data for demonstrating good results.</p>
 <pre><code>analyst: &quot;Jennifer Fouquier&quot;
 
 response_var: &quot;happiness&quot;
@@ -1745,24 +1776,41 @@ as intended.</p>
         )
     dim_method: &quot;&quot;
     dim_param_dict:
-      method: &quot;none&quot;
-      </code></pre>
+      method: &quot;none&quot;</code></pre>
+</div>
+<div id="after-running-explana" class="section level4">
+<h4>After running explana</h4>
+<ul>
+<li><p>Inspect the files original.txt, first.txt, previous.txt and
+pairwise.txt to ensure intended calculations were performed. Inspect
+original.txt very carefully to ensure merge/integration occurred
+properly.</p></li>
+<li><p>The main file is EXPLANA.html report; double click to open this
+in a browser</p></li>
+<li><p>Do not change folder names or delete files, or you can break the
+html links</p></li>
+<li><p><strong>To share results</strong>, you must share the entire
+folder. Zip the folder and share.</p></li>
+</ul>
 </div>
 <div id="faqs" class="section level4">
 <h4>FAQs</h4>
 <ol style="list-style-type: decimal">
 <li><strong>How do I speed things up?</strong> The most time consuming
-step is BorutaSHAP (especially if you do 100 trials) because it is using
-SHAP which is simply a time consuming method. SHAP has to test a variety
-of combinations of features in order to see how each feature impacts the
-response values. If you want to save time, you can do 50 trials or 20
-trials. This will affect statistical validity, but the results will be
-similar and are better than not using multiple trials.</li>
+step is BorutaSHAP (especially if you do 100 trials) because Boruta
+combined with SHAP which is simply a time consuming combination of
+algorithms. SHAP has to test a variety of combinations of features in
+order to see how each feature impacts the response values and Boruta
+shuffles features to see if random shuffled values perform better than
+the original features. I recommend doing 100 trials, but if you need to
+save time or don’t have access to a server, you can do 50 or 20 trials,
+knowing that this will affect statistical validity. It is still better
+than other methods that just give a rank of all the features.</li>
 </ol>
 <p>You could also use less trees (n_estimators), but for feature
 selection I would use more than the 100 that is default in other Random
-Forest implementations. I also set the max depth of the trees to 7 as
-recommended by <a href="https://github.com/scikit-learn-contrib/boruta_py">Boruta</a></p>
+Forest implementations. I also set the default max depth of the trees to
+7 as recommended by <a href="https://github.com/scikit-learn-contrib/boruta_py">Boruta</a></p>
 </div>
 </div>
 <div id="interpreting-results" class="section level3 tabset tabset-fade tabset-pills">
@@ -1833,8 +1881,8 @@ which appeared to have a positive impact on happiness values.</p></li>
 </div>
 <div id="additional-resources" class="section level1 tabset tabset-fade tabset-pills">
 <h1 class="tabset tabset-fade tabset-pills">Additional Resources</h1>
-<p>Results below are from ChatGPT 4.0 for efficiency. I will continue to
-add simplified explanations above as time allows.</p>
+<p>Results below are from ChatGPT for efficiency. I will continue to add
+simplified explanations above as time allows.</p>
 </div>
 <div id="machine-learning" class="section level1 tabset tabset-fade tabset-pills">
 <h1 class="tabset tabset-fade tabset-pills">Machine Learning</h1>
@@ -2090,11 +2138,15 @@ precision and recall, giving equal weight to both measures:</p>
 <p><span class="math display">\[ \text{F1-score} = \frac{2 \times
 \text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}}
 \]</span></p>
-<p>Where: - <strong>Precision</strong> is the ratio of true positive
+<p>Where:</p>
+<ul>
+<li><p><strong>Precision</strong> is the ratio of true positive
 predictions to all positive predictions, as explained in the previous
-response. - <strong>Recall</strong> is the ratio of true positive
-predictions to all actual positive instances, as explained in the
-previous response.</p>
+response.</p></li>
+<li><p><strong>Recall</strong> is the ratio of true positive predictions
+to all actual positive instances, as explained in the previous
+response.</p></li>
+</ul>
 <p>The F1-score ranges from 0 to 1, with higher values indicating better
 model performance. It reaches its maximum value of 1 when both precision
 and recall are perfect (i.e., there are no false positives or false
@@ -2207,12 +2259,16 @@ and lower precision, and vice versa. This trade-off can be visualized
 using an ROC curve.</p>
 <p>In some cases, you may want to prioritize precision over recall or
 vice versa, depending on the specific goals of your classification task.
-For example: - <strong>High Precision, Low Recall:</strong> Suitable
-when false positives are costly or when you want to be very certain
-about the positive predictions, even if you miss some actual positive
-cases. - <strong>High Recall, Low Precision:</strong> Suitable when it’s
+For example:</p>
+<ul>
+<li><p><strong>High Precision, Low Recall:</strong> Suitable when false
+positives are costly or when you want to be very certain about the
+positive predictions, even if you miss some actual positive
+cases.</p></li>
+<li><p><strong>High Recall, Low Precision:</strong> Suitable when it’s
 crucial to capture as many positive instances as possible, even if it
-means accepting some false positives.</p>
+means accepting some false positives.</p></li>
+</ul>
 <p>The balance between precision and recall can be adjusted by changing
 the decision threshold of the model. By doing so, you can tune the
 model’s performance to meet the specific requirements of your
@@ -2361,11 +2417,11 @@ crucial for identifying complex relationships in the data.</p></li>
 <li><p><strong>Ranking Features:</strong> The feature importance scores
 allow you to rank features based on their importance. This ranking can
 guide feature selection by helping you focus on the most relevant
-features while potentially excluding less important ones.</p></li>
-</ul>
+features while potentially excluding less important ones.</p>
 <p>In summary, Random Forest models offer a straightforward and
 effective way to assess feature importance, making them a valuable tool
-for feature selection.</p>
+for feature selection.</p></li>
+</ul>
 </div>
 <div id="what-is-the-out-of-bag-score-in-random-forests" class="section level4">
 <h4>What is the out-of-bag score in Random Forests?</h4>
@@ -2494,19 +2550,23 @@ understanding of feature interactions. Additionally, they may not be
 directly interpretable for complex models with many features.</p>
 <p>This is where SHAP (SHapley Additive exPlanations) comes into play as
 a preferable method for assessing feature importance:</p>
-<p><strong>SHAP (SHapley Additive exPlanations):</strong> - SHAP is
-based on cooperative game theory and provides a unified framework for
-explaining the output of any machine learning model, including Random
-Forests. - It computes Shapley values, which represent the contribution
-of each feature to the difference between the model’s prediction for a
-specific instance and the model’s average prediction. - SHAP values
-consider feature interactions and dependencies, making them more
-comprehensive and interpretable. - SHAP values offer insights into not
-only feature importance but also the direction and magnitude of each
-feature’s effect on predictions. - They provide a clear understanding of
-why a model makes a particular prediction for a specific instance,
-making SHAP a valuable tool for model interpretability and
-explainability.</p>
+<p><strong>SHAP (SHapley Additive exPlanations):</strong></p>
+<ul>
+<li><p>SHAP is based on cooperative game theory and provides a unified
+framework for explaining the output of any machine learning model,
+including Random Forests.</p></li>
+<li><p>It computes Shapley values, which represent the contribution of
+each feature to the difference between the model’s prediction for a
+specific instance and the model’s average prediction.</p></li>
+<li><p>SHAP values consider feature interactions and dependencies,
+making them more comprehensive and interpretable.</p></li>
+<li><p>SHAP values offer insights into not only feature importance but
+also the direction and magnitude of each feature’s effect on
+predictions.</p></li>
+<li><p>They provide a clear understanding of why a model makes a
+particular prediction for a specific instance, making SHAP a valuable
+tool for model interpretability and explainability.</p></li>
+</ul>
 <p>In summary, while Gini Importance and MDA are useful for feature
 selection and ranking in Random Forests, SHAP stands out as a preferable
 method for understanding feature importance, feature interactions, and

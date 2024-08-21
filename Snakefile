@@ -27,7 +27,7 @@ config["path_first"] = "SELECTED-FEATURES-first/"
 config["path_previous"] = "SELECTED-FEATURES-previous/"
 config["path_pairwise"] = "SELECTED-FEATURES-pairwise/"
 
-config["version"] = "2024.03.0"
+config["version"] = "2024.08.21"
 
 
 rule all:

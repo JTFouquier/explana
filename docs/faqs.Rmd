@@ -10,126 +10,153 @@ output:
 
 # EXPLANA User Guide and Other Resources {.tabset .tabset-fade .tabset-pills}
 
-3/19/2024: More documentation on use will be coming after my PhD defense on 4/1. :) Thank you! 
+EXPLANA is intended to be user-friendly for analysts with computer science and bioinformatics skills. Code is under active development, so please check for updates.
 
-See https://github.com/JTFouquier/explana for more install information.
+Contact me with any questions or comments at jennifer@explana.io.
 
-This documentation includes directions for using EXPLANA and to serve as a location for additional educational resources. For efficiency and convenience, this documentation, with the exception of the "User Guide" section, is from ChatGPT 4.0 and verified for accuracy.
+See https://github.com/JTFouquier/explana for install information, feature requests or issues. If unsure, please email me. Installation has been successfully peformed by many people, but I know it's been difficult for some. Please let me know if you have any issues.
+
+This documentation includes directions for using EXPLANA and to serve as a location for additional resources related to the tool or results. The user guide is written by myself, and additional reading is from ChatGPT for convenience, and verified for accuracy.
 
 # Using EXPLANA {.tabset .tabset-fade .tabset-pills}
 
 ### Implementation {.tabset .tabset-fade .tabset-pills}
 
-#### ⇨ 
+#### ⇨
 
-#### Requirements for Use
+#### Please read prior to using EXPLANA
 
-Requirements for using EXPLANA:
+- EXPLANA helps find linear and non-linear variables that are related to an outcome/response variable of interest, also considered the dependent variable. Because you are explaining known outcome values, this is a 'supervised' machine learning method, so you should have a numerical outcome (weight, inflammation, mood, counts, etc.) or binary categorical outcome (treated/untreated, disease/no disease, before/after, etc). EXPLANA will then tell you which features are the most important for explaining those values. I have not tested how it works with multi-class categorical values too much because it makes confusing to interpret the results of the selected important features. It might work though!
 
-  - EXPLANA is designed to be **used with a configuration file** (see "Configuration File" tab) in .yaml format, not through individual command line arguments.
+- EXPLANA is designed to be **used with a configuration file** (see "Configuration File" tab) in .yaml format, not through individual command line arguments. This is basically one file/script that you use to organize and make decisions about your analysis.
 
-  - You **must have a timepoint column**
-  
-  - Do not change folder names or delete files, or you can break links used to generate the html report.
-  
-  - You should inspect the files original.txt, first.txt, previous.txt and pairwise.txt to ensure that the intended calculations were performed for your data. Inspect Original to ensure merge/integration occurred properly. These do take up extra space and can be deleted. 
+- You **must have a timepoint column** even if you are doing a cross-sectional analysis.
 
-#### Configuration File with Comments
+- For categorical variables you do not want to code values as 0 or 1 because they will be treated as numeric. Convert to yes/no, true/false, or even one/two/three for efficiency.
+
+- Files must be in .txt format for now. I'll update later for flexibility.
+
+#### Configuration File with Detailed Information about Parameters
 
 The configuration file is in .yaml format. Users fill out this file and run it with snakemake. See github for additional information.
 
-Be **very** careful with indentation consistency and use of single and double quotes. 
+Be **very** careful with indentation consistency and use of single and double quotes.
 
-Due to the nature of the workflow, Python and R are used, which is why you will see different syntax. This is not because I randomly wrote things in different languages. It is because I am using existing packages and scripts in different languages and to add my own features, I needed to write in R and Python.
+Due to the nature of the workflow and its use of different packages in both Python and R, you will see different syntax in the configuration file. Basically if I used a package with an R script, the code in that part of the configuration file must be in R. I realize this is inconvenient, and I plan to address this soon.
+
+**Configuration File:**
 
 Put your name here. Date is automatically recorded in the report.
 
     analyst: "Jennifer Fouquier"
-    
+
 Response, which should be a continuous value OR a binary categorical. I have not tested too much with more than one categorical response. The workflow will work, but interpretation would be hard.  
-    
+
     response_var: "happiness"
 
 Time is required for all analysis. This parameter is if you want to include time as a predictor. Typically yes. Time will help the algorithm sort out feature changes
 
     include_time: "yes"
-    
+
 Random effect is whatever is measured over time, often subjects, or a sample ID.
-    
+
     random_effect: "study_id"
-    
+
 This must be a unique identifier for each sample
 
     sample_id: "sample_id"
-    
-All analyses must have a timepoint (integer value). For cross-sectional everything would be the same number. 
+
+All analyses must have a timepoint (integer value). For cross-sectional everything would be the same number.
 NOTE: if there are random skips in time, such as 1,4,8, etc they get ranked as 1, 2, 3.
-    
+
     timepoint: "timepoint"
     out: "workflow-results/EXPLANA-install-test/"
-    
-Number of interations of mixed-effects Random Forests (MERFs) if needed
-    
-    iterations: "5"
-    
+
+***
+
+Number of interations of mixed-effects Random Forests (MERFs) if needed; 10-20 works well. 20 is better.
+
+    iterations: "20"
+
+***
+
 Total number of trees/estimators
 
     n_estimators: "200"
-    
-Fraction of features the algorithm uses per split. For feature selection, you don't want this to be very close to one if you want to see lower performing features. If you choose one, then 100% of your features will be used and the best performers will always win, preventing the others from having their "shot" to help explain the response values.
+
+***
+
+Fraction of features the algorithm uses per split during feature evaluation:
+
+For feature selection, you don't want this to be very close to one if you want to see slightly lower performing features. If you choose 1.0, then 100% of your features will be used and the best performers will always win, preventing the others from having their "shot" to help explain the outcome values. For example, we know that sex and height are predictive of weight, so we do not want those to always outperform an interesting feature, such as a bacterial species that might be related to weight. Afterall, our goal is for hypothesis generation, not to just find the obvious features.
+
+You also do not want to go too because then only a very small number of features will be evaluated at each step. In many datasets, a lot of variables are not predictive or essentially meaningless, so you're only evaluating junk variables at each step. So you should try different values here, but understand that too low and you will get a lot of false positives.  
 
     max_features: "0.2"
-    
+
+***
+
 The following are all for BorutaSHAP. BorutaSHAP duplicates the dataset and shuffles the features so that randomness is included for comparison to original feature values. You should typically do 100 BorutaSHAP trials at p = 0.05. The BorutaSHAP threshold says that to be a selected feature, the feature must perform at least as good (so 100% of the value) of the best of the shuffled features. You can explore dropping this but you will start to get more false positives.
-    
+
     borutashap_trials: "20"
     borutashap_threshold: "100"
     borutashap_p: "0.05"
 
-Which analyses do you want to do? All must say yes or no. For two timepoints (pre-post studies) you will likely just want original and first. 
+***
+
+Which analyses do you want to do? All must say yes or no. For two timepoints (pre-post studies) you will likely just want original and first.
 
     analyze_original: "yes"
     analyze_first: "yes"
     analyze_previous: "yes"
     analyze_pairwise: "yes"
-    
+
+***
+
 These are pretty experimental for now. Please contact me if you are interested in these features.
-    
+
     absolute_values: "no"
     include_reference_values: "no"
-    
+
+***
+
 If you want to include notes about why you performed the analysis, or decisions you made, include it here.
-I think this can get hard to remember to fill out though. A copy of each configuration file is included in the output directory so you know exactly what you did. 
-    
+I think this can get hard to remember to fill out though. A copy of each configuration file is included in the output directory so you know exactly what you did.
+
     analysis_notes: "EXAMPLE analysis"
     enc_percent_threshold: "0"
-    
+
+***
+
 Do you have distance matrices to include? These get incorporated into the delta datasets
-    
+
     distance_matrices: "list(aitchison='data/install-test/simulation-small-aitchison-dm.txt')"
-    
-  This is a YAML format list that tells the workflow how many files you have. 
+
+  This is a YAML format list that tells the workflow how many files you have.
+
+
+***
 
 Must say "input_datasets"
 
     input_datasets:
-    
+
 ***
 
 **"metadata" dataset details**
 
 ***
-    
+
 You pick the name of each dataset, this is the **`metadata`** dataset and provide the **`file_path`**
 
       metadata:
         file_path: "data/install-test/simulation-small.txt"
-        
-This is the modification script you can perform. 
+
+This is the modification script you can perform.
 
 If you modify the script YOU MUST keep all the variables you need in them (timepoint, study_id, sample_id, etc). For more details about custom scripts see other tab.
 
-**`df_mod`** is a custom dplyr script. Take care (check output) when using this to ensure the results are intended. 
+**`df_mod`** is a custom dplyr script. Take care (check output) when using this to ensure the results are intended.
 
 If you use multiple lines you must use the pipe. **`|`**
 
@@ -138,21 +165,20 @@ If you use multiple lines you must use the pipe. **`|`**
             select(
               -sunshine
             )
-            
-**`dim_method`** can be "PCA" or "SCNIC" dimensionality reduction methods, which both have different parameters required. 
+
+**`dim_method`** can be "PCA" or "SCNIC" dimensionality reduction methods, which both have different parameters required.
 Another option is preprocess where you can transform using "clr" or "arcsin".
 
-
         dim_method: ""   # "PCA", "SCNIC", or "preprocess"
-        
-**`dim_param_dict`** is the parameter dictionary for the dimensionality reduction method you're using. 
-        
+
+**`dim_param_dict`** is the parameter dictionary for the dimensionality reduction method you're using.
+
         dim_param_dict:
           method: "none"  # For preprocess use "arcsin" or "clr" 
-          
+
 ***
-          
-**PCA_test dataset details**
+
+PCA_test dataset details:
 
 ***
 
@@ -162,17 +188,17 @@ Name of dataset is **`PCA_test`**
         file_path: "data/install-test/simulation-small-rel-abundance.txt"
         df_mod: ""
         dim_method: "PCA"
-        
-**`dim_param_dict`** is a special parameter dictionary for PCA dim_method. 
+
+**`dim_param_dict`** is a special parameter dictionary for PCA dim_method.
 
 **`pca_list`** will be all the PCA analyses you want to perform. For this, there are four microbes in a list. The top dimensions that cumulatively explain over a certain percent threshold will replace these four microbes.
-        
+
         dim_param_dict:
           pca_list:
             pca_microbes:
               feature_list: "c('da_microbe1_comp', 'da_microbe2_comp','da_microbe3_comp','da_microbe4_comp')"
               cum_var_thres: "70"
-              
+
 ***
 
 **`input_datasets`** altogether without comments:
@@ -208,10 +234,10 @@ Name of dataset is **`PCA_test`**
 
 #### Configuration File Example
 
-This is just a test analysis for **installation** and **functionality**. 
+This is just a test analysis for **installation** and **functionality**.
 
-It does not have enough data for good results! 
-    
+It is not the best data for demonstrating good results.
+
     analyst: "Jennifer Fouquier"
     
     response_var: "happiness"
@@ -270,18 +296,16 @@ It does not have enough data for good results!
               feature_list: "c('da_microbe1_comp', 'da_microbe2_comp','da_microbe3_comp','da_microbe4_comp')"
               cum_var_thres: "70"
 
-
 #### Custom scripts
 
-Below is an example of one dataset, called **metadata**, inside the **`input_datasets`** dictionary (in .yaml format). This is a possible option to use inside your `configuration file`. 
+Below is an example of one dataset, called **metadata**, inside the **`input_datasets`** dictionary (in .yaml format). This is a possible option to use inside your `configuration file`.
 
 The value for **`df_mod`** is a <a href="https://dplyr.tidyverse.org/" target="_blank">Dplyr command</a>
- in R. 
- 
- **You must use `df`** as your final dataframe variable name, **and a pipe `|` on the first line** for multiple lines.
- 
-If you use Dplyr, please ensure you check that the final results are as intended.
+ in R.
 
+ **You must use `df`** as your final dataframe variable name, **and a pipe `|` on the first line** for multiple lines.
+
+If you use Dplyr, please ensure you check that the final results are as intended.
 
     input_datasets:
       metadata:
@@ -294,36 +318,39 @@ If you use Dplyr, please ensure you check that the final results are as intended
         dim_method: ""
         dim_param_dict:
           method: "none"
-          
+
+#### After running explana
+
+- Inspect the files original.txt, first.txt, previous.txt and pairwise.txt to ensure intended calculations were performed. Inspect original.txt very carefully to ensure merge/integration occurred properly.
+
+- The main file is EXPLANA.html report; double click to open this in a browser
+  
+- Do not change folder names or delete files, or you can break the html links
+
+- **To share results**, you must share the entire folder. Zip the folder and share.
+  
 
 #### FAQs
 
 1. **How do I speed things up?**
-The most time consuming step is BorutaSHAP (especially if you do 100 trials) because it is using SHAP which is simply a time consuming method. SHAP has to test a variety of combinations of features in order to see how each feature impacts the response values. If you want to save time, you can do 50 trials or 20 trials. This will affect statistical validity, but the results will be similar and are better than not using multiple trials. 
+The most time consuming step is BorutaSHAP (especially if you do 100 trials) because Boruta combined with SHAP which is simply a time consuming combination of algorithms. SHAP has to test a variety of combinations of features in order to see how each feature impacts the response values and Boruta shuffles features to see if random shuffled values perform better than the original features. I recommend doing 100 trials, but if you need to save time or don't have access to a server, you can do 50 or 20 trials, knowing that this will affect statistical validity. It is still better than other methods that just give a rank of all the features.
 
-You could also use less trees (n_estimators), but for feature selection I would use more than the 100 that is default in other Random Forest implementations. I also set the max depth of the trees to 7 as recommended by [Boruta](https://github.com/scikit-learn-contrib/boruta_py)
-
-
-
+You could also use less trees (n_estimators), but for feature selection I would use more than the 100 that is default in other Random Forest implementations. I also set the default max depth of the trees to 7 as recommended by [Boruta](https://github.com/scikit-learn-contrib/boruta_py)
 
 ### Interpreting Results {.tabset .tabset-fade .tabset-pills}
 
-#### ⇨ 
+#### ⇨
 
 #### Report Screenshots and Explanations
 
-
 ![](../assets/report-explanation1.png){width=100%}
 
+Below, we can see clearly that *Original* was unable to identify categorical feature changes like **`green_blue`** or **`blue_green`** because it does not incorporate deltas. We can also see that **`green_blue`** has a negative impact and a higher rank than **`blue_green`** which has a lower rank and positive impact.
 
-
-Below, we can see clearly that *Original* was unable to identify categorical feature changes like **`green_blue`** or **`blue_green`** because it does not incorporate deltas. We can also see that **`green_blue`** has a negative impact and a higher rank than **`blue_green`** which has a lower rank and positive impact. 
-
-We found an **order-dependent categorical feature change that impacts a response** using EXPLANA. 
+We found an **order-dependent categorical feature change that impacts a response** using EXPLANA.
 
 ![](../assets/report-explanation2.png){width=100%}
 ![](../assets/report-explanation3.png){width=100%}
-
 
 #### SHAP Beeswarm Summary Plots
 
@@ -332,29 +359,22 @@ Inside each report, for each model (*Original*, *First*, *Previous* and *Pairwis
 This plot tells you how much the selected features (on the y-axis) impact the response values (x-axis is the selected feature's impact on the response). The colors indicate the feature value and the value on the x-axis is the impact on the response.
 
 There is a figure legend in the **Model Summary** tab:
-    
+
 - **SHAP summary beeswarm plots showing feature impact on response values.** Each point represents one sample, and the horizontal position indicates impact on the response as indicated on the x-axis. Points to the left indicate a negative impact, and points to the right indicate a positive impact. The colors represent the selected feature values, where red is larger and blue is smaller. For binary encoded features (‘ENC’) red is yes[1] and blue is no[0]. SHAP is generally an improvement upon other importance scores because it provides information about both rank (how helpful the feature was compared to other features [y-axis]) and impact (a positive or negative impact on response values [x-axis]). If multiple figures are shown, scales may vary with a maximum of ten features per plot.
-    
+
 **Interpretation examples:**
-    
-- For categorical features, presence is pink. As an example, **`green_blue`** ("yes"/pink), has a negative impact on **`happiness`** because it shifts the prediction left of zero. 
+
+- For categorical features, presence is pink. As an example, **`green_blue`** ("yes"/pink), has a negative impact on **`happiness`** because it shifts the prediction left of zero.
   
 - Higher values of **`varZ`** are related to higher values of **`happiness`**.
 
 - People in the control group **`ENC_intervention_control_control`** (yes/pink) had lower values of happiness (negative SHAP value) than the **`ENC_intervention_treated_treated`** group which appeared to have a positive impact on happiness values.
 
-
-
-
-
-
 ![](../assets/shap-beeswarm.png){width=100%}
-
-
 
 # Additional Resources {.tabset .tabset-fade .tabset-pills}
 
-Results below are from ChatGPT 4.0 for efficiency. I will continue to add simplified explanations above as time allows.
+Results below are from ChatGPT for efficiency. I will continue to add simplified explanations above as time allows.
 
 # Machine Learning {.tabset .tabset-fade .tabset-pills}
 
@@ -362,16 +382,16 @@ Results below are from ChatGPT 4.0 for efficiency. I will continue to add simpli
 
 #### ⇨
 
-#### What is machine learning? 
+#### What is machine learning?
 
 1. **Data:** Machine learning algorithms rely on data as their primary source of information. This data can be structured (e.g., tabular data) or unstructured (e.g., text, images, audio).
 
 2. **Algorithms:** Machine learning algorithms are the mathematical and computational techniques used to extract patterns and insights from data. These algorithms can be categorized into various types, including supervised learning, unsupervised learning, and reinforcement learning, each suited for different types of tasks.
 
    - **Supervised learning:** In this type of machine learning, the algorithm is trained on a labeled dataset, where the input data is paired with corresponding target outputs. The algorithm learns to map inputs to outputs and can make predictions on new, unseen data.
-   
+
    - **Unsupervised learning:** Unsupervised learning involves training algorithms on unlabeled data to discover patterns, group similar data points, or reduce the dimensionality of the data.
-   
+
    - **Reinforcement learning:** Reinforcement learning is used for decision-making tasks where an agent interacts with an environment and learns to take actions to maximize a reward signal.
 
 3. **Model:** A machine learning model is a mathematical representation of the relationship between input data and the desired output. It captures the patterns and knowledge learned from the training data and can be used to make predictions or classifications on new data.
@@ -384,7 +404,7 @@ Results below are from ChatGPT 4.0 for efficiency. I will continue to add simpli
 
 I hope this formatting helps clarify the key concepts in machine learning.
 
-#### What are feature selection and prediction? 
+#### What are feature selection and prediction?
 
 Feature selection and prediction are two important concepts in machine learning and data analysis, and they are closely related:
 
@@ -403,7 +423,6 @@ Feature selection and prediction are two important concepts in machine learning 
      - Anomaly Detection: Identifying unusual or abnormal data points (e.g., fraud detection).
 
 The relationship between feature selection and prediction lies in the fact that the quality and relevance of the selected features can significantly impact the performance and accuracy of predictions made by machine learning models. When you choose the right set of features through feature selection, you can enhance the predictive power of your models, reduce noise in the data, and achieve better results when making predictions on new data.
-
 
 #### What is exploratory analysis?
 
@@ -436,7 +455,6 @@ Here are key aspects and goals of exploratory data analysis:
 12. **Communication:** Effective communication of findings is an important aspect of EDA. Data visualization and summary reports are used to convey insights to stakeholders and collaborators.
 
 In summary, exploratory data analysis is a critical preliminary step in the data analysis process. It allows data scientists, analysts, and researchers to develop a deeper understanding of their data, uncover patterns, and make informed decisions about subsequent data processing, modeling, and analysis tasks. EDA plays a fundamental role in the journey from raw data to actionable insights.
-
 
 #### What is feature selection?
 
@@ -475,13 +493,14 @@ The F1-score is particularly useful when there is an uneven class distribution o
 \[ \text{F1-score} = \frac{2 \times \text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}} \]
 
 Where:
+
 - **Precision** is the ratio of true positive predictions to all positive predictions, as explained in the previous response.
+
 - **Recall** is the ratio of true positive predictions to all actual positive instances, as explained in the previous response.
 
 The F1-score ranges from 0 to 1, with higher values indicating better model performance. It reaches its maximum value of 1 when both precision and recall are perfect (i.e., there are no false positives or false negatives).
 
 The F1-score is especially useful in situations where you want to strike a balance between precision and recall. It is a suitable metric when you want to ensure that both the positive class predictions are accurate (precision) and that you capture most of the actual positive instances (recall). However, it does not consider the relative importance of precision and recall, and in some cases, you might prioritize one over the other based on the specific requirements of your problem. In such cases, you may need to consider other metrics or choose a different beta value to calculate the F-beta score, which allows you to adjust the balance between precision and recall as needed.
-
 
 #### What is the receiver operating characteristic (ROC) curve and the area under the curve (AUC)?
 
@@ -502,7 +521,6 @@ The Receiver Operating Characteristic (ROC) curve and the Area Under the Curve (
 
 In summary, the ROC curve and AUC are valuable tools for evaluating the discriminatory power of binary classification models. Data scientists and machine learning practitioners use them to choose the appropriate threshold for a model's predictions, assess its overall performance, and compare different models. Higher AUC values generally indicate better model performance in terms of distinguishing between the two classes of interest.
 
-
 #### What are precision and recall?
 
 Precision and recall are two important metrics used to evaluate the performance of classification models, especially in binary classification problems where the goal is to distinguish between two classes: positive (often represented as 1) and negative (often represented as 0). These metrics provide insights into how well a model is performing with respect to classifying positive cases and identifying relevant information.
@@ -522,19 +540,18 @@ Precision and recall are two important metrics used to evaluate the performance 
 It's important to note that there is often a trade-off between precision and recall. When you increase the model's sensitivity to the positive class (recall), it may lead to an increase in false positives and lower precision, and vice versa. This trade-off can be visualized using an ROC curve.
 
 In some cases, you may want to prioritize precision over recall or vice versa, depending on the specific goals of your classification task. For example:
+
 - **High Precision, Low Recall:** Suitable when false positives are costly or when you want to be very certain about the positive predictions, even if you miss some actual positive cases.
+
 - **High Recall, Low Precision:** Suitable when it's crucial to capture as many positive instances as possible, even if it means accepting some false positives.
 
 The balance between precision and recall can be adjusted by changing the decision threshold of the model. By doing so, you can tune the model's performance to meet the specific requirements of your application.
-
-
-
 
 ### Random Forests {.tabset .tabset-fade .tabset-pills}
 
 #### ⇨
 
-#### What are Random Forests? 
+#### What are Random Forests?
 
 Random Forest is a popular ensemble learning method used in machine learning for both classification and regression tasks. It is a versatile and powerful algorithm that can provide robust and accurate predictions by combining the strengths of multiple decision trees. Here's a breakdown of how Random Forests work:
 
@@ -557,8 +574,7 @@ Random Forest is a popular ensemble learning method used in machine learning for
    - They are effective for large datasets with many features.
    - They work well "out of the box" and require minimal hyperparameter tuning.
 
-
-#### What is a decision tree? 
+#### What is a decision tree?
 
 A decision tree is a popular and simple machine learning model used for both classification and regression tasks. It is a tree-like structure that represents a sequence of decisions and their consequences. Decision trees are particularly useful for tasks where you need to make a series of choices based on input features to arrive at a final decision or prediction.
 
@@ -580,27 +596,23 @@ Decision trees are interpretable and easy to visualize, making them useful for u
 
 Decision trees are commonly used in various domains, including finance, healthcare, natural language processing, and recommendation systems, among others, due to their simplicity and ability to handle both categorical and numerical data.
 
-
-
-#### Why are Random Forest models beneficial for feature selection? 
+#### Why are Random Forest models beneficial for feature selection?
 
 Random Forest models are beneficial for feature selection for several reasons:
 
-   - **Feature Importance:** Random Forests provide a feature importance score for each input feature, indicating how much each feature contributes to the model's predictive performance. Features with higher importance scores are considered more influential in making predictions.
-   
-   - **Robustness:** Random Forests are robust to overfitting and noisy data. They can handle datasets with a large number of features, including irrelevant or redundant ones, without suffering from severe overfitting. Feature importance scores generated by Random Forests are less sensitive to noise compared to some other methods.
-   
-   - **Handling Different Data Types:** Random Forests can work with both categorical and numerical features, making them versatile for a wide range of datasets. The feature importance scores can be used to identify the most important features, regardless of their data type.
-   
-   - **Implicit Interaction Detection:** Random Forests can capture complex feature interactions implicitly. The feature importance scores consider not only the individual importance of features but also how they interact with other features, which can be crucial for identifying complex relationships in the data.
-   
-   - **Ranking Features:** The feature importance scores allow you to rank features based on their importance. This ranking can guide feature selection by helping you focus on the most relevant features while potentially excluding less important ones.
+- **Feature Importance:** Random Forests provide a feature importance score for each input feature, indicating how much each feature contributes to the model's predictive performance. Features with higher importance scores are considered more influential in making predictions.
+
+- **Robustness:** Random Forests are robust to overfitting and noisy data. They can handle datasets with a large number of features, including irrelevant or redundant ones, without suffering from severe overfitting. Feature importance scores generated by Random Forests are less sensitive to noise compared to some other methods.
+
+- **Handling Different Data Types:** Random Forests can work with both categorical and numerical features, making them versatile for a wide range of datasets. The feature importance scores can be used to identify the most important features, regardless of their data type.
+
+- **Implicit Interaction Detection:** Random Forests can capture complex feature interactions implicitly. The feature importance scores consider not only the individual importance of features but also how they interact with other features, which can be crucial for identifying complex relationships in the data.
+
+- **Ranking Features:** The feature importance scores allow you to rank features based on their importance. This ranking can guide feature selection by helping you focus on the most relevant features while potentially excluding less important ones.
 
    In summary, Random Forest models offer a straightforward and effective way to assess feature importance, making them a valuable tool for feature selection.
-   
-   
-   
-#### What is the out-of-bag score in Random Forests? 
+
+#### What is the out-of-bag score in Random Forests?
 
 The out-of-bag (OOB) score in Random Forests is a method for estimating the performance of the model on unseen data without the need for a separate validation set or cross-validation. It is a valuable feature of Random Forests that helps assess the model's generalization performance during training.
 
@@ -618,9 +630,7 @@ Here's how the OOB score works in Random Forests:
 
 The OOB score provides a quick and reliable estimate of a Random Forest's performance without the need for a separate validation dataset or expensive cross-validation procedures. It's especially useful when you want to get an initial assessment of your model's generalization capability during the model-building process.
 
-
-
-#### What percentage is an acceptable out-of-bag score? 
+#### What percentage is an acceptable out-of-bag score?
 
 The acceptability of an out-of-bag (OOB) score in a Random Forest model depends on the specific problem, dataset, and your goals. There is no fixed percentage that universally defines an acceptable OOB score because it can vary widely based on the complexity of the task and the inherent difficulty of the dataset.
 
@@ -642,8 +652,6 @@ Here are some considerations when evaluating the OOB score:
 
 In summary, there is no fixed threshold for what constitutes an acceptable OOB score. It should be evaluated in the context of your specific problem and objectives. What matters most is whether the OOB score meets the requirements and expectations of your particular application, considering factors such as domain knowledge, data quality, and trade-offs.
 
-
-
 #### What are the two main importance scores used in Random Forests and why is SHAP a preferable method?
 
 In Random Forests, there are two main importance scores used to assess the importance of features (variables) in the model: Gini Importance and Mean Decrease in Accuracy (MDA). Both scores provide insights into feature importance, but they are calculated differently and have their limitations.
@@ -664,15 +672,18 @@ While Gini Importance and MDA are valuable for understanding feature importance 
 This is where SHAP (SHapley Additive exPlanations) comes into play as a preferable method for assessing feature importance:
 
 **SHAP (SHapley Additive exPlanations):**
+
 - SHAP is based on cooperative game theory and provides a unified framework for explaining the output of any machine learning model, including Random Forests.
+
 - It computes Shapley values, which represent the contribution of each feature to the difference between the model's prediction for a specific instance and the model's average prediction.
+
 - SHAP values consider feature interactions and dependencies, making them more comprehensive and interpretable.
+
 - SHAP values offer insights into not only feature importance but also the direction and magnitude of each feature's effect on predictions.
+
 - They provide a clear understanding of why a model makes a particular prediction for a specific instance, making SHAP a valuable tool for model interpretability and explainability.
 
 In summary, while Gini Importance and MDA are useful for feature selection and ranking in Random Forests, SHAP stands out as a preferable method for understanding feature importance, feature interactions, and model interpretability. SHAP values offer a more complete and interpretable picture of how each feature contributes to model predictions, making them particularly valuable in situations where model transparency and insight into individual predictions are essential.
-
-
 
 #### Why should the max_feature_fraction in Random Forest not be set to 100% for feature selection use?
 
@@ -690,54 +701,29 @@ Setting the **`max_features`** (or **`max_feature_fraction`**) parameter in a Ra
 
 For feature selection with Random Forest, it's more common to set **`max_features`** to a smaller value or a fraction of the total features. This introduces randomness and diversity into the tree-building process, helping to identify the most informative features while mitigating the risk of overfitting. The choice of the appropriate value for **`max_features`**depends on your dataset and the specific problem you're trying to solve. You can experiment with different values and use techniques like cross-validation to assess the impact on model performance.
 
-
 ### Explainable machine learning {.tabset .tabset-pills .tabset-fade}
 
 #### ⇨
 
-#### What is SHAP? 
+#### What is SHAP?
 
-   SHAP (SHapley Additive exPlanations) is a unified framework and a set of techniques for explaining the output of machine learning models. It provides a way to understand the contributions of individual features to model predictions, offering insights into why a model made a particular prediction for a given input. SHAP values are based on cooperative game theory, specifically the concept of Shapley values, which were originally developed to distribute the value of a coalition among its members.
+SHAP (SHapley Additive exPlanations) is a unified framework and a set of techniques for explaining the output of machine learning models. It provides a way to understand the contributions of individual features to model predictions, offering insights into why a model made a particular prediction for a given input. SHAP values are based on cooperative game theory, specifically the concept of Shapley values, which were originally developed to distribute the value of a coalition among its members.
 
-   Key features and uses of SHAP:
+Key features and uses of SHAP:
 
-   - **Feature Importance:** SHAP values provide a quantitative measure of feature importance by attributing a contribution value to each feature for a specific prediction. These values can help identify which features had the most impact on a prediction.
+- **Feature Importance:** SHAP values provide a quantitative measure of feature importance by attributing a contribution value to each feature for a specific prediction. These values can help identify which features had the most impact on a prediction.
 
-   - **Local Explanations:** SHAP can be used to explain individual predictions for a given input, offering insights into why a model made a specific decision or prediction for a particular data point.
+- **Local Explanations:** SHAP can be used to explain individual predictions for a given input, offering insights into why a model made a specific decision or prediction for a particular data point.
 
-   - **Global Explanations:** It can also provide a holistic view of model behavior by summarizing feature importance across multiple predictions, helping to identify which features are consistently important across the dataset.
+- **Global Explanations:** It can also provide a holistic view of model behavior by summarizing feature importance across multiple predictions, helping to identify which features are consistently important across the dataset.
 
-   - **Model Agnostic:** SHAP is model-agnostic, meaning it can be applied to any machine learning model, including decision trees, random forests, neural networks, and more.
+- **Model Agnostic:** SHAP is model-agnostic, meaning it can be applied to any machine learning model, including decision trees, random forests, neural networks, and more.
 
-   - **Interpretability:** SHAP values offer a way to enhance the interpretability and transparency of complex machine learning models, allowing stakeholders to trust and understand model decisions.
+- **Interpretability:** SHAP values offer a way to enhance the interpretability and transparency of complex machine learning models, allowing stakeholders to trust and understand model decisions.
 
-   SHAP has gained popularity in the field of explainable AI (XAI) and is used in various applications, including credit scoring, healthcare, natural language processing, and image analysis, to provide interpretable explanations for model predictions.
+SHAP has gained popularity in the field of explainable AI (XAI) and is used in various applications, including credit scoring, healthcare, natural language processing, and image analysis, to provide interpretable explanations for model predictions.
 
-
-#### What is BorutaSHAP? 
-
-BorutaSHAP is an advanced feature selection technique that combines two popular methods: Boruta and SHAP (SHapley Additive exPlanations). This hybrid approach is used for feature selection in machine learning tasks, specifically for improving the interpretability and performance of machine learning models.
-
-Here's a brief explanation of BorutaSHAP and how it works:
-
-1. **Boruta (from Boruta):** Boruta, as mentioned earlier, is a feature selection technique that employs a Random Forest classifier and shadow features to identify and select the most relevant features from a dataset.
-
-2. **SHAP (from SHapley Additive exPlanations):** SHAP is an explainability method that helps understand the contribution of individual features to the predictions made by machine learning models. It provides insights into why a particular prediction was made and how each feature influenced the outcome.
-
-3. **BorutaSHAP Integration:** BorutaSHAP combines these two techniques by integrating Boruta's feature selection capabilities with SHAP's explainability. Here's how it works:
-
-   - Initially, Boruta is used to identify the most important features from the dataset, considering both real features and shadow features.
-   
-   - After feature selection, SHAP values are computed for the selected features. SHAP values provide a measure of the impact of each feature on individual predictions.
-
-   - By combining the Boruta-selected features and their SHAP values, BorutaSHAP offers a comprehensive understanding of feature importance and contribution to the model's predictions. This information can be used for model interpretation, explanation, and refinement.
-
-BorutaSHAP is particularly useful when you want not only to select relevant features for improved model performance but also to gain insights into how those features influence the model's predictions. It bridges the gap between feature selection and model explainability, making it easier to understand and trust the decision-making process of complex machine learning models.
-
-Keep in mind that while BorutaSHAP can be a valuable tool, it should be used alongside thorough model evaluation and domain knowledge to ensure that the selected features and their explanations align with the goals and requirements of your specific machine learning task.
-
-
-#### What is Boruta? 
+#### What is BorutaSHAP?
 
 BorutaSHAP is an advanced feature selection technique that combines two popular methods: Boruta and SHAP (SHapley Additive exPlanations). This hybrid approach is used for feature selection in machine learning tasks, specifically for improving the interpretability and performance of machine learning models.
 
@@ -750,7 +736,7 @@ Here's a brief explanation of BorutaSHAP and how it works:
 3. **BorutaSHAP Integration:** BorutaSHAP combines these two techniques by integrating Boruta's feature selection capabilities with SHAP's explainability. Here's how it works:
 
    - Initially, Boruta is used to identify the most important features from the dataset, considering both real features and shadow features.
-   
+
    - After feature selection, SHAP values are computed for the selected features. SHAP values provide a measure of the impact of each feature on individual predictions.
 
    - By combining the Boruta-selected features and their SHAP values, BorutaSHAP offers a comprehensive understanding of feature importance and contribution to the model's predictions. This information can be used for model interpretation, explanation, and refinement.
@@ -759,8 +745,29 @@ BorutaSHAP is particularly useful when you want not only to select relevant feat
 
 Keep in mind that while BorutaSHAP can be a valuable tool, it should be used alongside thorough model evaluation and domain knowledge to ensure that the selected features and their explanations align with the goals and requirements of your specific machine learning task.
 
+#### What is Boruta?
 
-#### How to interpret SHAP summary beeswarm plots 
+BorutaSHAP is an advanced feature selection technique that combines two popular methods: Boruta and SHAP (SHapley Additive exPlanations). This hybrid approach is used for feature selection in machine learning tasks, specifically for improving the interpretability and performance of machine learning models.
+
+Here's a brief explanation of BorutaSHAP and how it works:
+
+1. **Boruta (from Boruta):** Boruta, as mentioned earlier, is a feature selection technique that employs a Random Forest classifier and shadow features to identify and select the most relevant features from a dataset.
+
+2. **SHAP (from SHapley Additive exPlanations):** SHAP is an explainability method that helps understand the contribution of individual features to the predictions made by machine learning models. It provides insights into why a particular prediction was made and how each feature influenced the outcome.
+
+3. **BorutaSHAP Integration:** BorutaSHAP combines these two techniques by integrating Boruta's feature selection capabilities with SHAP's explainability. Here's how it works:
+
+   - Initially, Boruta is used to identify the most important features from the dataset, considering both real features and shadow features.
+
+   - After feature selection, SHAP values are computed for the selected features. SHAP values provide a measure of the impact of each feature on individual predictions.
+
+   - By combining the Boruta-selected features and their SHAP values, BorutaSHAP offers a comprehensive understanding of feature importance and contribution to the model's predictions. This information can be used for model interpretation, explanation, and refinement.
+
+BorutaSHAP is particularly useful when you want not only to select relevant features for improved model performance but also to gain insights into how those features influence the model's predictions. It bridges the gap between feature selection and model explainability, making it easier to understand and trust the decision-making process of complex machine learning models.
+
+Keep in mind that while BorutaSHAP can be a valuable tool, it should be used alongside thorough model evaluation and domain knowledge to ensure that the selected features and their explanations align with the goals and requirements of your specific machine learning task.
+
+#### How to interpret SHAP summary beeswarm plots
 
 **SHAP (SHapley Additive exPlanations) summary beeswarm plots** are a way to visualize the contribution of different features in a machine learning model to the overall prediction. Here's a general process for interpreting these plots:
 
@@ -772,7 +779,6 @@ Keep in mind that while BorutaSHAP can be a valuable tool, it should be used alo
 6. **Interpret individual dots:** Each dot in the plot represents an individual sample or observation. The position of the dot on the x-axis indicates the feature's contribution to the prediction for that particular sample.
 
 In general, SHAP summary beeswarm plots are useful for understanding the contribution of different features to a machine learning model's prediction. They can help identify which features have the greatest impact on the prediction, as well as any patterns or relationships that may exist between the features and the dependent variable.
-
 
 ***
 
@@ -795,12 +801,7 @@ SHAP (SHapley Additive exPlanations) summary beeswarm plots are a visualization 
 
 In summary, SHAP summary beeswarm plots help you understand the contributions of individual features to the predictions of a machine learning model. They show how features deviate from the baseline prediction and provide insights into which features are most important for specific predictions or in general. These plots are valuable for model interpretability and feature selection in complex machine learning tasks.
 
-
-
-
-
-
-#### What is percent variation explained? 
+#### What is percent variation explained?
 
 The term "percent variation explained" is often used in the context of statistics, particularly in regression analysis. It represents the proportion of the total variability in a dataset that is accounted for or explained by a statistical model, typically a regression model. It is also known as "R-squared" or "coefficient of determination."
 
@@ -819,8 +820,6 @@ Here's how percent variation explained works:
    - An R-squared value of 0% means that the model does not explain any of the variability, while an R-squared value of 100% means that the model explains all of the variability (perfect fit).
 
 R-squared is a useful metric for assessing the goodness of fit of a regression model. However, it has limitations. A high R-squared does not necessarily imply a good model if the model is overfitting, and a low R-squared does not necessarily imply a poor model if the relationship between the independent and dependent variables is complex. Therefore, it should be used in conjunction with other evaluation metrics and domain knowledge to assess the model's performance and validity.
-
-
 
 # Statistics {.tabset .tabset-fade .tabset-pills}
 
@@ -879,11 +878,6 @@ Applications of mixed-effects models include:
 
 Mixed-effects models provide a flexible and powerful framework for analyzing complex data structures with hierarchical dependencies and are widely used in various fields, including epidemiology, social sciences, biology, and economics. They allow researchers to account for both within-group and between-group variability, making them a valuable tool for modeling real-world data.
 
-
-
-
-
-
 #### What are some examples of changes in variables that have a different effect on the response?
 
 There are many examples where changes in categorical variables can have differing effects on the response variable. Here are a few:
@@ -906,7 +900,6 @@ Medications: The effects of medications can vary depending on factors such as ag
 
 Infectious diseases: The effects of infectious diseases such as COVID-19 can vary depending on factors such as age, gender, and underlying health conditions. For example, studies have shown that older adults and people with underlying health conditions such as diabetes and heart disease are at higher risk of severe illness and death from COVID-19.
 
-
 #### What are the benefits of looking at delta values (change analysis) compared to original values?
 
 Performing change analysis and looking at delta values compared to original values can provide several benefits in longitudinal data analysis:
@@ -923,10 +916,7 @@ Enhancing prediction accuracy: By incorporating change analysis and delta values
 
 Overall, change analysis and delta values can provide a more nuanced understanding of longitudinal data, helping researchers identify patterns, outliers, and individual differences, as well as assessing the effectiveness of interventions and improving prediction accuracy.
 
-
-
-
-#### What is the difference between longitudinal and time-series analysis? 
+#### What is the difference between longitudinal and time-series analysis?
 
 Longitudinal analysis and time-series analysis are both methods used in statistics and data analysis, but they are applied to different types of data and address distinct research questions. Here are the key differences between the two:
 
@@ -951,8 +941,6 @@ Longitudinal analysis and time-series analysis are both methods used in statisti
    - **Time-Series Analysis**: Analyzing daily stock prices to forecast future stock values or examining monthly temperature data to detect long-term climate trends.
 
 In summary, longitudinal analysis and time-series analysis are tailored to different types of data and research objectives. Longitudinal analysis is used for studying changes within subjects over time, while time-series analysis focuses on understanding temporal patterns and trends in a single variable or a few related variables. The choice between the two methods depends on the nature of the data and the specific research questions being addressed.
-
-
 
 #### How are pairwise comparisons in longitudinal analysis important?
 
@@ -1027,16 +1015,6 @@ Second, the baseline measurement can help us identify potential confounding vari
 Finally, the baseline measurement can help us establish the internal validity of our study design. If there are large differences in the baseline measurement between groups or between individuals, it may suggest that there are systematic differences in the populations being studied that could affect the results of the study. By taking the baseline measurement into account, we can ensure that we are comparing similar groups or individuals and that any observed changes are not simply due to pre-existing differences in the variable of interest.
 
 Therefore, while the importance of the baseline measurement may differ depending on the type of study being conducted, it remains an important factor to consider in observational longitudinal studies.
-
-
-
-
-
-
-
-
-
-
 
 ```{css}
 /* Custom CSS to change the color of tab pills to purple */
