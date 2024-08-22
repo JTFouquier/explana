@@ -2,9 +2,10 @@
 
 Authored by Jennifer Therese Fouquier
 
-## EXPLANA: A user-friendly workflow for EXPLoratory ANAlysis and feature selection in longitudinal and cross-sectional microbiome studies
+EXPLANA: A user-friendly workflow for EXPLoratory ANAlysis and feature selection in longitudinal and cross-sectional microbiome studies
+========================================================================
 
-.. image:: https://github.com/JTFouquier/explana/tree/main/images/report-screenshot.png
+.. image:: https://github.com/JTFouquier/explana/blob/main/images/report-screenshot.png
 
 EXPLANA was developed to streamline identification of important features that relate to outcome/response variables in longitudinal, and cross-sectional, microbiome studies.
 
@@ -14,59 +15,64 @@ Features are ranked by their importance, and feature impact on response is provi
 
 **This is an exploratory method and this should be made clear when communicating results.**
 
-### User Guide: [explana.io/documentation](https://www.explana.io/documentation)
+User Guide
+===========
 
-## Using EXPLANA
+`explana.io/documentation<https://www.explana.io/documentation>`_
+
+Using EXPLANA
+==============
 
 You can use this tool in several ways; it will be available under multiple licenses:
 
 1) **Free for academic use.** Academic users can install and use the software.
-2) **Analytic service** I am happy to analyze your data for you as a paid service. We would discuss your project, I would analyze your data, then follow up with a meeting to go over the reports/results. For more information, see [www.jenniferfouquier.com](https://www.jenniferfouquier.com) or [schedule time to chat](https://www.jenniferfouquier.com/appointments). No charge for consultation.
+2) **Analytic service** I am happy to analyze your data for you as a paid service. We would discuss your project, I would analyze your data, then follow up with a meeting to go over the reports/results. For more information, see `www.jenniferfouquier.com<https://www.jenniferfouquier.com>`_ or `schedule time to chat<https://www.jenniferfouquier.com/appointments>`_. No charge for consultation.
 3) **Commercial licensing** is available through cuinnovations@cuanschutz.edu (mention ID: CU6153H). Happy to help with integration into your pipeline.
 
-For more information, feel free to [contact me](https://www.jenniferfouquier.com/contact).
+For more information, feel free to `contact me<https://www.jenniferfouquier.com/contact>`_.
 
-## Install
+Install
+========
 
-### Source code
+Source code
 
 Run the command:
 
-> `git clone git@github.com:JTFouquier/explana.git`
+`git clone git@github.com:JTFouquier/explana.git`
 
 Next, navigate to directory with `Snakefile` and work from there.
 
-- - -
 
-### Create Conda environment using Mamba
+
+Create Conda environment using Mamba
+========================================
 
 You must be inside the directory with `Snakefile` to create the `explana` environment and run your analyses.
 
-You will need to install Mambaforge [(download Mambaforge here)](https://github.com/conda-forge/miniforge#mambaforge)
+You will need to install Mambaforge `download Mambaforge here<https://github.com/conda-forge/miniforge#mambaforge>`_
 
-> `mamba env create -f conda_envs/environment.yaml -n explana`
+`mamba env create -f conda_envs/environment.yaml -n explana`
 
 Activate the `explana` conda environment. This is needed to ensure specific software versions are used.
 
-> `conda activate explana`
+`conda activate explana`
 
-- - -
 
-### Test install
+Test install
+============
 
 Run EXPLANA with small install demo. If possible, use more cores (I use 6).
 
-> `snakemake --configfile config/config-install-test.yaml --cores 2 --use-conda`
+`snakemake --configfile config/config-install-test.yaml --cores 2 --use-conda`
 
-Open html report (or double click it from within directory)
+Open html report (double click from within directory)
 
-> `open workflow-results/EXPLANA-install-test/EXPLANA-report.html`
+`open workflow-results/EXPLANA-install-test/EXPLANA-report.html`
 
 To retest, remove output folder.
 
 To remove and retest (`rm -r` removes a folder and *cannot* be undone):
-> `rm -r workflow-results/EXPLANA-install-test/`
+
+`rm -r workflow-results/EXPLANA-install-test/`
 
 If workflow partially runs, rerun `snakemake` command and Snakemake will resume analysis. For major changes, you should rerun the whole workflow.
-
-- - -
