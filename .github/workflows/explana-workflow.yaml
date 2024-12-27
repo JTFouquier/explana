@@ -1,3 +1,10 @@
+name: build, test, lint
+
+on:
+  pull_request:
+  push:
+    branches: main
+
 jobs:
   explana-test:
     name: Ex3 Linux
