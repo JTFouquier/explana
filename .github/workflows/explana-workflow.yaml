@@ -1,0 +1,19 @@
+jobs:
+  explana-test:
+    name: Ex3 Linux
+    runs-on: "ubuntu-latest"
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: merf
+          environment-file: conda_envs/merf.yml
+          python-version: 3.12
+          # condarc-file: conda_envs/merf-condarc.yml
+          auto-activate-base: false
+      - run: |
+          conda info
+          conda list

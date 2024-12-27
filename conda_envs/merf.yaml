@@ -2,14 +2,14 @@ name: merf
 channels:
   - conda-forge
 dependencies:
-  - python=3.6.15
+  - python=3.12
   - pip
   - scikit-learn
   - numpy
   - pip:
       - merf==1.0
-      - borutashap==1.0.16
-      - shap==0.41.0
+      - boruta_shap_min
+      - shap
       - pandas
       - matplotlib
       - seaborn

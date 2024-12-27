@@ -16,24 +16,6 @@ import seaborn as sns
 import re
 
 
-def _create_mapping_of_features_to_attribute(self, maps=[]):
-
-    rejected = list(self.rejected)
-    tentative = list(self.tentative)
-    accepted = list(self.accepted)
-    shadow = ['Max_Shadow', 'Median_Shadow', 'Min_Shadow', 'Mean_Shadow']
-
-    tentative_map = self.create_list(tentative, maps[0])
-    rejected_map = self.create_list(rejected, maps[1])
-    accepted_map = self.create_list(accepted, maps[2])
-    shadow_map = self.create_list(shadow, maps[3])
-
-    values = tentative_map + rejected_map + accepted_map + shadow_map
-    keys = tentative + rejected + accepted + shadow
-
-    return self.to_dictionary(keys, values)
-
-
 def _make_box_plot(self, data, X_rotation, X_size, y_scale, figsize,
                    which_features):
 
@@ -44,10 +26,9 @@ def _make_box_plot(self, data, X_rotation, X_size, y_scale, figsize,
 
     order = data.groupby(by=["Methods"])["value"].mean().sort_values(
         ascending=False).index
-    my_palette = \
-        _create_mapping_of_features_to_attribute(self,
-                                                 maps=['yellow', 'red',
-                                                       'green', 'blue'])
+    my_palette = self.create_mapping_of_features_to_attribute(
+        maps=['yellow', 'red', 'green', 'blue']
+    )
     # Use a color palette
     # dynamically change width of figure if there are many values
     total_x_vals = len(set(data["Methods"]))

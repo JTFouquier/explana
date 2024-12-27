@@ -12,7 +12,7 @@ from sklearn.ensemble import RandomForestRegressor
 from matplotlib.backends.backend_pdf import PdfPages
 
 from merf.merf import MERF
-from BorutaShap import BorutaShap
+from boruta_shap_min.borutashap import BorutaShap
 from boruta_shap_plot import _boruta_shap_plot
 
 from first_checks import first_checks
@@ -371,7 +371,7 @@ def train_merf_model(x, z, c, y, model, step):
 def summary_stats_table(x, df_boruta):
     x_subset = x[df_boruta["important_features"]]
     feat_names = x_subset.columns
-    x_subset = x_subset.describe().transpose()
+    x_subset = x_subset.describe(include='all').transpose()
     x_subset = x_subset.round(3)
 
     x_subset["important_features"] = feat_names
