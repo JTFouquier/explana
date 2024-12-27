@@ -7,7 +7,7 @@ on:
 
 jobs:
   explana-test:
-    name: Ex3 Linux
+    name: Conda environment test
     runs-on: "ubuntu-latest"
     defaults:
       run:
@@ -17,7 +17,7 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: merf
-          environment-file: conda_envs/merf.yml
+          environment-file: conda_envs/merf.yaml
           python-version: 3.12
           # condarc-file: conda_envs/merf-condarc.yml
           auto-activate-base: false
