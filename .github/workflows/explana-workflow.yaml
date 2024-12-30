@@ -7,8 +7,12 @@ on:
 
 jobs:
   explana-test:
-    name: Conda environment test
-    runs-on: "ubuntu-latest"
+    name: Conda environment test (os=${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ "ubuntu-latest", "windows-latest", "macos-14" ]
     defaults:
       run:
         shell: bash -el {0}
