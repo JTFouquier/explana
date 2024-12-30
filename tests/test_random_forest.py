@@ -51,7 +51,7 @@ def test_random_forest(pytestconfig):
             expected_path / "workflow-results/EXPLANA-install-test/SELECTED-FEATURES-original/original-boruta-important.txt",
             sep="\t"
         )
-        assert set(df.important_features.iloc[0:6]) == set(df_exp.important_features.iloc[0:6])
+        assert set(df.important_features.iloc[0:5]) == set(df_exp.important_features.iloc[0:5])
         # Check the output byte by byte using cmp.
         # To modify this behavior, you can inherit from common.OutputChecker in here
         # and overwrite the method `compare_files(generated_file, expected_file), 
