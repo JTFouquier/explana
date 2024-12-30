@@ -17,10 +17,10 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           activate-environment: merf
-          environment-file: conda_envs/merf.yaml
+          environment-file: conda_envs/test_env.yaml
           python-version: 3.12
           # condarc-file: conda_envs/merf-condarc.yml
           auto-activate-base: false
       - run: |
           conda info
-          conda list
+          pytest tests/

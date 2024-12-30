@@ -1,0 +1,16 @@
+name: explana
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - python=3.12
+  - snakemake
+  - pip
+  - scikit-learn
+  - pandas
+  - matplotlib
+  - pytest
+  - pip:
+      - merf==1.0
+      - boruta_shap_min
+      - shap
