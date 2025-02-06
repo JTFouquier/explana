@@ -3,8 +3,7 @@ import os
 import sys
 import shutil
 
-from snakemake.io import load_configfile
-from snakemake import parse_config
+from snakemake.common.configfile import load_configfile
 
 if not os.path.exists(config["out"]):
     os.makedirs(config["out"])

@@ -1,0 +1,31 @@
+name: build, test
+
+on:
+  pull_request:
+    branches: main
+  push:
+    branches: main
+
+jobs:
+  explana-test:
+    name: Conda environment test (os=${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ "ubuntu-latest", "windows-latest", "macos-14" ]
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: merf
+          environment-file: conda_envs/test_env.yaml
+          python-version: 3.12
+          # condarc-file: conda_envs/merf-condarc.yml
+          auto-activate-base: false
+      - run: |
+          conda info
+          pytest tests/

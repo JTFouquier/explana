@@ -1,6 +1,6 @@
 
 source("scripts/install.R")
-package_list <- c("ggplot2", "reshape2", "tidyverse", "readr")
+package_list <- c("ggplot2", "reshape2", "tidyverse", "readr", "svglite")
 install_r_packages(package_list = package_list)
 library(ggplot2)
 library(reshape2)
