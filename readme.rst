@@ -1,17 +1,16 @@
-**Copyright 2023-2024 Regents of the University of Colorado. All rights reserved.**
+**© 2025 Jennifer Fouquier LLC. ALL RIGHTS RESERVED**
 
-Authored by Jennifer Therese Fouquier
-
-EXPLANA: A user-friendly workflow for EXPLoratory ANAlysis and feature selection in longitudinal and cross-sectional microbiome studies
-========================================================================
+EXPLANA: A user-friendly workflow for EXPLoratory ANAlysis and feature selection in cross-sectional and longitudinal studies
+=====================================================================================================================================
 
 .. image:: https://github.com/JTFouquier/explana/blob/main/images/report-screenshot.png
+   :width: 50%
 
-EXPLANA was developed to streamline identification of important features that relate to outcome/response variables in longitudinal, and cross-sectional, microbiome studies.
+EXPLANA was developed to streamline identification of features that relate to outcome variables in longitudinal, and cross-sectional, microbiome studies. It has broad application to different types of data.
 
-Outcome variables can be numerical or binary categorical and input features can be numerical or categorical. If order of categorical value changes impact a response, this will be identified.
+Outcome variables can be numerical or categorical (binary - yes/no) and input features can be numerical or categorical. If order of categorical value changes impact a response, this can be identified.
 
-Features are ranked by their importance, and feature impact on response is provided. An interactive .html report is generated for each analysis that visually and textually summarizes results.
+Features are ranked by their importance, and feature impact on response is provided. An interactive .html report is generated to visually and textually summarize results.
 
 This is an exploratory method and this should be made clear when communicating results.
 
@@ -20,16 +19,12 @@ User Guide
 
 `explana.io/documentation <https://www.explana.io/documentation>`_
 
-Using EXPLANA
-==============
+Licensing/Use
+=============
 
-You can use this tool in several ways. It will be available under multiple licenses:
+Software can be installed for academic/non-profit use.
 
-1) **Free for academic use.** Academic users can install and use the software.
-2) **Analytic service.** I am happy to analyze your data for you as a paid service. We would discuss your project, I would analyze your data, then follow up with a meeting to go over the reports/results. For more information, see `www.jenniferfouquier.com <https://www.jenniferfouquier.com>`_ or `schedule time to chat <https://www.jenniferfouquier.com/appointments>`_. No charge for initial consultation.
-3) **Commercial licensing** is available through cuinnovations@cuanschutz.edu (mention ID: CU6153H). Happy to help with integration into your pipeline.
-
-For more information, feel free to `contact me <https://www.jenniferfouquier.com/contact>`_.
+For commercial licensing or consulting, email jennifer@explana.io or `schedule time to chat <https://www.jenniferfouquier.com/booking-calendar/availability>`_.
 
 Install
 ========
@@ -58,7 +53,7 @@ Activate the ``explana`` conda environment. This is needed to ensure specific so
 Test install
 ============
 
-Run EXPLANA with small install demo. If possible, use more cores (I use 6).
+Run EXPLANA with small install demo. If possible, use more cores.
 
 ``snakemake --configfile config/config-install-test.yaml --cores 2 --use-conda``
 
