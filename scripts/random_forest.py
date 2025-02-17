@@ -76,19 +76,15 @@ class Logger(object):
         pass
 
 
-def _build_result_pdf(out_file, out_file_prefix, plot_list,
-                      plot_file_name_list):
-    pp = PdfPages(out_file)
-    my_count = 0
-    # TODO add only important plot list (don't save svg or pdf)
-    for i in plot_list:
-        file_name = out_file_prefix + plot_file_name_list[my_count]
-        my_count += 1
+def _build_result_pdf(out_file, out_file_prefix, plot_list, plot_file_name_list):
+    with PdfPages(out_file) as pdf:
+        # TODO add only important plot list (don't save svg or pdf)
+        for i, plt in enumerate(plot_list):
+            file_name = out_file_prefix + plot_file_name_list[i]
 
-        i.savefig(file_name + ".svg", format='svg')
+            plt.savefig(file_name + ".svg", format='svg')
 
-        pp.savefig(i)
-    pp.close()
+            pdf.savefig(plt)
 
 
 # placeholder dataframe for creating figure
@@ -548,6 +544,8 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
 
             if df_boruta.empty:
                 no_features_selected()
+                print('No features selected', file=sys.stderr)
+                sys.exit(1)
             else:
                 df_boruta.to_csv(ds_out_path + dataset +
                                  "-boruta-important.txt",
