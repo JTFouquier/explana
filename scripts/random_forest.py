@@ -103,14 +103,6 @@ def fail_analysis(out_file):
     return
 
 
-def percent_var_statement(step, oob):
-    if step == "full_forest":
-        # if first percent var explained is less than 5% then terminate
-        if float(oob) < 5.0:
-            fail_analysis(out_file)
-            return
-
-
 def dummy_var_creation(categorical_list, df, join_flag):
     print("\nBinary encoded columns created for categorical input variables:")
     for cat_var in categorical_list:
@@ -216,7 +208,6 @@ def setup_df_do_encoding(df, random_effect, response_var, join_flag,
 def train_rf_model(x, y, rf_regressor, step):
     forest = rf_regressor.fit(x, y)
     oob = str(round(forest.oob_score_*100, 1))  # percent variation
-    percent_var_statement(step, oob)
     plt.close("all")
     return forest, oob
 
@@ -360,7 +351,6 @@ def train_merf_model(x, z, c, y, model, step):
     mrf.fit(x, z, c, y)
     forest = mrf.trained_fe_model
     oob = str(round(forest.oob_score_*100, 1))  # percent variation
-    percent_var_statement(step, oob)
     return forest, oob
 
 
@@ -381,6 +371,17 @@ def summary_stats_table(x, df_boruta):
 
     merged_df.to_csv(ds_out_path + dataset + "-feature-stats.txt", index=False,
                      sep="\t")
+
+
+def _cleanup_files():
+    # some files were used just to compile pdf, so remove them
+    out_path = snakemake.config["out"] + snakemake.config["path_" + dataset]
+    files_in_folder = os.listdir(out_path)
+    for file_name in files_in_folder:
+        for n in ["SHAP-dependence-plot", "features.svg"]:
+            if n in file_name:
+                fp = os.path.join(out_path, file_name)
+                os.remove(fp)
 
 
 def main(df_input, out_file, random_effect, sample_id, response_var,
@@ -462,12 +463,13 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
         # if first time running RF is < 5.0 percent variation, end analysis
         var_explained = str(oob) + "%"
         if float(oob) < 5.0:
-            model_evaluation = "Fail: low variance"
+            model_evaluation = rf_type + " FAIL (low variance)"
             fail_analysis(out_file)
             fail_analysis(ds_out_path + dataset + "-boruta.pdf")
             fail_analysis(ds_out_path + dataset + "-dependence.pdf")
 
         else:
+            model_evaluation = rf_type + " PASS"
             # BorutaSHAP to select features
             boruta_explainer = run_boruta_shap(forest, x, y, shap_statement)
             # refit forest after excluding rejected features prior to
@@ -542,22 +544,45 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
                                   "-input-features.txt", sep="\t",
                                   index=False)
 
+            # data for log data frame for report
+            input_features = str(len(boruta_explainer.all_columns))
+            accepted_features = str(len(boruta_explainer.accepted))
+            tentative_features = str(len(boruta_explainer.tentative))
+            rejected_features = str(len(boruta_explainer.rejected))
+
             if df_boruta.empty:
-                no_features_selected()
+                # Make model summary table for final report
+                model_evaluation = "FAIL: " + model_evaluation + "; Boruta FAIL"
+                summary[str.capitalize(dataset)] = [model_evaluation,
+                                                    var_explained,
+                                                    n_estimators, max_features,
+                                                    max_depth, merf_iters,
+                                                    borutashap_trials,
+                                                    borutashap_threshold,
+                                                    borutashap_p, study_n,
+                                                    sample_n, input_features,
+                                                    accepted_features,
+                                                    tentative_features,
+                                                    rejected_features]
+
+                summary.to_csv(ds_out_path + dataset + "-log-df.txt",
+                               index=False, sep="\t")
+                fail_analysis(out_file)
+                plt.close("all")
+                # PDF Boruta figs; helpful even if none selected by Boruta
+                _build_result_pdf(ds_out_path + dataset + "-boruta.pdf",
+                                  ds_out_path + dataset, plot_list_boruta,
+                                  plot_file_name_list_boruta)
+                _cleanup_files()
                 print('No features selected', file=sys.stderr)
-                sys.exit(1)
+                sys.exit(0)
             else:
+                model_evaluation = model_evaluation + "; Boruta PASS"
                 df_boruta.to_csv(ds_out_path + dataset +
                                  "-boruta-important.txt",
                                  index=False, sep="\t")
 
                 summary_stats_table(x, df_boruta)
-
-            # logging data
-            input_features = str(len(boruta_explainer.all_columns))
-            accepted_features = str(len(boruta_explainer.accepted))
-            tentative_features = str(len(boruta_explainer.tentative))
-            rejected_features = str(len(boruta_explainer.rejected))
 
             plt.close("all")
             # PDF; Primary figures (SHAP)
@@ -567,14 +592,12 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
             _build_result_pdf(ds_out_path + dataset + "-boruta.pdf",
                               ds_out_path + dataset, plot_list_boruta,
                               plot_file_name_list_boruta)
-            # 
+            # PDF; Dependence plots
             _build_result_pdf(ds_out_path + dataset + "-dependence.pdf",
                               ds_out_path + dataset, plot_list_dependence,
                               plot_file_name_list_dependence)
-            model_evaluation = "Pass"
 
         # Make model summary table for final report
-        model_evaluation = rf_type + " " + model_evaluation
         summary[str.capitalize(dataset)] = [model_evaluation, var_explained,
                                             n_estimators, max_features,
                                             max_depth, merf_iters,
@@ -588,15 +611,7 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
         summary.to_csv(ds_out_path + dataset + "-log-df.txt", index=False,
                        sep="\t")
 
-    out_path = snakemake.config["out"] + snakemake.config["path_" + dataset]
-    files_in_folder = os.listdir(out_path)
-
-    # remove some svgs because they're saved in PDF
-    for file_name in files_in_folder:
-        for n in ["SHAP-dependence-plot", "features.svg"]:
-            if n in file_name:
-                fp = os.path.join(out_path, file_name)
-                os.remove(fp)
+    _cleanup_files()
 
 
 main(df_input=df_input, out_file=out_file, random_effect=random_effect,

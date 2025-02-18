@@ -1,15 +1,15 @@
 analyst: "Jennifer Fouquier"
 
-response_var: "happiness"
+response_var: "not_da_microbe1_clr"
 include_time: "yes"
 
-random_effect: "study_id" 
+random_effect: "study_id"
 sample_id: "sample_id"
 timepoint: "timepoint"
-out: "workflow-results/EXPLANA-install-test/"
+out: "workflow-results/EXPLANA-install-test-b/"
 
 iterations: "5"
-n_estimators: "100"
+n_estimators: "50"
 max_features: "0.2"
 
 borutashap_trials: "20"
@@ -24,7 +24,7 @@ analyze_pairwise: "yes"
 absolute_values: "no"
 include_reference_values: "no"
 
-analysis_notes: "INSTALLATION TESTS ONLY: Results are not intented for interpretation; ALL PASS"
+analysis_notes: "INSTALLATION TESTS ONLY: Results are not intented for interpretation; MERF PASS with Boruta PASS and MERF FAIL"
 enc_percent_threshold: "0"
 
 distance_matrices: "list(aitchison='data/install-test/simulation-small-aitchison-dm.txt')"
