@@ -36,22 +36,12 @@ max_depth = 7  # depth recommended by BorutaSHAP; kept constant
 iterations = int(snakemake.params["iterations"])
 
 df_input = snakemake.input["in_file"]
-out_file = snakemake.output["out_file"]
+out_boruta = snakemake.output["out_boruta"]
 dataset = snakemake.params["dataset"]
-
-# set graphics dimensions
-_width = 10
-_height = 6
 
 join_flag = True
 
 ds_out_path = snakemake.config["out"] + snakemake.config["path_" + dataset]
-
-plot_list_shap = []
-plot_file_name_list_shap = []
-
-plot_list_dependence = []
-plot_file_name_list_dependence = []
 
 plot_list_boruta = []
 plot_file_name_list_boruta = []
@@ -76,7 +66,8 @@ class Logger(object):
         pass
 
 
-def _build_result_pdf(out_file, out_file_prefix, plot_list, plot_file_name_list):
+def _build_result_pdf(out_file, out_file_prefix, plot_list,
+                      plot_file_name_list):
     with PdfPages(out_file) as pdf:
         # TODO add only important plot list (don't save svg or pdf)
         for i, plt in enumerate(plot_list):
@@ -110,7 +101,7 @@ def dummy_var_creation(categorical_list, df, join_flag):
         encoded_name = "ENC_" + cat_var + "_is"
         dum_df = pd.get_dummies(subset_df, columns=[cat_var],
                                 prefix=[encoded_name])
-        print("-> " + cat_var + ": " + str(dum_df.columns.to_list()))
+        print(f"\n ->  {cat_var}: {str(dum_df.columns.to_list())}")
         # Keep adding encoded vars to df before returning
         if join_flag:
             df = df.join(dum_df)
@@ -123,7 +114,7 @@ def dummy_var_creation(categorical_list, df, join_flag):
 
 def setup_df_do_encoding(df, random_effect, response_var, join_flag,
                          sample_id):
-    shap_statement = ""  # Not needed unless categorical response
+    # shap_statement = ""  # Not needed unless categorical response
     numeric_column_list = df._get_numeric_data().columns.values
     categoric_columns = [i for i in list(df.columns) if
                          i not in numeric_column_list]
@@ -140,25 +131,12 @@ def setup_df_do_encoding(df, random_effect, response_var, join_flag,
     vars_to_encode = [i for i in categoric_columns if i not in do_not_encode]
     df = dummy_var_creation(vars_to_encode, df, join_flag)
 
-    # if response var is categoric convert to integers
+    # # if response var is categoric convert to integers
     if df[response_var].dtype == "object":
 
         df = df.sort_values(by=response_var)
-
         # remove vars before encoding, random effect, response, sample ID
         df[response_var], u_maps = pd.factorize(df[response_var])
-
-        print("\nNumeric mapping was created for categoric response" +
-              "variable, " + str(response_var) +
-              ", (sorted alphabetically and factorized):")
-        shap_statement = str(response_var) + " (response) mapping:\n"
-        for i, category in enumerate(u_maps):
-            print(f"{category} maps to {i}")
-            shap_statement += f"{category} maps to {i}\n"
-        print(shap_statement)
-        print("\n*** Percent variation explained is not optimal for " +
-              "categorical response variables. \n*** Use caution with " +
-              "interpretation.\n")
 
     # always drop original because timepoint_explana is ranked
     if include_time == "yes":
@@ -184,25 +162,29 @@ def setup_df_do_encoding(df, random_effect, response_var, join_flag,
         df = df.drop(columns_to_drop, axis=1)
         feature_list = df.columns.to_list()
 
-        return (feature_list)
+        return (feature_list, columns_to_drop)
 
     if enc_percent_threshold >= 0:
-        feature_list = \
+        feature_list, drop_list = \
             remove_low_percentage_encoded_vars(df=df_encoded,
                                                percent=enc_percent_threshold)
     else:
         feature_list = df.columns.to_list()
+
+    # drop encoded vars, but save df with encoded vars
+    df = df.drop(drop_list)
 
     x = df[feature_list]  # Raw analysis and ALL (new, remove ref)
     z = np.ones((len(x), 1))
     c = df[random_effect]
     y = df[response_var]
 
-    x.to_csv(ds_out_path + dataset + "-input-model-df.txt", index=False,
-             sep="\t")
+    df.to_csv(ds_out_path + dataset + "-input-model-df.txt",
+              index=False, sep="\t")
+
     df_features_in = pd.DataFrame(x.columns, columns=["input_features"])
 
-    return x, z, c, y, df_features_in, study_n, shap_statement
+    return x, z, c, y, df_features_in, study_n
 
 
 def train_rf_model(x, y, rf_regressor, step):
@@ -213,100 +195,22 @@ def train_rf_model(x, y, rf_regressor, step):
 
 
 def graphic_handling(plt, plot_file_name, p_title, width,
-                     height, tick_size, title_size, plot_group, shap_statement):
-    if plot_group == "shap" or plot_group == "dependence":
-        plot_file_name_list_shap.append(plot_file_name)
-    if plot_group == "boruta":
-        plot_file_name_list_boruta.append(plot_file_name)
-    if plot_group == "dependence":
-        plot_file_name_list_dependence.append(plot_file_name)
-
-    top_adjustment = 0.80 if plot_group == "shap" else 0.95
+                     height, tick_size, title_size):
+    plot_file_name_list_boruta.append(plot_file_name)
 
     plt.title(p_title, fontdict={"fontsize": title_size})
     plt.tick_params(axis="both", labelsize=tick_size)
-    plt.annotate(shap_statement, xy=(top_adjustment, 1.08),
-                 xycoords='axes fraction', fontsize=6, ha='center',
-                 va='center')
     p = plt.gcf()
     p.set_size_inches(width, height)
     plt.close("all")
 
-    if plot_group == "shap" or plot_group == "dependence":
-        plot_list_shap.append(p)
-    if plot_group == "boruta":
-        plot_list_boruta.append(p)
-    if plot_group == "dependence":
-        plot_list_dependence.append(p)
+    plot_list_boruta.append(p)
 
 
 def list_split(input_list, group_size):
     max_items = group_size
     return [input_list[i:i+max_items]
             for i in range(0, len(input_list), max_items)]
-
-
-def my_shap_summary_plots(feature_index_list, shap_values, x, list_num,
-                          group_size, shap_statement):
-    plt_s = shap_values[:, feature_index_list]
-    plt_x = x.iloc[:, feature_index_list]
-    ax_sz = 8
-    title_sz = 8
-    tick_sz = 6
-
-    # beeswarm
-    plt.figure(figsize=(_width, _height))
-    d = str.capitalize(dataset)
-    t = f"Features related to {response_var} ({d} dataset)"
-    shap.summary_plot(shap_values=plt_s, features=plt_x, show=False,
-                      sort=True, max_display=group_size, color_bar=True,
-                      color_bar_label='Selected feature value',
-                      plot_size=(0.8*_width, 0.7*_height))
-    plt.ylabel("Selected Features\n", fontsize=ax_sz)
-    plt.xlabel("SHAP value (impact on response)\nLeft of zero is " +
-               "negative impact and right of zero is positive impact",
-               fontsize=ax_sz)
-    graphic_handling(plt, "-accepted-SHAP-summary-beeswarm-" +
-                     str(list_num), t, _width, _height, tick_sz,
-                     title_sz, "shap", shap_statement)
-
-
-def shap_plots(shap_values, x, boruta_accepted, feature_importance,
-               shap_statement):
-
-    # get indices from Boruta for accepted features
-    index_list_accepted = list(feature_importance[feature_importance[
-        "col_name"].isin(boruta_accepted)].index)
-
-    # Number of important features can vary, so split up graphs so
-    # graphs aren't cluttered (note scales will vary)
-    group_size = 10
-    lists_to_graph = list_split(index_list_accepted, group_size=group_size)
-
-    shap_values_df = pd.DataFrame(shap_values, columns=list(x.columns.values))
-    shap_values_df.to_csv(ds_out_path + dataset + "-SHAP-values-df.txt",
-                          index=False, sep="\t")
-    # graph each list of important features after
-    for i in range(0, len(lists_to_graph)):
-        my_shap_summary_plots(lists_to_graph[i], shap_values, x, i, group_size,
-                              shap_statement)
-
-    col_count = 1
-    # TODO save the dataframe and get vals 1
-    for col in boruta_accepted:
-        # Dependence plots
-        plt.figure(figsize=(_width, _height))
-        shap.dependence_plot(col, shap_values, x, show=False, x_jitter=0.03,
-                             interaction_index="auto")
-        plt.ylabel("SHAP value for\n" + str(col), fontsize=9)
-        plt.xlabel(str(col), fontsize=9)
-        graphic_handling(plt, "-SHAP-dependence-plot-interaction-" +
-                         str(col_count),
-                         "Dependence plot showing feature impact on\n " +
-                         response_var + " (" + str.capitalize(dataset) +
-                         " dataset)", _width, _height, 7, 8,
-                         "dependence", shap_statement)
-        col_count += 1
 
 
 def run_shap(trained_forest_model, x):
@@ -328,7 +232,7 @@ def run_shap(trained_forest_model, x):
     return shap_imp, shap_values
 
 
-def run_boruta_shap(forest, x, y, shap_statement):
+def run_boruta_shap(forest, x, y):
     boruta_height = 10
     feature_selector = \
         BorutaShap(model=forest, importance_measure="shap",
@@ -341,8 +245,7 @@ def run_boruta_shap(forest, x, y, shap_statement):
                                          which_features=feature_group)
         graphic_handling(plt, "-boruta-" + feature_group + "-features",
                          "Boruta " + feature_group + " features",
-                         boruta_width, boruta_height, 5, 9, "boruta",
-                         shap_statement)
+                         boruta_width, boruta_height, 5, 9)
     return feature_selector
 
 
@@ -384,7 +287,7 @@ def _cleanup_files():
                 os.remove(fp)
 
 
-def main(df_input, out_file, random_effect, sample_id, response_var,
+def main(df_input, random_effect, sample_id, response_var,
          join_flag):
 
     # make a log for printed information and a dataframe
@@ -420,7 +323,9 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
     rf_type = ""
     if "Failed Analysis" in df.columns:
         model_evaluation = "Not performed"
-        fail_analysis(out_file)
+        fail_analysis(ds_out_path + dataset + "-boruta-important.txt")
+        fail_analysis(ds_out_path + dataset + "-features-for-shap.txt")
+        fail_analysis(ds_out_path + dataset + "-SHAP-values-df.txt")
         fail_analysis(ds_out_path + dataset + "-boruta.pdf")
         fail_analysis(ds_out_path + dataset + "-dependence.pdf")
 
@@ -435,7 +340,7 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
             rf_type = "RF"
             merf_iters = "NA"
 
-        x, z, c, y, df_features_in, study_n, shap_statement = \
+        x, z, c, y, df_features_in, study_n = \
             setup_df_do_encoding(df=df, random_effect=random_effect,
                                  response_var=response_var,
                                  join_flag=join_flag, sample_id=sample_id)
@@ -464,14 +369,17 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
         var_explained = str(oob) + "%"
         if float(oob) < 5.0:
             model_evaluation = rf_type + " FAIL (low variance)"
-            fail_analysis(out_file)
+            fail_analysis(ds_out_path + dataset + "-boruta-important.txt")
+            fail_analysis(ds_out_path + dataset + "-features-for-shap.txt")
+            fail_analysis(ds_out_path + dataset + "-SHAP-values-df.txt")
             fail_analysis(ds_out_path + dataset + "-boruta.pdf")
             fail_analysis(ds_out_path + dataset + "-dependence.pdf")
 
         else:
+            # run boruta_shap
             model_evaluation = rf_type + " PASS"
             # BorutaSHAP to select features
-            boruta_explainer = run_boruta_shap(forest, x, y, shap_statement)
+            boruta_explainer = run_boruta_shap(forest, x, y)
             # refit forest after excluding rejected features prior to
             # visualizing data. Essentially if data is visualized in SHAP plots
             # with all the rejected features, they're not effective
@@ -494,9 +402,22 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
                                                    step="shap_rerun")
 
             var_explained += " (" + str(oob_rerun) + "%)"
-            shap_imp, shap_values = run_shap(forest, x)
-            shap_plots(shap_values, x, boruta_explainer.accepted,
-                       shap_imp, shap_statement)
+            feature_importances, shap_values = run_shap(forest, x)
+
+            columns_drop_rejected = list(x.columns.values)
+            shap_values_df = pd.DataFrame(shap_values,
+                                          columns=columns_drop_rejected)
+            with open(ds_out_path + dataset + "-features-for-shap.txt",
+                      'w') as f:
+                for item in columns_drop_rejected:
+                    f.write(f"{item}\n")
+
+            x.to_csv(ds_out_path + dataset +
+                     "-features-for-shap.txt", index=False, sep="\t")
+
+            shap_values_df.to_csv(ds_out_path + dataset +
+                                  "-SHAP-values-df.txt", index=False, sep="\t")
+
             # get encoded vals prefix "ENC_Location_is_1_3" decoded = Location
             decoded_top_features_list = []
             shap_imp_score_list = []
@@ -509,9 +430,7 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
                     decoded = feature_name
 
                 decoded_top_features_list.append("".join(decoded))
-                shap_imp_score = shap_imp.loc[shap_imp["col_name"] ==
-                                              feature_name,
-                                              "feature_importance_vals"]
+                shap_imp_score = feature_importances.loc[feature_importances["col_name"] == feature_name, "feature_importance_vals"]
                 shap_imp_score_list.append(shap_imp_score.iloc[0])
 
             df_boruta = pd.DataFrame({
@@ -567,35 +486,30 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
 
                 summary.to_csv(ds_out_path + dataset + "-log-df.txt",
                                index=False, sep="\t")
-                fail_analysis(out_file)
                 plt.close("all")
                 # PDF Boruta figs; helpful even if none selected by Boruta
                 _build_result_pdf(ds_out_path + dataset + "-boruta.pdf",
                                   ds_out_path + dataset, plot_list_boruta,
                                   plot_file_name_list_boruta)
                 _cleanup_files()
+                open(ds_out_path + dataset + "-boruta-important.txt",
+                     'w').close()
                 print('No features selected', file=sys.stderr)
                 sys.exit(0)
             else:
                 model_evaluation = model_evaluation + "; Boruta PASS"
                 df_boruta.to_csv(ds_out_path + dataset +
-                                 "-boruta-important.txt",
-                                 index=False, sep="\t")
+                                 "-boruta-important.txt", index=True,
+                                 index_label="feature_index",
+                                 sep="\t")
 
                 summary_stats_table(x, df_boruta)
 
             plt.close("all")
-            # PDF; Primary figures (SHAP)
-            _build_result_pdf(out_file, ds_out_path + dataset, plot_list_shap,
-                              plot_file_name_list_shap)
             # PDF; Boruta figures
             _build_result_pdf(ds_out_path + dataset + "-boruta.pdf",
                               ds_out_path + dataset, plot_list_boruta,
                               plot_file_name_list_boruta)
-            # PDF; Dependence plots
-            _build_result_pdf(ds_out_path + dataset + "-dependence.pdf",
-                              ds_out_path + dataset, plot_list_dependence,
-                              plot_file_name_list_dependence)
 
         # Make model summary table for final report
         summary[str.capitalize(dataset)] = [model_evaluation, var_explained,
@@ -614,5 +528,5 @@ def main(df_input, out_file, random_effect, sample_id, response_var,
     _cleanup_files()
 
 
-main(df_input=df_input, out_file=out_file, random_effect=random_effect,
+main(df_input=df_input, random_effect=random_effect,
      sample_id=sample_id, response_var=response_var, join_flag=join_flag)

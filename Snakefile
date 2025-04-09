@@ -221,9 +221,11 @@ rule random_forest:
     input:
         in_file = out_dir + "SELECTED-FEATURES-{reference}/{reference}.txt"
     output:
-        out_file = out_dir + "SELECTED-FEATURES-{reference}/{reference}.pdf",
-        out_boruta = out_dir + \
-        "SELECTED-FEATURES-{reference}/{reference}-boruta-important.txt",
+        out_boruta = protected(out_dir + \
+        "SELECTED-FEATURES-{reference}/{reference}-boruta-important.txt"),
+        model_df = protected(out_dir + "SELECTED-FEATURES-{reference}/{reference}-input-model-df.txt"),
+        shap_values = protected(out_dir + "SELECTED-FEATURES-{reference}/{reference}-SHAP-values-df.txt"),
+        features_for_shap = protected(out_dir + "SELECTED-FEATURES-{reference}/{reference}-features-for-shap.txt"),
     params:
         dataset = "{reference}",
         random_effect = config["random_effect"],
@@ -239,6 +241,21 @@ rule random_forest:
     conda: "conda_envs/merf.yaml"
     script:
         "scripts/random_forest.py"
+
+
+rule shap_plots:
+    input:
+        shap_values = out_dir + "SELECTED-FEATURES-{reference}/{reference}-SHAP-values-df.txt",
+        features_for_shap = out_dir + "SELECTED-FEATURES-{reference}/{reference}-features-for-shap.txt",
+        important_features = out_dir + "SELECTED-FEATURES-{reference}/{reference}-boruta-important.txt"
+    output:
+        out_file = protected(out_dir + "SELECTED-FEATURES-{reference}/{reference}.pdf"),
+    params:
+        dataset = "{reference}",
+        response_var = config["response_var"],
+    conda: "conda_envs/merf.yaml"
+    script:
+        "scripts/shap_plots.py"
 
 
 rule final_steps_r:
