@@ -22,9 +22,7 @@ df_mod <- snakemake@params[["df_mod"]]
 in_file <- snakemake@input[["in_file"]]
 
 preprocess_dataframe <- function(in_file, method) {
-
-    df <- as.data.frame(readr::read_tsv(in_file))
-
+    df <- as.data.frame(readr::read_delim(in_file))
     if (df_mod != "") {
       eval(parse(text = df_mod))
     }
