@@ -5,6 +5,10 @@ import shutil
 
 from snakemake.common.configfile import load_configfile
 
+# add vars that users likely don't need
+# if they need them, they'll be loaded next
+config["delta_df_mod"] = "delta_df <- delta_df"
+
 if not os.path.exists(config["out"]):
     os.makedirs(config["out"])
 
@@ -13,9 +17,10 @@ config_file = sys.argv[index + 1]
 out_dir = config["out"]
 
 # make a copy of the config file for repository
-new_filename = "analysis_config.yaml" 
+new_filename = "analysis_config.yaml"
 shutil.copy(config_file, os.path.join(out_dir, new_filename))
 
+# After loading config; don't want users modifying paths
 config["path_dim_pca"] = "DIM-PCA/"
 config["path_dim_scnic"] = "DIM-SCNIC/"
 config["path_dim_preprocess"] = "DIM-preprocess/"
@@ -26,8 +31,14 @@ config["path_first"] = "SELECTED-FEATURES-first/"
 config["path_previous"] = "SELECTED-FEATURES-previous/"
 config["path_pairwise"] = "SELECTED-FEATURES-pairwise/"
 
-config["version"] = "2024.08.21"
+config["version"] = "2025.05.09"
 
+summary_table_items = ["Model Type (Pass/Fail)", "% Variance Explained",
+                       "N Trees", "Feature fraction/split", "Max Depth",
+                       "MERF Iters.", "BorutaSHAP Trials",
+                       "BorutaSHAP Threshold", "P-value", "N Study IDs",
+                       "N Samples", "Input Features", "Accepted Features",
+                       "Tentative Features", "Rejected Features"]
 
 rule all:
     input:
@@ -249,7 +260,7 @@ rule shap_plots:
         features_for_shap = out_dir + "SELECTED-FEATURES-{reference}/{reference}-features-for-shap.txt",
         important_features = out_dir + "SELECTED-FEATURES-{reference}/{reference}-boruta-important.txt"
     output:
-        out_file = protected(out_dir + "SELECTED-FEATURES-{reference}/{reference}.pdf"),
+        out_file = out_dir + "SELECTED-FEATURES-{reference}/{reference}.pdf",
     params:
         dataset = "{reference}",
         response_var = config["response_var"],

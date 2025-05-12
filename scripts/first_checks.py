@@ -38,11 +38,12 @@ def write_files(path, dataset, config, summary_table_items):
                                         "feature_importance_vals": [-100]})
     boruta_important_df = pd.DataFrame(boruta_important_df)
 
-    out_files1 = ["Failed Analysis", "", "", "", "", "", ""]
+    out_files1 = ["", "", "", "", ""]
     # create blank files for when Original, First, Previous or Pairwise
     # analyses are not performed
-    extensions1 = [".txt", "-boruta.pdf", "-log.txt",
-                   "-input-model-df.txt", "-SHAP-values-df.txt", "-features-for-shap.txt"]
+    extensions1 = ["-boruta.pdf", "-log.txt", "-input-model-df.txt",
+                   "-SHAP-values-df.txt", "-features-for-shap.txt"]
+
 
     for ext, content in zip(extensions1, out_files1):
         out_file = f"{config['out']}{config[path]}{dataset}{ext}"

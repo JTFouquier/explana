@@ -3,20 +3,10 @@ import os
 
 import shap
 import pandas as pd
-import numpy as np
 import sys
-import re
 
 import matplotlib.pyplot as plt
-from sklearn.ensemble import RandomForestRegressor
 from matplotlib.backends.backend_pdf import PdfPages
-
-from merf.merf import MERF
-from boruta_shap_min.borutashap import BorutaShap
-from boruta_shap_plot import _boruta_shap_plot
-
-from first_checks import first_checks
-
 
 # from config
 response_var = snakemake.params["response_var"]
@@ -43,6 +33,27 @@ plot_file_name_list_shap = []
 
 plot_list_dependence = []
 plot_file_name_list_dependence = []
+
+# def summarize_df(df, name="DataFrame"):
+#     # quick utility to check data (from ChatGPT)
+#     print(f"\n=== Summary for {name} ===")
+#     print("\n[Shape]")
+#     print(df.shape)
+
+#     print("\n[Columns]")
+#     print(df.columns.tolist())
+
+#     print("\n[Data Types]")
+#     print(df.dtypes)
+
+#     print("\n[Unique Values per Column]")
+#     print(df.nunique())
+
+#     print("\n[Quick Peek - Head]")
+#     print(df.head())
+
+#     print("\n[Random Sample Rows]")
+#     print(df.sample(min(5, len(df))))
 
 
 class Logger(object):
@@ -99,36 +110,11 @@ def list_split(input_list, group_size):
             for i in range(0, len(input_list), max_items)]
 
 
-def my_shap_summary_plots(feature_index_list, shap_values, x, list_num,
-                          group_size, shap_statement):
-    plt_s = shap_values[:, feature_index_list]
-    plt_x = x.iloc[:, feature_index_list]
-    ax_sz = 8
-    title_sz = 8
-    tick_sz = 6
-
-    # beeswarm
-    plt.figure(figsize=(_width, _height))
-    d = str.capitalize(dataset)
-    t = f"Features related to {response_var} ({d} dataset)"
-    shap.summary_plot(shap_values=plt_s, features=plt_x, show=False,
-                      sort=True, max_display=group_size, color_bar=True,
-                      color_bar_label='Selected feature value',
-                      plot_size=(0.8*_width, 0.7*_height))
-    plt.ylabel("Selected Features\n", fontsize=ax_sz)
-    plt.xlabel("SHAP value (impact on response)\nLeft of zero is " +
-               "negative impact and right of zero is positive impact",
-               fontsize=ax_sz)
-    graphic_handling(plt, "-accepted-SHAP-summary-beeswarm-" +
-                     str(list_num), t, _width, _height, tick_sz,
-                     title_sz, "shap", shap_statement)
-
-
-def shap_plots(shap_values, x, boruta_accepted, feature_importance,
+def shap_plots(shap_values, x, boruta_accepted,
                shap_statement):
 
-    # get indices from Boruta for accepted features
-    index_list_accepted = feature_importance["feature_index"].tolist()
+    index_list_accepted = [x.columns.get_loc(v) for v in boruta_accepted if v
+                           in x.columns]
 
     # Number of important features can vary, so split up graphs so
     # graphs aren't cluttered (note scales will vary)
@@ -137,11 +123,31 @@ def shap_plots(shap_values, x, boruta_accepted, feature_importance,
 
     # graph each list of important features after
     for i in range(0, len(lists_to_graph)):
-        my_shap_summary_plots(lists_to_graph[i], shap_values, x, i,
-                              group_size, shap_statement)
+
+        plt_s = shap_values[:, lists_to_graph[i]]
+        plt_x = x.iloc[:, lists_to_graph[i]]
+
+        ax_sz = 8
+        title_sz = 8
+        tick_sz = 6
+
+        # beeswarm
+        plt.figure(figsize=(_width, _height))
+        d = str.capitalize(dataset)
+        t = f"Features related to {response_var} ({d} dataset)"
+        shap.summary_plot(shap_values=plt_s, features=plt_x, show=False,
+                          sort=True, max_display=group_size, color_bar=True,
+                          color_bar_label='Selected feature value',
+                          plot_size=(0.8*_width, 0.7*_height))
+        plt.ylabel("Selected Features\n", fontsize=ax_sz)
+        plt.xlabel("SHAP value (impact on response)\nLeft of zero is " +
+                   "negative impact and right of zero is positive impact",
+                   fontsize=ax_sz)
+        graphic_handling(plt, "-accepted-SHAP-summary-beeswarm-" +
+                         str(i), t, _width, _height, tick_sz,
+                         title_sz, "shap", shap_statement)
 
     col_count = 1
-
     for col in boruta_accepted:
         # Dependence plots
         plt.figure(figsize=(_width, _height))
@@ -180,6 +186,16 @@ def main(shap_values, features_for_shap, important_features, out_file):
 
     # if response var is categorical, needs to be factorized and
     # mapped to numeric values to be used with RF regressor
+    shap_values_df = pd.read_csv(shap_values, sep="\t")
+
+    shap_values_arr = shap_values_df.values
+
+    if shap_values_df.empty or shap_values_df.shape[1] == 0:
+        with open(out_file, "w") as file:
+            file.write("")
+        return
+
+    # only need the output var from dataset
     shap_statement = ""
     df = pd.read_csv(ds_out_path + dataset + ".txt", sep="\t")
     if df[response_var].dtype == "object":
@@ -197,16 +213,13 @@ def main(shap_values, features_for_shap, important_features, out_file):
               "categorical response variables. \n*** Use caution with " +
               "interpretation.\n")
 
-    shap_values_df = pd.read_csv(shap_values, sep="\t")
-    shap_values_arr = shap_values_df.values
-
     important_features = pd.read_csv(important_features, sep="\t")
     important_features_names = important_features['important_features']
 
     features_for_shap = pd.read_csv(features_for_shap, sep="\t")
 
     shap_plots(shap_values_arr, features_for_shap, important_features_names,
-               important_features, shap_statement)
+               shap_statement)
 
     plt.close("all")
     # PDF; Primary figures (SHAP)

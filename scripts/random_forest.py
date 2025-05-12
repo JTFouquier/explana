@@ -172,17 +172,14 @@ def setup_df_do_encoding(df, random_effect, response_var, join_flag,
         feature_list = df.columns.to_list()
 
     # drop encoded vars, but save df with encoded vars
-    df = df.drop(drop_list)
-
     x = df[feature_list]  # Raw analysis and ALL (new, remove ref)
     z = np.ones((len(x), 1))
     c = df[random_effect]
     y = df[response_var]
 
-    df.to_csv(ds_out_path + dataset + "-input-model-df.txt",
-              index=False, sep="\t")
-
     df_features_in = pd.DataFrame(x.columns, columns=["input_features"])
+
+    x.to_csv(ds_out_path + dataset + "-input-model-df.txt", index=False, sep="\t")
 
     return x, z, c, y, df_features_in, study_n
 
@@ -317,6 +314,22 @@ def main(df_input, random_effect, sample_id, response_var,
     }
     summary = pd.DataFrame(summary)
 
+    def make_summary():
+
+        # Make model summary table for final report
+        summary[str.capitalize(dataset)] = [model_evaluation, var_explained,
+                                            n_estimators, max_features,
+                                            max_depth, merf_iters,
+                                            borutashap_trials,
+                                            borutashap_threshold, borutashap_p,
+                                            study_n, sample_n,
+                                            input_features, accepted_features,
+                                            tentative_features,
+                                            rejected_features]
+
+        summary.to_csv(ds_out_path + dataset + "-log-df.txt", index=False,
+                       sep="\t")
+
     df = pd.read_csv(df_input, sep="\t", na_filter=False)
 
     # if the input dataframe is empty; rule terminates
@@ -328,6 +341,8 @@ def main(df_input, random_effect, sample_id, response_var,
         fail_analysis(ds_out_path + dataset + "-SHAP-values-df.txt")
         fail_analysis(ds_out_path + dataset + "-boruta.pdf")
         fail_analysis(ds_out_path + dataset + "-dependence.pdf")
+
+        make_summary()
 
     else:
         study_n = str(df[random_effect].nunique())
@@ -374,6 +389,8 @@ def main(df_input, random_effect, sample_id, response_var,
             fail_analysis(ds_out_path + dataset + "-SHAP-values-df.txt")
             fail_analysis(ds_out_path + dataset + "-boruta.pdf")
             fail_analysis(ds_out_path + dataset + "-dependence.pdf")
+
+            make_summary()
 
         else:
             # run boruta_shap
@@ -499,8 +516,7 @@ def main(df_input, random_effect, sample_id, response_var,
             else:
                 model_evaluation = model_evaluation + "; Boruta PASS"
                 df_boruta.to_csv(ds_out_path + dataset +
-                                 "-boruta-important.txt", index=True,
-                                 index_label="feature_index",
+                                 "-boruta-important.txt", index=False,
                                  sep="\t")
 
                 summary_stats_table(x, df_boruta)
@@ -511,19 +527,7 @@ def main(df_input, random_effect, sample_id, response_var,
                               ds_out_path + dataset, plot_list_boruta,
                               plot_file_name_list_boruta)
 
-        # Make model summary table for final report
-        summary[str.capitalize(dataset)] = [model_evaluation, var_explained,
-                                            n_estimators, max_features,
-                                            max_depth, merf_iters,
-                                            borutashap_trials,
-                                            borutashap_threshold, borutashap_p,
-                                            study_n, sample_n,
-                                            input_features, accepted_features,
-                                            tentative_features,
-                                            rejected_features]
-
-        summary.to_csv(ds_out_path + dataset + "-log-df.txt", index=False,
-                       sep="\t")
+        make_summary()
 
     _cleanup_files()
 

@@ -241,6 +241,8 @@ main <- function() {
       dplyr::select(-dplyr::ends_with("_reference"))
   }
 
+  delta_df <- eval(parse(text = snakemake@config[["delta_df_mod"]]))
+
   write.table(delta_df, out_file, row.names = FALSE, sep = "\t")
 }
 
