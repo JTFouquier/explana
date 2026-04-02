@@ -1,4 +1,4 @@
-**© 2025 Jennifer Fouquier LLC. ALL RIGHTS RESERVED**
+**© 2021-2025 Jennifer Fouquier LLC. ALL RIGHTS RESERVED**
 
 EXPLANA: A user-friendly workflow for EXPLoratory ANAlysis and feature selection in cross-sectional and longitudinal studies
 =====================================================================================================================================
@@ -6,13 +6,17 @@ EXPLANA: A user-friendly workflow for EXPLoratory ANAlysis and feature selection
 .. image:: https://github.com/JTFouquier/explana/blob/main/images/report-screenshot.png
    :width: 50%
 
-EXPLANA was developed to streamline identification of features that relate to outcome variables in longitudinal, and cross-sectional, microbiome studies. It has broad application to different types of data.
+EXPLANA was developed to streamline identification of key features that relate to outcomes of interest in cross-sectional and longitudinal microbiome studies. It has broad application to different types of data.
 
-Outcome variables can be numerical or categorical (binary - yes/no) and input features can be numerical or categorical. If order of categorical value changes impact a response, this can be identified.
+Outcome variables can be numerical or categorical (binary - yes/no) and input features can be numerical or categorical. EXPLANA has novel functionality to detect if categorical order impacts response over time (e.g., green_blue differs from blue_green).
 
 Features are ranked by their importance, and feature impact on response is provided. An interactive .html report is generated to visually and textually summarize results.
 
 This is an exploratory method and this should be made clear when communicating results.
+
+**Peer-Reviewed Publication:**
+
+Jennifer Fouquier, Maggie Stanislawski, John O’Connor, Ashley Scadden, Catherine Lozupone, EXPLANA: a user-friendly workflow for EXPLoratory ANAlysis and feature selection in cross-sectional and longitudinal microbiome studies, Bioinformatics, Volume 42, Issue 1, January 2026, btaf658, `https://doi.org/10.1093/bioinformatics/btaf658 <https://doi.org/10.1093/bioinformatics/btaf658>`_
 
 User Guide
 ===========
@@ -22,7 +26,9 @@ User Guide
 Licensing/Use
 =============
 
-Software can be installed for academic/non-profit use.
+Software can be installed for academic and non-commercial use. 
+
+Questions about use or installation: jennifer.fouquier@cuanschutz.edu
 
 For commercial licensing or consulting, email jennifer@explana.io or `schedule time to chat <https://www.jenniferfouquier.com/booking-calendar/availability>`_.
 
