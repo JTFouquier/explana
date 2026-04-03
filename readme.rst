@@ -1,4 +1,4 @@
-**© 2021-2025 Jennifer Fouquier LLC. ALL RIGHTS RESERVED**
+**© 2021-2026 Jennifer Fouquier LLC. ALL RIGHTS RESERVED**
 
 EXPLANA: A user-friendly workflow for EXPLoratory ANAlysis and feature selection in cross-sectional and longitudinal studies
 =====================================================================================================================================
